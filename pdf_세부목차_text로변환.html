@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 목차 및 페이지 추출기</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body { font-family: 'Pretendard', -apple-system, sans-serif; padding: 30px; line-height: 1.6; max-width: 1000px; margin: 0 auto; background-color: #f4f7f9; color: #333; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h2 { margin-top: 0; color: #1a73e8; border-bottom: 2px solid #e8f0fe; padding-bottom: 15px; }
+        #drop-zone { border: 2px dashed #1a73e8; padding: 50px; text-align: center; cursor: pointer; border-radius: 10px; margin-bottom: 25px; transition: all 0.3s; background: #f8fbff; }
+        #drop-zone:hover { background-color: #eef4ff; border-color: #1557b0; }
+        .info-box { margin-bottom: 20px; padding: 15px; background: #f1f3f4; border-left: 5px solid #1a73e8; border-radius: 4px; }
+        #book-title { font-weight: bold; font-size: 1.2em; color: #202124; }
+        #output { background: #ffffff; border: 1px solid #dadce0; padding: 25px; border-radius: 8px; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; min-height: 300px; max-height: 700px; overflow-y: auto; font-size: 14px; }
+        .controls { margin-bottom: 15px; display: flex; gap: 10px; align-items: center; }
+        button { background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        button:hover { background: #1557b0; }
+        .status { font-size: 0.9em; color: #5f6368; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📖 PDF 목차 & 페이지 추출기</h2>
+    
+    <div id="drop-zone">PDF 파일을 드래그하거나 클릭하여 업로드하세요</div>
+    <input type="file" id="file-input" accept="application/pdf" style="display: none;">
+
+    <div id="result-area" style="display: none;">
+        <div class="info-box">
+            <span>📚 도서 제목: </span><span id="book-title">-</span>
+        </div>
+        
+        <div class="controls">
+            <button onclick="copyToClipboard()">전체 텍스트 복사</button>
+            <span id="status" class="status">준비 완료</span>
+        </div>
+        
+        <div id="output"></div>
+    </div>
+</div>
+
+<script>
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+    const bookTitle = document.getElementById('book-title');
+    const resultArea = document.getElementById('result-area');
+
+    dropZone.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => handleFile(e.target.files[0]);
+
+    // 드래그 앤 드롭 이벤트
+    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.style.background = '#eef4ff'; };
+    dropZone.ondragleave = () => { dropZone.style.background = '#f8fbff'; };
+    dropZone.ondrop = (e) => {
+        e.preventDefault();
+        handleFile(e.dataTransfer.files[0]);
+    };
+
+    async function handleFile(file) {
+        if (!file || file.type !== 'application/pdf') {
+            alert('PDF 파일만 가능합니다.');
+            return;
+        }
+
+        resultArea.style.display = 'block';
+        bookTitle.textContent = file.name;
+        status.textContent = "목차와 페이지 번호를 분석 중...";
+        output.textContent = "";
+
+        const reader = new FileReader();
+        reader.onload = async function() {
+            try {
+                const typedarray = new Uint8Array(this.result);
+                const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                const outline = await pdf.getOutline();
+
+                if (!outline || outline.length === 0) {
+                    output.textContent = "이 PDF에는 내장된 목차 정보가 없습니다.";
+                    status.textContent = "분석 실패";
+                    return;
+                }
+
+                let resultText = `[도서명: ${file.name}]\n`;
+                resultText += `[추출 일시: ${new Date().toLocaleString()}]\n`;
+                resultText += `--------------------------------------------------\n\n`;
+                
+                // 목차 아이템에서 실제 페이지 번호를 찾는 함수
+                async function getPageNumber(dest) {
+                    if (!dest) return null;
+                    let explicitDest = dest;
+                    if (typeof dest === 'string') {
+                        explicitDest = await pdf.getDestination(dest);
+                    }
+                    if (Array.isArray(explicitDest)) {
+                        const pageRef = explicitDest[0];
+                        if (pageRef && typeof pageRef === 'object') {
+                            return await pdf.getPageIndex(pageRef) + 1;
+                        }
+                    }
+                    return null;
+                }
+
+                // 재귀적 목차 탐색
+                async function traverse(items, prefix = "") {
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+                        const currentNum = prefix === "" ? `${i + 1}` : `${prefix}.${i + 1}`;
+                        
+                        // 페이지 번호 가져오기
+                        const pageNum = await getPageNumber(item.dest);
+                        const pageDisplay = pageNum ? ` (p.${pageNum})` : "";
+                        
+                        resultText += `${currentNum}. ${item.title}${pageDisplay}\n`;
+
+                        if (item.items && item.items.length > 0) {
+                            await traverse(item.items, currentNum);
+                        }
+                    }
+                }
+
+                await traverse(outline);
+                output.textContent = resultText;
+                status.textContent = "추출 성공!";
+            } catch (err) {
+                console.error(err);
+                output.textContent = "파일을 읽는 중 오류가 발생했습니다.";
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function copyToClipboard() {
+        const text = output.textContent;
+        if (!text) return;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('목차가 클립보드에 복사되었습니다.');
+        });
+    }
+</script>
+
+</body>
+</html>

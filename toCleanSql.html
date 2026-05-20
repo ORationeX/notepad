@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Ghost Character Finder & Cleaner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #8b5cf6;
+            --primary-glow: rgba(139, 92, 246, 0.5);
+            --secondary: #06b6d4;
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Pretendard', sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ddd6fe, #8b5cf6, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.05em;
+        }
+
+        p.subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 1rem;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title i { color: var(--primary); }
+
+        textarea {
+            width: 100%;
+            height: 400px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-glow);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #7c3aed);
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(139, 92, 246, 0.5);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+        }
+
+        .report-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .stat-badge {
+            padding: 1rem;
+            border-radius: 1rem;
+            background: rgba(241, 245, 249, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-label { color: var(--text-dim); }
+        .stat-value { font-weight: 700; color: var(--primary); }
+        .stat-value.danger { color: var(--danger); font-size: 1.2rem; }
+
+        .issue-list {
+            margin-top: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        .issue-item {
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid var(--danger);
+            font-size: 0.9rem;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .issue-item mark {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            padding: 0 0.2rem;
+            border-radius: 0.2rem;
+            font-weight: 600;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.3); }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--success);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+
+        .toast.show { transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>SQL Ghost Hunter</h1>
+            <p class="subtitle">MyBatis XML에서 숨겨진 특수 문자를 찾아내고 깨끗하게 정화합니다.</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- Input Side -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <div class="card-title">📝 SQL / XML 입력</div>
+                </div>
+                <textarea id="inputSql" placeholder="여기에 MyBatis XML 또는 SQL 문을 붙여넣으세요..."></textarea>
+                <div class="btn-group">
+                    <button class="btn-primary" onclick="processSql()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        숨은 기호 분석하기
+                    </button>
+                    <button style="flex: 0.3; background: rgba(255,255,255,0.05); color: var(--text-dim);" onclick="clearInput()">초기화</button>
+                </div>
+            </div>
+
+            <!-- Result Side -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <div class="card-title">✨ 분석 및 정화 결과</div>
+                </div>
+                
+                <div class="report-panel">
+                    <div class="stat-badge">
+                        <span class="stat-label">발견된 유령 문자</span>
+                        <span id="ghostCount" class="stat-value">0</span>
+                    </div>
+                    
+                    <div id="issueContainer" class="issue-list">
+                        <!-- 이슈들이 여기에 추가됨 -->
+                        <div style="color: var(--text-dim); text-align: center; margin-top: 2rem;">분석 버튼을 누르세요.</div>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <div class="card-title" style="font-size: 1rem; margin-bottom: 0.5rem;">정화된 SQL</div>
+                        <textarea id="outputSql" readonly placeholder="결과가 여기에 표시됩니다..." style="height: 200px;"></textarea>
+                    </div>
+
+                    <button class="btn-success" id="copyBtn" onclick="copyResult()" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                        정화된 코드 복사하기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">복사 완료! 본문에 붙여넣으세요.</div>
+
+    <script>
+        const ghostMap = {
+            '\u200B': 'Zero Width Space (U+200B)',
+            '\u200C': 'Zero Width Non-Joiner (U+200C)',
+            '\u200D': 'Zero Width Joiner (U+200D)',
+            '\uFEFF': 'Byte Order Mark (BOM) (U+FEFF)',
+            '\u00A0': 'Non-breaking Space (U+00A0)',
+            '\u200E': 'Left-To-Right Mark (U+200E)',
+            '\u200F': 'Right-To-Left Mark (U+200F)',
+            '\u2028': 'Line Separator (U+2028)',
+            '\u2029': 'Paragraph Separator (U+2029)',
+            '\u0000': 'Null Character (U+0000)',
+            '\u000B': 'Vertical Tab (U+000B)',
+            '\u000C': 'Form Feed (U+000C)',
+        };
+
+        function processSql() {
+            const input = document.getElementById('inputSql').value;
+            const outputArea = document.getElementById('outputSql');
+            const ghostCountSpan = document.getElementById('ghostCount');
+            const issueContainer = document.getElementById('issueContainer');
+            const copyBtn = document.getElementById('copyBtn');
+
+            if (!input.trim()) {
+                alert('내용을 입력해주세요.');
+                return;
+            }
+
+            issueContainer.innerHTML = '';
+            let ghostCount = 0;
+            let issues = [];
+
+            // 1. 유령 문자 탐지 및 이슈 리스트 생성
+            const lines = input.split('\n');
+            lines.forEach((line, lineIdx) => {
+                for (let char of line) {
+                    if (ghostMap[char]) {
+                        ghostCount++;
+                        issues.push({
+                            line: lineIdx + 1,
+                            name: ghostMap[char],
+                            content: line.replace(char, ' [GHOST] ')
+                        });
+                    }
+                }
+            });
+
+            // 2. 정화 로직 (유령 문자 제거)
+            /**
+             * 정규식 설명:
+             * [\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u00A0\u200B-\u200F\u2028\u2029\uFEFF]
+             * 주요 유해한 제어 문자 및 숨은 문자들 포함
+             */
+            const ghostRegex = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u00A0\u1680\u2000-\u200A\u200B-\u200F\u2028\u2029\u202F\u205F\u3000\uFEFF]/g;
+            const cleaned = input.replace(ghostRegex, '');
+
+            // 3. UI 업데이트
+            ghostCountSpan.innerText = ghostCount;
+            if (ghostCount > 0) {
+                ghostCountSpan.classList.add('danger');
+                issues.slice(0, 50).forEach(issue => {
+                    const div = document.createElement('div');
+                    div.className = 'issue-item';
+                    div.innerHTML = `<strong>Line ${issue.line}:</strong> 발견됨 - <mark>${issue.name}</mark>`;
+                    issueContainer.appendChild(div);
+                });
+                if (issues.length > 50) {
+                    const more = document.createElement('div');
+                    more.style.textAlign = 'center';
+                    more.style.fontSize = '0.8rem';
+                    more.style.color = 'var(--text-dim)';
+                    more.innerText = `...외 ${issues.length - 50}개 더 있음`;
+                    issueContainer.appendChild(more);
+                }
+            } else {
+                ghostCountSpan.classList.remove('danger');
+                issueContainer.innerHTML = '<div style="color: var(--success); text-align: center; margin-top: 2rem;">✅ 숨겨진 특수 기호가 없습니다!</div>';
+            }
+
+            outputArea.value = cleaned;
+            copyBtn.disabled = false;
+        }
+
+        function copyResult() {
+            const output = document.getElementById('outputSql');
+            output.select();
+            document.execCommand('copy');
+            
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function clearInput() {
+            document.getElementById('inputSql').value = '';
+            document.getElementById('outputSql').value = '';
+            document.getElementById('ghostCount').innerText = '0';
+            document.getElementById('issueContainer').innerHTML = '<div style="color: var(--text-dim); text-align: center; margin-top: 2rem;">분석 버튼을 누르세요.</div>';
+            document.getElementById('copyBtn').disabled = true;
+        }
+    </script>
+</body>
+</html>

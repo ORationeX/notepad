@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>three.js 학습</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.163.0/build/three.module.js", 
+                "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/",
+                "lil-gui": "https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.js"
+            }
+        }
+    </script> 
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import  { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { GUI } from 'lil-gui';
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const factory1Geometry = new THREE.BoxGeometry(1,1,1);
+        const factory1Material = new THREE.MeshStandardMaterial({color:0xff0000});
+        const factory1Cube = new THREE.Mesh(factory1Geometry, factory1Material);
+        scene.add(factory1Cube);
+
+        camera.position.z = 5;
+
+
+        // 모든 물체를 골고루 밝혀주는 은은한 빛
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // (색상, 강도)
+        scene.add(ambientLight);
+
+        // 햇빛처럼 한 방향에서 쏟아지는 강한 빛
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(2, 2, 2); // 빛의 위치 설정
+        scene.add(directionalLight);
+
+        // 1. 렌더러 설정 (위에서 정답으로 고른 것!)
+        renderer.shadowMap.enabled = true;
+
+        // 2. 조명이 그림자를 만들도록 설정
+        directionalLight.castShadow = true;
+
+        // 3. 물체가 그림자를 만들도록 설정
+        factory1Cube.castShadow = true;
+
+        // 4. (중요) 그림자가 맺힐 '바닥'도 필요하겠죠?
+        const planeGeometry = new THREE.PlaneGeometry(10, 10);
+        const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
+        const floor = new THREE.Mesh(planeGeometry, planeMaterial);
+        floor.rotation.x = -Math.PI / 2; // 바닥을 평평하게 눕힘
+        floor.position.y = -1;
+        floor.receiveShadow = true; // 여기에 들어갈 설정은 무엇일까요?
+        scene.add(floor);
+
+
+       
+
+        // GUI 객체 생성
+        const gui = new GUI();
+
+        // 조절하고 싶은 대상과 속성을 설정합니다.
+        // (대상, '속성명', 최소값, 최대값, 간격)
+        gui.add(factory1Cube.position, 'y', -3, 3, 0.1).name('큐브 높이');
+        gui.add(factory1Material, 'roughness', 0, 1, 0.01).name('거칠기');
+        gui.add(factory1Material, 'metalness', 0, 1, 0.01).name('금속성');
+        gui.addColor(factory1Material, 'color').name('색상 변경');
+
+        // 로더 객체 생성
+        const loader = new GLTFLoader();
+
+        // 모델 불러오기
+        loader.load(
+            'path/to/your_model.glb', // 모델 파일 경로
+            function (gltf) {
+                // 불러오기가 성공했을 때 실행될 함수
+                scene.add(gltf.scene);
+            },
+            undefined, // 불러오는 도중 진행률 보고 (선택사항)
+            function (error) {
+                // 에러가 발생했을 때 실행될 함수
+                console.error(error);
+            }
+        );
+
+
+        renderer.render(scene, camera);
+       
+        function animate() {
+            // 1. 이 함수를 초당 약 60번씩 반복 실행하도록 예약합니다.
+            requestAnimationFrame(animate);
+
+            // 2. 큐브의 회전값에 변화를 줍니다.
+            // factory1Cube.rotation.x += 0.01;
+            // factory1Cube.rotation.y += 0.01;
+            controls.update();
+            // 3. 변화된 장면을 다시 화면에 그립니다.
+            renderer.render(scene, camera);
+        }
+
+        // 처음 한 번 실행해주면 루프가 시작됩니다!
+        animate();
+    </script> 
+</body>
+</html>

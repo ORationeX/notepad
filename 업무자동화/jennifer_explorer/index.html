@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JENNIFER5 Xview Explorer</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-text">JENNIFER <span>5</span></span>
+      </div>
+      <nav>
+        <button id="btnLogin" class="btn secondary">🔑 Login (14.241.92.211)</button>
+        <div class="status-indicator">
+          <span id="loginStatus" class="status offline">Offline</span>
+        </div>
+      </nav>
+      <div class="config-section">
+        <h3>Fetching Period</h3>
+        <div class="input-group">
+          <label>Start Time</label>
+          <input type="datetime-local" id="stime">
+        </div>
+        <div class="input-group">
+          <label>End Time</label>
+          <input type="datetime-local" id="etime">
+        </div>
+        <h3>XView Params <button id="btnRefreshTargets" class="btn text" style="padding: 2px 8px; font-size: 0.7rem;">🔄 Load</button></h3>
+        <div class="input-group">
+          <label>Jennifer Token (Optional)</label>
+          <input type="text" id="apiToken" placeholder="EcuZ1sQ6pBf">
+        </div>
+        <div class="input-group">
+          <label>SID (Domain)</label>
+          <select id="sidSelect">
+            <option value="">Select Domain...</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>OID (Instance)</label>
+          <select id="oidSelect">
+            <option value="">Select Instance...</option>
+          </select>
+        </div>
+        <div class="input-group" style="display:none;">
+          <label>InstID (Inner)</label>
+          <select id="instIdSelect">
+            <option value="">Auto</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header>
+        <h1>Xview TXID Collector</h1>
+        <p>Enter the Xview profile URLs or TXIDs below to process them.</p>
+      </header>
+      
+      <section class="txid-input-area">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>TXID Lists to Process</h3>
+            <button id="btnClear" class="btn text">Clear</button>
+          </div>
+          <textarea id="txidList" placeholder="Enter TXIDs separated by newline..."></textarea>
+          <div class="actions">
+            <button id="btnFetch" class="btn primary">🚀 Start Fetching Profiles</button>
+            <button id="btnFetchPeriod" class="btn primary" style="background-color: #8be9fd;">🕒 Fetch All in Period</button>
+            <button id="btnExport" class="btn accent" disabled>📥 Export to Excel</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="results-area">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Fetched Results</h3>
+            <span id="resultCount">0 items</span>
+          </div>
+          <div class="table-container">
+            <table id="resultsTable">
+              <thead>
+                <tr>
+                  <th>TXID</th>
+                  <th>Status</th>
+                  <th>Fetch Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Rows will be injected here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="debug-panel">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>System Logs</h3>
+            <button id="btnClearLogs" class="btn text" style="font-size: 0.7rem;">Clear Logs</button>
+          </div>
+          <div id="debugOutput" style="font-family: 'Courier New', monospace; font-size: 0.8rem; color: #ffb86c; height: 100px; overflow-y: auto; background: #16161e; padding: 10px; border-radius: 4px;">
+            Ready...
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

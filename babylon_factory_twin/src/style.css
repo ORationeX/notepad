@@ -1,0 +1,198 @@
+/* Reset and Basic Setup */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+  user-select: none; /* Prevent text selection */
+  -webkit-touch-callout: none;
+}
+
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: fixed; /* Prevent bouncy scrolling on mobile */
+  background-color: #1e1e24;
+}
+
+#renderCanvas {
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  outline: none;
+}
+
+/* UI Overlay Container */
+#ui-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Let clicks pass through to 3D canvas */
+  z-index: 10;
+}
+
+/* Panel Base Style (Glassmorphism aesthetics) */
+.panel {
+  pointer-events: auto;
+  background: rgba(30, 30, 36, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #fff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  padding: 12px 16px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px 12px 0 0;
+}
+
+.panel-content {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+
+/* FAB (Floating Action Button) - Minimum 48x48 for PDA touch */
+.fab {
+  pointer-events: auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #007bff;
+  color: white;
+  border: none;
+  font-weight: bold;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.fab:active {
+  transform: scale(0.9);
+  background: #0056b3;
+}
+
+.fab.active {
+  background: #28a745;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+/* Minimap Styles */
+#minimap-wrapper {
+  padding: 8px;
+}
+
+#minimap-canvas-area {
+  width: 100%;
+  height: calc(100% - 64px);
+  background: rgba(0,0,0,0.5);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.minimap-grid {
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+#player-indicator {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #ff4757;
+  border: 2px solid white;
+  border-radius: 50%;
+  transform: translate(-50%, -50%); /* Centered on X, Y */
+  left: 50%;
+  top: 50%;
+  transition: left 0.1s linear, top 0.1s linear;
+  z-index: 10;
+}
+
+.minimap-controls {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 12px;
+}
+
+/* Device Breakpoints */
+
+/* PC (>= 1024px) */
+@media screen and (min-width: 1024px) {
+  #status-panel {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    width: 300px;
+    height: calc(100% - 48px);
+  }
+
+  #minimap-container {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+  }
+
+  #minimap-wrapper {
+    width: 250px;
+    height: 300px;
+  }
+}
+
+/* Mobile & PDA (< 1024px) */
+@media screen and (max-width: 1023px) {
+  /* Status Panel acts as Bottom Sheet */
+  #status-panel {
+    position: absolute;
+    bottom: 0px;
+    left: 0;
+    width: 100%;
+    height: 150px; 
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Minimap Toggle Button */
+  #minimap-toggle {
+    display: flex !important;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 20;
+  }
+
+  /* Minimap Dropdown/Hide logic */
+  #minimap-wrapper {
+    position: absolute;
+    top: 80px;
+    right: 16px;
+    width: 200px;
+    height: 250px;
+    display: none; /* hidden by default on small screens */
+  }
+
+  #minimap-wrapper.show {
+    display: flex;
+  }
+}

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium SQL Parser | MyBatis to Pure SQL</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0a0f18;
+            --card-bg: #111827;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --border: #1f2937;
+            --input-bg: #0d1117;
+            --success: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1600px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        header {
+            margin-bottom: 40px;
+            text-align: left;
+        }
+
+        header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(target content="135deg, #60a5fa, #a855f7");
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        .editor-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .editor-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge {
+            background: var(--border);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        textarea {
+            width: 100%;
+            height: 550px;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .options-group {
+            display: flex;
+            gap: 24px;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .option input {
+            accent-color: var(--accent);
+            width: 16px;
+            height: 16px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 16px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-parse {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-parse:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .copy-toast {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--success);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+
+        .copy-toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 1024px) {
+            .editor-section { grid-template-columns: 1fr; }
+            textarea { height: 400px; }
+            .toolbar { flex-direction: column; gap: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>SQL Parser Pro</h1>
+            <p>Convert MyBatis XML queries into executable pure SQL statements instantly.</p>
+        </header>
+
+        <div class="editor-section">
+            <div class="editor-wrapper">
+                <div class="label-row">
+                    <span class="label">MyBatis XML Query</span>
+                    <span class="badge">Input</span>
+                </div>
+                <textarea id="myBatisInput" placeholder="Paste MyBatis XML here..." spellcheck="false"></textarea>
+            </div>
+            <div class="editor-wrapper">
+                <div class="label-row">
+                    <span class="label">Pure Executable SQL</span>
+                    <button class="btn-ghost" style="padding: 4px 12px; font-size: 12px;" onclick="copyResult()">Copy Result</button>
+                </div>
+                <textarea id="sqlOutput" readonly placeholder="Parsed SQL will appear here..." spellcheck="false"></textarea>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="options-group">
+                <label class="option">
+                    <input type="checkbox" id="quoteParams" checked>
+                    Wrap #{...} with quotes
+                </label>
+                <label class="option">
+                    <input type="checkbox" id="removeTags" checked>
+                    Strip XML Tags
+                </label>
+                <label class="option">
+                    <input type="checkbox" id="compactMode">
+                    Compact Whitespace
+                </label>
+            </div>
+            <div class="actions">
+                <button class="btn-ghost" onclick="loadSample()">Load Sample</button>
+                <button class="btn-ghost" onclick="clearFields()">Clear</button>
+                <button class="btn-parse" onclick="processSql()">Parse to Pure SQL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="copy-toast">SQL Copied to Clipboard!</div>
+
+    <script>
+        function processSql() {
+            const input = document.getElementById('myBatisInput').value;
+            const quoteParams = document.getElementById('quoteParams').checked;
+            const shouldRemoveTags = document.getElementById('removeTags').checked;
+            const compact = document.getElementById('compactMode').checked;
+
+            if (!input.trim()) return;
+
+            let result = input;
+
+            // 1. Handle CDATA - Always do this
+            result = result.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+
+            // 2. Remove MyBatis Tags
+            if (shouldRemoveTags) {
+                // List of common MyBatis tags to remove (preserving content)
+                const tags = ['if', 'where', 'set', 'trim', 'foreach', 'choose', 'when', 'otherwise', 'include', 'select', 'insert', 'update', 'delete', 'sql'];
+                const tagRegex = new RegExp(`</?(?:${tags.join('|')})[^>]*>`, 'gi');
+                result = result.replace(tagRegex, '');
+            }
+
+            // 3. Replace Parameters
+            if (quoteParams) {
+                // Basic implementation: wrap #{...} or ${...} in single quotes
+                // To avoid doubling quotes if user already has them, we check context or just do a simple replace and cleanup
+                result = result.replace(/#\{([\w\.]+)\}/g, "'#{$1}'");
+                result = result.replace(/\$\{([\w\.]+)\}/g, "'${$1}'");
+                
+                // Cleanup: replace ''#{...}'' with '#{...}'
+                result = result.replace(/''(#\{[\w\.]+\})''/g, "'$1'");
+                // General double quote cleanup for already quoted strings
+                result = result.replace(/''/g, "'");
+            }
+
+            // 4. Whitespace cleanup
+            if (compact) {
+                result = result.replace(/\n\s*\n/g, '\n').trim();
+            } else {
+                // Just clean up trailing spaces on each line
+                result = result.split('\n').map(line => line.trimEnd()).join('\n').trim();
+            }
+
+            document.getElementById('sqlOutput').value = result;
+        }
+
+        function loadSample() {
+            const sample = `SELECT
+    P.PACKINGID BOXID,
+    TO_CHAR(P.PACKINGDATE,'YYYY-MM-DD') PACKINGDATE,
+    P.PRODUCTID PRODUCTID,
+    S.PARTNO,
+    P.BOXSPECINFO PACKINGSPEC,
+    P.UNITQTY TOTALPACKINGQTY,
+    P.PACKINGSTATE STATE,
+    S.POTYPE,
+    S.VENDORCODE,
+    S.SOFTWAREVER,
+    P.UNITQTY
+FROM
+    PACKINGINFO P, SHIPPRODUCTDEF S
+WHERE P.PRODUCTID = S.PRODUCTID
+AND P.SHIPPRODUCTID = S.SHIPPRODUCTID 
+AND P.PACKINGSTATE NOT IN ('OqcAuto','Shipped','OqcEnd')
+<if test="PRODUCTID!= null and PRODUCTID!=''">
+AND P.PRODUCTID = #{PRODUCTID}
+</if>
+<if test="PACKINGSTATE!= null and PACKINGSTATE!=''">
+AND P.PACKINGSTATE = #{PACKINGSTATE}
+</input>
+<if test="BOXID!= null and BOXID!=''">
+AND P.PACKINGID = #{BOXID}
+</if>
+<if test="PARTNO!= null and PARTNO!=''">
+AND S.PARTNO = #{PARTNO}
+</if>
+AND P.PACKINGDATE <![CDATA[>=]]> to_date (#{PACKINGDATESTARTTIME},'YYYY-MM-DD')
+AND P.PACKINGDATE <![CDATA[<=]]> to_date (#{PACKINGDATEENDTTIME},'YYYY-MM-DD')+1
+ORDER BY P.PACKINGDATE DESC`;
+            document.getElementById('myBatisInput').value = sample;
+            processSql();
+        }
+
+        function clearFields() {
+            document.getElementById('myBatisInput').value = '';
+            document.getElementById('sqlOutput').value = '';
+        }
+
+        function copyResult() {
+            const output = document.getElementById('sqlOutput');
+            if (!output.value) return;
+
+            output.select();
+            document.execCommand('copy');
+
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,2006 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스마트 주식 리밸런싱 계산기</title>
+  <!-- Google Fonts: Outfit & Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Premium Slate Dark Theme CSS Variables */
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-secondary: #111827;
+      --bg-card: rgba(31, 41, 55, 0.6);
+      --bg-card-hover: rgba(37, 99, 235, 0.08);
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      
+      --accent-color: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.4);
+      --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.2);
+      --danger: #ef4444;
+      --danger-glow: rgba(239, 68, 68, 0.2);
+      --warning: #f59e0b;
+      --warning-glow: rgba(245, 158, 11, 0.2);
+      
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-focus: #3b82f6;
+      
+      --font-display: 'Outfit', 'Noto Sans KR', sans-serif;
+      --font-body: 'Noto Sans KR', sans-serif;
+      
+      --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Base reset & styling */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1f2937;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #374151;
+    }
+
+    /* Container */
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      flex: 1;
+    }
+
+    /* Header styling */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    .logo-section h1 {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem;
+    }
+
+    .logo-section p {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    /* Storage / Sync Panel */
+    .sync-panel {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--text-muted);
+    }
+
+    .status-dot.active {
+      background-color: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .status-dot.local {
+      background-color: var(--warning);
+      box-shadow: 0 0 8px var(--warning);
+    }
+
+    .sync-btn {
+      background: none;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-primary);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 500;
+      transition: var(--transition-fast);
+    }
+
+    .sync-btn:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      border-color: var(--accent-color);
+    }
+
+    /* Grid Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Card styling */
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+      transition: border-color var(--transition-normal);
+    }
+
+    .card:hover {
+      border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 4px solid var(--accent-color);
+      padding-left: 0.75rem;
+    }
+
+    /* Live Update Ticker */
+    .ticker-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      font-family: var(--font-display);
+      background-color: rgba(255, 255, 255, 0.05);
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      color: var(--text-secondary);
+    }
+
+    .ticker-spinner {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--accent-color);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.3; }
+      50% { transform: scale(1.6); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.3; }
+    }
+
+    /* Forms */
+    .input-row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      align-items: end;
+    }
+
+    @media (max-width: 768px) {
+      .input-row {
+        grid-template-columns: 1fr 1fr;
+      }
+      .input-row .btn-add {
+        grid-column: span 2;
+      }
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .input-group label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .input-control {
+      background-color: rgba(17, 24, 39, 0.8);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.6rem 0.85rem;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      width: 100%;
+      transition: var(--transition-fast);
+    }
+
+    .input-control:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .btn {
+      background: var(--accent-gradient);
+      color: var(--text-primary);
+      border: none;
+      padding: 0.6rem 1.25rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: var(--transition-fast);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn:hover {
+      box-shadow: 0 0 15px var(--accent-glow);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: none;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+    }
+
+    .btn-danger:hover {
+      box-shadow: 0 0 15px var(--danger-glow);
+    }
+
+    /* Stock Table & Grid Styling */
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      color: var(--text-secondary);
+      font-weight: 500;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      transition: background-color var(--transition-fast);
+    }
+
+    /* Flash keyframes for live updates */
+    @keyframes price-up-flash {
+      0% { background-color: rgba(16, 185, 129, 0.25); }
+      100% { background-color: transparent; }
+    }
+
+    @keyframes price-down-flash {
+      0% { background-color: rgba(239, 68, 68, 0.25); }
+      100% { background-color: transparent; }
+    }
+
+    tr.price-up {
+      animation: price-up-flash 0.8s ease-out;
+    }
+
+    tr.price-down {
+      animation: price-down-flash 0.8s ease-out;
+    }
+
+    /* Price indicator badges */
+    .price-change-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .price-change-badge.up {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+
+    .price-change-badge.down {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+    }
+
+    .text-up {
+      color: var(--success) !important;
+    }
+
+    .text-down {
+      color: var(--danger) !important;
+    }
+
+    .delete-btn-cell {
+      text-align: center;
+    }
+
+    .delete-action-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.15rem;
+      transition: var(--transition-fast);
+    }
+
+    .delete-action-btn:hover {
+      color: var(--danger);
+    }
+
+    /* Table Inputs */
+    .table-input {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      width: 80px;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      text-align: right;
+      transition: var(--transition-fast);
+    }
+
+    .table-input:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .table-input:focus {
+      outline: none;
+      border-color: var(--accent-color);
+      background-color: var(--bg-secondary);
+    }
+
+    /* Summary Bar */
+    .summary-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background-color: var(--bg-secondary);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 1.5rem;
+      font-weight: 500;
+    }
+
+    /* Ratios and Warnings */
+    .ratio-badge {
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .ratio-badge.success {
+      background-color: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .ratio-badge.error {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-4px); }
+      40%, 80% { transform: translateX(4px); }
+    }
+
+    /* Right side panel (Portfolio Stats / Rebalancing Tools) */
+    .stats-card {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-row:last-child {
+      border: none;
+      padding-bottom: 0;
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    /* Calculation Settings Card */
+    .tab-container {
+      display: flex;
+      background-color: rgba(17, 24, 39, 0.8);
+      padding: 0.25rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 1.25rem;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      padding: 0.5rem;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: var(--transition-fast);
+    }
+
+    .tab-btn.active {
+      background-color: var(--accent-color);
+      color: var(--text-primary);
+      box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+    }
+
+    /* Results layout */
+    .results-section {
+      margin-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1.5rem;
+      display: none;
+    }
+
+    .results-section.active {
+      display: block;
+      animation: fadeIn var(--transition-normal) ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      margin-bottom: 0.75rem;
+    }
+
+    .action-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .action-badge.buy {
+      background-color: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .action-badge.sell {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .action-badge.hold {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Explanation Text Area */
+    .explanation-box {
+      background-color: rgba(17, 24, 39, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 1.25rem;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    .explanation-box strong {
+      color: var(--text-primary);
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transform: translateY(150%);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 1000;
+    }
+
+    .toast.active {
+      transform: translateY(0);
+    }
+
+    .toast-icon {
+      font-size: 1.25rem;
+    }
+
+    /* Responsive adjustments for tables on mobile */
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      
+      thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+      }
+      
+      tr {
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        background-color: rgba(255, 255, 255, 0.01);
+        padding: 0.5rem;
+      }
+      
+      td {
+        border: none;
+        position: relative;
+        padding-left: 50%;
+        text-align: right;
+        min-height: 2.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+      }
+      
+      td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 1rem;
+        width: 45%;
+        text-align: left;
+        font-weight: 500;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+      }
+
+      .table-input {
+        width: 120px;
+      }
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      opacity: 0;
+      transition: opacity var(--transition-normal) ease;
+    }
+    
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+    
+    .modal-card {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 650px;
+      padding: 2rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      transform: scale(0.9);
+      transition: transform var(--transition-normal) cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .modal-overlay.active .modal-card {
+      transform: scale(1);
+    }
+    
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+    
+    .modal-table-container {
+      margin-top: 1rem;
+      margin-bottom: 1.5rem;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background-color: rgba(255,255,255,0.01);
+    }
+    
+    .modal-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    
+    .modal-table th, .modal-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .modal-table th {
+      background-color: rgba(255,255,255,0.02);
+      color: var(--text-secondary);
+      text-align: left;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    
+    .modal-input {
+      width: 100%;
+      background-color: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      padding: 0.35rem 0.5rem;
+      font-family: var(--font-display);
+      text-align: right;
+    }
+    
+    .modal-input:focus {
+      outline: none;
+      border-color: var(--accent-color);
+    }
+    
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+    
+    .btn-close {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+    
+    .btn-close:hover {
+      background-color: rgba(255,255,255,0.05);
+      color: var(--text-primary);
+    }
+    
+    .btn-confirm {
+      background-color: var(--success);
+      border: none;
+      color: var(--text-primary);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    }
+    
+    .btn-confirm:hover {
+      background-color: #059669;
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo-section">
+        <h1>Smart Asset Rebalancer</h1>
+        <p>네이버 실시간 시세 연동 포트폴리오 관리기</p>
+      </div>
+
+      <!-- JSON File Sync Indicator -->
+      <div class="sync-panel" id="syncPanel">
+        <span class="status-dot local" id="syncStatusDot"></span>
+        <span id="syncStatusText">로컬 브라우저 저장소</span>
+        <button class="sync-btn" id="btnLinkFile" onclick="handleFileSelect()">JSON 파일 연결</button>
+        <button class="sync-btn" id="btnExportJson" onclick="exportDataToJson()">내보내기</button>
+      </div>
+    </header>
+
+    <!-- Dashboard Grid -->
+    <div class="dashboard-grid">
+      
+      <!-- Left side: Stock Management -->
+      <main>
+        <!-- Add Stock Form -->
+        <div class="card">
+          <h2 class="card-title">종목 추가</h2>
+          <form id="addStockForm" onsubmit="addStock(event)">
+            <div class="input-row">
+              <div class="input-group">
+                <label for="stockCode">종목 코드 (6자리)</label>
+                <input type="text" id="stockCode" placeholder="예: 005930" class="input-control" required maxlength="8">
+              </div>
+              <div class="input-group">
+                <label for="targetRatio">목표 비중 (%)</label>
+                <input type="number" id="targetRatio" placeholder="0" class="input-control" required min="0" max="100">
+              </div>
+              <div class="input-group">
+                <label for="purchasePrice">매수 단가 (원)</label>
+                <input type="number" id="purchasePrice" placeholder="0" class="input-control" required min="0">
+              </div>
+              <div class="input-group">
+                <label for="sharesOwned">보유 수량 (주)</label>
+                <input type="number" id="sharesOwned" placeholder="0" class="input-control" required min="0">
+              </div>
+              <button type="submit" class="btn btn-add" style="height: 40px; margin-top: auto;">추가</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Stock List -->
+        <div class="card">
+          <h2 class="card-title">
+            보유 종목 리스트
+            <div class="ticker-badge" id="tickerBadge">
+              <span class="ticker-spinner"></span>
+              <span id="tickerText">네이버 시세 대기 중...</span>
+            </div>
+          </h2>
+          
+          <div class="table-container">
+            <table id="stockTable">
+              <thead>
+                <tr>
+                  <th>종목</th>
+                  <th style="text-align: right;">현재가</th>
+                  <th style="text-align: right;">매수단가 (원)</th>
+                  <th style="text-align: right;">보유수량 (주)</th>
+                  <th style="text-align: right;">평가금액 (원)</th>
+                  <th style="text-align: right;">수익률 (ROI)</th>
+                  <th style="text-align: right;">목표 비중</th>
+                  <th style="text-align: center;">작업</th>
+                </tr>
+              </thead>
+              <tbody id="stockTableBody">
+                <!-- Dynamic Content -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Total Summary & Ratio Validation Banner -->
+          <div class="summary-bar" id="summaryBar">
+            <div>
+              <span>총 목표 비중: </span>
+              <span id="totalTargetRatioBadge" class="ratio-badge error">0%</span>
+            </div>
+            <div>
+              <span>총 평가 금액: <strong id="totalEvalValue">0원</strong></span>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Right side: Calculation & Statistics -->
+      <aside>
+        <!-- Statistics Card -->
+        <div class="card">
+          <h2 class="card-title">포트폴리오 요약</h2>
+          <div class="stats-card">
+            <div class="stat-row">
+              <span class="stat-label">총 매수 금액</span>
+              <span class="stat-value" id="statTotalPurchase">0원</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">총 평가 금액</span>
+              <span class="stat-value" id="statTotalEval" style="color: var(--accent-color);">0원</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">총 투자 손익</span>
+              <span class="stat-value" id="statTotalPL">0원</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">총 투자 수익률</span>
+              <span class="stat-value" id="statTotalROI">0.00%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rebalancing Input Card -->
+        <div class="card">
+          <h2 class="card-title">리밸런싱 계산기</h2>
+          
+          <!-- Tab selector -->
+          <div class="tab-container">
+            <button class="tab-btn active" id="tabNewBuy" onclick="switchMode('newbuy')">신규 매수</button>
+            <button class="tab-btn" id="tabRebalance" onclick="switchMode('rebalance')">리밸런싱</button>
+          </div>
+
+          <div class="input-group" style="margin-bottom: 1.25rem;">
+            <label id="lblAmountInput" for="amountInput">신규 투자 금액 (원)</label>
+            <input type="number" id="amountInput" placeholder="예: 1000000" class="input-control">
+          </div>
+
+          <button class="btn" style="width: 100%; padding: 0.75rem;" onclick="runRebalanceCalculation()">
+            계산 실행하기
+          </button>
+        </div>
+      </aside>
+
+    </div> <!-- /dashboard-grid -->
+
+    <!-- Calculations Results Section -->
+    <div class="card results-section" id="resultsSection">
+      <h2 class="card-title">리밸런싱 제안 결과</h2>
+      
+      <div id="resultsList">
+        <!-- Dynamic Result Items -->
+      </div>
+
+      <div class="summary-bar" style="margin-top: 1rem; background-color: rgba(255,255,255,0.01);">
+        <div>
+          <span>총 집행 금액: <strong id="resTotalSpent" style="color: var(--accent-color);">0원</strong></span>
+        </div>
+        <div>
+          <span>미투자 잔액: <strong id="resLeftoverCash">0원</strong></span>
+        </div>
+      </div>
+
+      <button class="btn" id="btnReflectResults" onclick="applyCalculationResults()" style="width: 100%; margin-top: 1.25rem; background-color: var(--success); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25); font-weight: 600; padding: 0.85rem; border: none;">
+        📥 실제 거래 결과 포트폴리오에 반영하기 (매수 평단가 자동 계산)
+      </button>
+
+      <div class="explanation-box" id="explanationBox">
+        <!-- Dynamic math explanations -->
+      </div>
+    </div>
+
+  </div> <!-- /container -->
+
+  <!-- Trade Reflect Modal -->
+  <div class="modal-overlay" id="tradeModal">
+    <div class="modal-card">
+      <h2 class="modal-title">실제 거래 내역 반영</h2>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
+        실제 거래소에서 체결된 수량과 단가를 입력하세요.<br>
+        <strong>수량 (+)</strong>: 매수 (새로운 평단가가 가중평균으로 자동 계산됩니다)<br>
+        <strong>수량 (-)</strong>: 매도 (보유 수량이 차감되며 평단가는 그대로 유지됩니다)
+      </p>
+      
+      <div class="modal-table-container">
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th>종목</th>
+              <th style="text-align: right; width: 100px;">추천 수량</th>
+              <th style="text-align: right; width: 120px;">실제 체결 수량</th>
+              <th style="text-align: right; width: 140px;">실제 체결 단가 (원)</th>
+            </tr>
+          </thead>
+          <tbody id="modalTableBody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-close" onclick="closeTradeModal()">취소</button>
+        <button class="btn btn-confirm" onclick="submitTradeModal()">반영하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toastIcon">ℹ️</span>
+    <span id="toastMessage">알림 메시지</span>
+  </div>
+
+  <!-- IndexedDB and Core App Script -->
+  <script>
+    // State management
+    let state = {
+      stocks: [],
+      syncMode: 'local', // 'local' or 'file'
+      calcMode: 'newbuy' // 'newbuy' or 'rebalance'
+    };
+
+    // Global file handle reference
+    let fileHandle = null;
+    let priceUpdateInterval = null;
+    let countdownTimer = 3;
+    let lastCalculationResults = null;
+
+    // IndexedDB Helper
+    const DB_NAME = 'StockRebalancerDB';
+    const STORE_NAME = 'handles';
+    const KEY_NAME = 'fileHandle';
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = (e) => {
+          e.target.result.createObjectStore(STORE_NAME);
+        };
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    async function getStoredHandle() {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readonly');
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.get(KEY_NAME);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        console.error('Failed to get handle from DB', e);
+        return null;
+      }
+    }
+
+    async function storeHandle(handle) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.put(handle, KEY_NAME);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        console.error('Failed to store handle in DB', e);
+      }
+    }
+
+    // CORS proxies list for fallback reliability
+    const CORS_PROXIES = [
+      url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      url => `https://thingproxy.freeboard.io/fetch/${url}`
+    ];
+
+    async function fetchWithProxy(url) {
+      let lastError = null;
+      for (const proxyFn of CORS_PROXIES) {
+        try {
+          const proxyUrl = proxyFn(url);
+          const res = await fetch(proxyUrl);
+          if (res.ok) {
+            const buffer = await res.arrayBuffer();
+            const decoder = new TextDecoder('euc-kr');
+            const text = decoder.decode(buffer);
+            return JSON.parse(text);
+          }
+        } catch (e) {
+          console.warn(`Proxy failed: ${proxyFn.toString().slice(0, 45)}... Trying next.`, e);
+          lastError = e;
+        }
+      }
+      throw lastError || new Error('All CORS proxies failed.');
+    }
+
+    // Toast show helper
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+      
+      toastMsg.innerText = message;
+      if (type === 'success') toastIcon.innerText = '✅';
+      else if (type === 'error') toastIcon.innerText = '❌';
+      else if (type === 'warning') toastIcon.innerText = '⚠️';
+      else toastIcon.innerText = 'ℹ️';
+
+      toast.classList.add('active');
+      setTimeout(() => {
+        toast.classList.remove('active');
+      }, 3500);
+    }
+
+    // Format money
+    function formatMoney(amount) {
+      return new Intl.NumberFormat('ko-KR').format(Math.round(amount)) + '원';
+    }
+
+    // Initial state loading
+    window.addEventListener('DOMContentLoaded', async () => {
+      // 1. Load LocalStorage first
+      const localData = localStorage.getItem('stock_portfolio');
+      if (localData) {
+        try {
+          state.stocks = JSON.parse(localData);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // 2. Try to restore File Handle
+      const savedHandle = await getStoredHandle();
+      if (savedHandle) {
+        fileHandle = savedHandle;
+        updateSyncStatusUI('linked', savedHandle.name);
+        showToast('보관된 JSON 파일 링크가 탐지되었습니다. 연결하려면 "파일 접근 승인" 버튼을 클릭하세요.', 'warning');
+      } else {
+        updateSyncStatusUI('local');
+      }
+
+      // Render & Start Polling
+      renderStocksTable();
+      updatePortfolioStats();
+      startPricePolling();
+    });
+
+    // Update File system sync UI status
+    function updateSyncStatusUI(status, fileName = '') {
+      const dot = document.getElementById('syncStatusDot');
+      const text = document.getElementById('syncStatusText');
+      const btn = document.getElementById('btnLinkFile');
+
+      if (status === 'linked') {
+        dot.className = 'status-dot active';
+        text.innerText = `연결됨: ${fileName}`;
+        btn.innerText = '동기화 해제';
+        btn.onclick = unlinkFile;
+        state.syncMode = 'file';
+      } else if (status === 'unauthorized') {
+        dot.className = 'status-dot local';
+        text.innerText = `접근 권한 대기: ${fileName}`;
+        btn.innerText = '파일 접근 승인';
+        btn.onclick = authorizeFilePermission;
+        state.syncMode = 'local';
+      } else {
+        dot.className = 'status-dot local';
+        text.innerText = '로컬 브라우저 저장소';
+        btn.innerText = 'JSON 파일 연결';
+        btn.onclick = handleFileSelect;
+        state.syncMode = 'local';
+      }
+    }
+
+    // File selection / creation (File System Access API)
+    async function handleFileSelect() {
+      try {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: 'data.json',
+          types: [{
+            description: 'JSON Files',
+            accept: { 'application/json': ['.json'] }
+          }]
+        });
+        
+        await storeHandle(fileHandle);
+        await saveStateToFile();
+        updateSyncStatusUI('linked', fileHandle.name);
+        showToast('JSON 파일이 성공적으로 연결 및 생성되었습니다.', 'success');
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error(err);
+          showToast('파일 생성에 실패했습니다.', 'error');
+        }
+      }
+    }
+
+    // Authorize persistent file permission
+    async function authorizeFilePermission() {
+      if (!fileHandle) return;
+      const opts = { mode: 'readwrite' };
+      if ((await fileHandle.queryPermission(opts)) === 'granted') return true;
+      if ((await fileHandle.requestPermission(opts)) === 'granted') {
+        updateSyncStatusUI('linked', fileHandle.name);
+        // Load data from file on permission gain
+        await loadStateFromFile();
+        showToast('파일 접근 권한이 정상 수락되었습니다.', 'success');
+        return true;
+      }
+      showToast('권한 요청이 거부되었습니다.', 'error');
+      updateSyncStatusUI('unauthorized', fileHandle.name);
+      return false;
+    }
+
+    // Load data from file
+    async function loadStateFromFile() {
+      try {
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+        if (text) {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) {
+            state.stocks = parsed;
+            saveStateToLocal();
+            renderStocksTable();
+            updatePortfolioStats();
+          }
+        }
+      } catch (e) {
+        console.error('File read error', e);
+        showToast('파일 데이터를 불러오는데 실패했습니다.', 'error');
+      }
+    }
+
+    // Unlink file
+    async function unlinkFile() {
+      // Clear handle and IndexedDB
+      fileHandle = null;
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).delete(KEY_NAME);
+      } catch (e) {
+        console.error(e);
+      }
+      updateSyncStatusUI('local');
+      showToast('JSON 파일 동기화가 해제되었으며 로컬 모드로 전환됩니다.', 'warning');
+    }
+
+    // Export JSON via direct download fallback
+    function exportDataToJson() {
+      const dataStr = JSON.stringify(state.stocks, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      
+      const exportFileDefaultName = 'stock_portfolio.json';
+      
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+      showToast('JSON 파일을 다운로드 받았습니다.', 'success');
+    }
+
+    // Save state helpers
+    function saveStateToLocal() {
+      localStorage.setItem('stock_portfolio', JSON.stringify(state.stocks));
+    }
+
+    async function saveStateToFile() {
+      if (fileHandle) {
+        try {
+          // Check permission first
+          const opts = { mode: 'readwrite' };
+          if ((await fileHandle.queryPermission(opts)) !== 'granted') {
+            updateSyncStatusUI('unauthorized', fileHandle.name);
+            return;
+          }
+          const writable = await fileHandle.createWritable();
+          await writable.write(JSON.stringify(state.stocks, null, 2));
+          await writable.close();
+        } catch (e) {
+          console.error('File write error', e);
+          updateSyncStatusUI('unauthorized', fileHandle?.name || '알수없음');
+        }
+      }
+    }
+
+    async function saveState() {
+      saveStateToLocal();
+      await saveStateToFile();
+    }
+
+    // Add Stock Logic
+    async function addStock(e) {
+      e.preventDefault();
+      
+      let codeInput = document.getElementById('stockCode').value.trim();
+      const targetRatio = parseFloat(document.getElementById('targetRatio').value);
+      const purchasePrice = parseFloat(document.getElementById('purchasePrice').value);
+      const sharesOwned = parseFloat(document.getElementById('sharesOwned').value);
+
+      // Pad Korean Stock Code to 6 digits if it's purely numbers and less than 6 digits
+      if (/^\d+$/.test(codeInput)) {
+        codeInput = codeInput.padStart(6, '0');
+      }
+
+      // Check if stock code already exists
+      if (state.stocks.some(s => s.code.toUpperCase() === codeInput.toUpperCase())) {
+        showToast('이미 등록된 종목 코드입니다.', 'warning');
+        return;
+      }
+
+      // Show temporary loading
+      showToast('네이버 증권에서 종목 정보를 가져오는 중...', 'info');
+
+      try {
+        // Fetch to verify code
+        const queryUrl = `https://polling.finance.naver.com/api/realtime?query=SERVICE_ITEM:${codeInput}`;
+        const data = await fetchWithProxy(queryUrl);
+
+        if (data && data.resultCode === 'success' && data.result.areas[0].datas.length > 0) {
+          const item = data.result.areas[0].datas[0];
+          // If nv (price) is null or missing, it's an invalid master code
+          if (item.nv === null || item.nv === undefined) {
+            showToast('존재하지 않거나 시세조회가 불가한 종목코드입니다.', 'error');
+            return;
+          }
+
+          const newStock = {
+            code: codeInput.toUpperCase(),
+            name: item.nm || codeInput,
+            price: item.nv,
+            purchasePrice: purchasePrice,
+            sharesOwned: sharesOwned,
+            targetRatio: targetRatio,
+            lastPrice: item.nv,
+            priceChangeDirection: 'same' // 'up', 'down', 'same'
+          };
+
+          state.stocks.push(newStock);
+          await saveState();
+          
+          // Clear Form inputs
+          document.getElementById('addStockForm').reset();
+          
+          renderStocksTable();
+          updatePortfolioStats();
+          showToast(`[${newStock.name}] 종목이 추가되었습니다.`, 'success');
+        } else {
+          showToast('올바르지 않은 종목코드이거나 응답 에러입니다.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('네이버 연결 도중 에러가 발생했습니다. CORS 프록시 장애일 수 있습니다.', 'error');
+      }
+    }
+
+    // Delete Stock
+    async function deleteStock(code) {
+      if (confirm(`정말 해당 종목(${code})을 삭제하시겠습니까?`)) {
+        state.stocks = state.stocks.filter(s => s.code !== code);
+        await saveState();
+        renderStocksTable();
+        updatePortfolioStats();
+        showToast('종목이 제거되었습니다.', 'success');
+      }
+    }
+
+    // Edit inputs inside Table
+    async function updateStockField(code, field, value) {
+      const stock = state.stocks.find(s => s.code === code);
+      if (stock) {
+        const numVal = parseFloat(value) || 0;
+        stock[field] = numVal;
+        await saveState();
+        updatePortfolioStats();
+        // Recalculate totals in table directly
+        const evalValCell = document.getElementById(`eval-${code}`);
+        const roiCell = document.getElementById(`roi-${code}`);
+        
+        if (evalValCell) {
+          evalValCell.innerText = formatMoney(stock.sharesOwned * stock.price);
+        }
+        if (roiCell) {
+          const totalCost = stock.sharesOwned * stock.purchasePrice;
+          const currentVal = stock.sharesOwned * stock.price;
+          if (totalCost > 0) {
+            const roi = ((currentVal - totalCost) / totalCost) * 100;
+            roiCell.innerText = roi.toFixed(2) + '%';
+            roiCell.className = roi >= 0 ? 'text-up' : 'text-down';
+          } else {
+            roiCell.innerText = '0.00%';
+            roiCell.className = '';
+          }
+        }
+      }
+    }
+
+    // Render table rows
+    function renderStocksTable() {
+      const tbody = document.getElementById('stockTableBody');
+      tbody.innerHTML = '';
+
+      if (state.stocks.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+              등록된 종목이 없습니다. 위의 종목 추가 폼을 사용해 종목을 등록하세요.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      state.stocks.forEach(stock => {
+        const evalValue = stock.sharesOwned * stock.price;
+        const totalCost = stock.sharesOwned * stock.purchasePrice;
+        let roi = 0;
+        let roiClass = '';
+        if (totalCost > 0) {
+          roi = ((evalValue - totalCost) / totalCost) * 100;
+          roiClass = roi >= 0 ? 'text-up' : 'text-down';
+        }
+
+        const tr = document.createElement('tr');
+        tr.id = `row-${stock.code}`;
+        
+        // Add flash animation styling classes if updated recently
+        if (stock.priceChangeDirection === 'up') {
+          tr.className = 'price-up';
+        } else if (stock.priceChangeDirection === 'down') {
+          tr.className = 'price-down';
+        }
+
+        tr.innerHTML = `
+          <td data-label="종목">
+            <div style="font-weight: 600;">${stock.name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-display);">${stock.code}</div>
+          </td>
+          <td data-label="현재가" style="text-align: right; font-family: var(--font-display); font-weight: 500;">
+            ${formatMoney(stock.price)}
+          </td>
+          <td data-label="매수단가 (원)" style="text-align: right;">
+            <input type="number" class="table-input" value="${stock.purchasePrice}" 
+              onchange="updateStockField('${stock.code}', 'purchasePrice', this.value)" min="0">
+          </td>
+          <td data-label="보유수량 (주)" style="text-align: right;">
+            <input type="number" class="table-input" value="${stock.sharesOwned}" 
+              onchange="updateStockField('${stock.code}', 'sharesOwned', this.value)" min="0">
+          </td>
+          <td data-label="평가금액 (원)" id="eval-${stock.code}" style="text-align: right; font-family: var(--font-display); font-weight: 500;">
+            ${formatMoney(evalValue)}
+          </td>
+          <td data-label="수익률 (ROI)" id="roi-${stock.code}" class="${roiClass}" style="text-align: right; font-family: var(--font-display); font-weight: 600;">
+            ${roi.toFixed(2)}%
+          </td>
+          <td data-label="목표 비중" style="text-align: right;">
+            <input type="number" class="table-input" value="${stock.targetRatio}" 
+              onchange="updateStockField('${stock.code}', 'targetRatio', this.value)" min="0" max="100" style="width: 60px;"> %
+          </td>
+          <td data-label="작업" class="delete-btn-cell">
+            <button class="delete-action-btn" onclick="deleteStock('${stock.code}')">🗑️</button>
+          </td>
+        `;
+        
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Recalculate and update stats UI
+    function updatePortfolioStats() {
+      let totalPurchase = 0;
+      let totalEval = 0;
+      let totalTargetRatio = 0;
+
+      state.stocks.forEach(stock => {
+        totalPurchase += (stock.sharesOwned * stock.purchasePrice);
+        totalEval += (stock.sharesOwned * stock.price);
+        totalTargetRatio += stock.targetRatio;
+      });
+
+      const totalPL = totalEval - totalPurchase;
+      let totalROI = 0;
+      if (totalPurchase > 0) {
+        totalROI = (totalPL / totalPurchase) * 100;
+      }
+
+      // Update right-side panel
+      document.getElementById('statTotalPurchase').innerText = formatMoney(totalPurchase);
+      document.getElementById('statTotalEval').innerText = formatMoney(totalEval);
+      
+      const plEl = document.getElementById('statTotalPL');
+      plEl.innerText = (totalPL >= 0 ? '+' : '') + formatMoney(totalPL);
+      plEl.className = `stat-value ${totalPL >= 0 ? 'text-up' : 'text-down'}`;
+
+      const roiEl = document.getElementById('statTotalROI');
+      roiEl.innerText = (totalROI >= 0 ? '+' : '') + totalROI.toFixed(2) + '%';
+      roiEl.className = `stat-value ${totalROI >= 0 ? 'text-up' : 'text-down'}`;
+
+      // Update Bottom Table summary
+      document.getElementById('totalEvalValue').innerText = formatMoney(totalEval);
+
+      const targetBadge = document.getElementById('totalTargetRatioBadge');
+      targetBadge.innerText = totalTargetRatio + '%';
+      if (totalTargetRatio === 100) {
+        targetBadge.className = 'ratio-badge success';
+      } else {
+        targetBadge.className = 'ratio-badge error';
+      }
+    }
+
+    // Switch calculation mode tabs
+    function switchMode(mode) {
+      state.calcMode = mode;
+      
+      const tabNewBuy = document.getElementById('tabNewBuy');
+      const tabRebalance = document.getElementById('tabRebalance');
+      const lblAmountInput = document.getElementById('lblAmountInput');
+      const amountInput = document.getElementById('amountInput');
+
+      if (mode === 'newbuy') {
+        tabNewBuy.classList.add('active');
+        tabRebalance.classList.remove('active');
+        lblAmountInput.innerText = '신규 투자 금액 (원)';
+        amountInput.placeholder = '예: 1000000';
+      } else {
+        tabNewBuy.classList.remove('active');
+        tabRebalance.classList.add('active');
+        lblAmountInput.innerText = '추가 현금 투입/회수액 (원) (선택사항, 0 가능)';
+        amountInput.placeholder = '예: 0';
+      }
+    }
+
+    // Real-time stock polling engine
+    function startPricePolling() {
+      if (priceUpdateInterval) clearInterval(priceUpdateInterval);
+
+      // Interval ticker: triggers Naver fetch every 3 seconds
+      priceUpdateInterval = setInterval(async () => {
+        countdownTimer--;
+        
+        if (countdownTimer <= 0) {
+          countdownTimer = 3;
+          document.getElementById('tickerText').innerText = '네이버 시세 업데이트 중...';
+          await pollPrices();
+        } else {
+          document.getElementById('tickerText').innerText = `업데이트 대기: ${countdownTimer}초`;
+        }
+      }, 1000);
+    }
+
+    async function pollPrices() {
+      if (state.stocks.length === 0) {
+        document.getElementById('tickerText').innerText = '시세 자동 반영 대기 중';
+        return;
+      }
+
+      const codes = state.stocks.map(s => s.code).join(',');
+      const url = `https://polling.finance.naver.com/api/realtime?query=SERVICE_ITEM:${codes}`;
+
+      try {
+        const data = await fetchWithProxy(url);
+        if (data && data.resultCode === 'success' && data.result.areas[0].datas.length > 0) {
+          const fetchedItems = data.result.areas[0].datas;
+
+          fetchedItems.forEach(item => {
+            const stock = state.stocks.find(s => s.code === item.cd);
+            if (stock) {
+              const oldPrice = stock.price;
+              const newPrice = item.nv;
+              
+              if (newPrice > oldPrice) {
+                stock.priceChangeDirection = 'up';
+              } else if (newPrice < oldPrice) {
+                stock.priceChangeDirection = 'down';
+              } else {
+                stock.priceChangeDirection = 'same';
+              }
+              
+              stock.price = newPrice;
+              stock.name = item.nm || stock.name; // Keep name updated if Naver parses it
+            }
+          });
+
+          // Save & Redraw
+          saveStateToLocal(); // Save prices locally (don't write to data.json on every 3s tick to preserve SSD/disk health)
+          renderStocksTable();
+          updatePortfolioStats();
+
+          // Reset change indicators after 800ms
+          setTimeout(() => {
+            state.stocks.forEach(s => s.priceChangeDirection = 'same');
+            // Remove flash animation classes from UI
+            state.stocks.forEach(s => {
+              const row = document.getElementById(`row-${s.code}`);
+              if (row) row.className = '';
+            });
+          }, 800);
+
+          document.getElementById('tickerText').innerText = '시세 반영 완료';
+        }
+      } catch (err) {
+        console.error('Polling fetch failed', err);
+        document.getElementById('tickerText').innerText = 'CORS 프록시 연결 장애';
+      }
+    }
+
+    // REBALANCING & NEW BUY OPTIMIZATION ALGORITHMS
+    function runRebalanceCalculation() {
+      if (state.stocks.length === 0) {
+        showToast('리밸런싱할 종목을 최소 1개 이상 추가해야 합니다.', 'warning');
+        return;
+      }
+
+      const totalTargetRatio = state.stocks.reduce((acc, s) => acc + s.targetRatio, 0);
+      if (totalTargetRatio !== 100) {
+        showToast('총 목표 비중의 합이 100%가 되어야 계산이 활성화됩니다.', 'warning');
+        return;
+      }
+
+      const cashInputVal = parseFloat(document.getElementById('amountInput').value) || 0;
+      if (state.calcMode === 'newbuy' && cashInputVal <= 0) {
+        showToast('신규 매수를 위한 투자 금액을 입력하세요.', 'warning');
+        return;
+      }
+
+      const resultsSection = document.getElementById('resultsSection');
+      const resultsList = document.getElementById('resultsList');
+      const resTotalSpent = document.getElementById('resTotalSpent');
+      const resLeftoverCash = document.getElementById('resLeftoverCash');
+      const explanationBox = document.getElementById('explanationBox');
+
+      resultsList.innerHTML = '';
+      resultsSection.classList.add('active');
+
+      const currentEvalTotal = state.stocks.reduce((sum, s) => sum + (s.sharesOwned * s.price), 0);
+
+      if (state.calcMode === 'rebalance') {
+        // --- 1. FULL REBALANCING MODE ---
+        // Total money to be redistributed
+        const targetTotalValue = currentEvalTotal + cashInputVal;
+        
+        // Step 1: Calculate Ideal Values & Shares
+        let allocations = state.stocks.map(stock => {
+          const idealVal = targetTotalValue * (stock.targetRatio / 100);
+          const idealShares = idealVal / stock.price;
+          return {
+            stock,
+            idealShares,
+            shares: Math.round(idealShares) // Base allocation rounding
+          };
+        });
+
+        // Step 2: Adjust integer allocation to minimize leftover difference from budget
+        let currentCost = allocations.reduce((sum, item) => sum + (item.shares * item.stock.price), 0);
+        
+        while (true) {
+          let bestIdx = null;
+          let bestError = Math.abs(targetTotalValue - currentCost);
+          
+          for (let i = 0; i < allocations.length; i++) {
+            const price = allocations[i].stock.price;
+            // Direction: +1 share if under budget, -1 if over budget
+            const direction = currentCost < targetTotalValue ? 1 : -1;
+            
+            if (direction === -1 && allocations[i].shares <= 0) continue;
+            
+            const newCost = currentCost + direction * price;
+            const newError = Math.abs(targetTotalValue - newCost);
+            
+            if (newError < bestError) {
+              bestError = newError;
+              bestIdx = i;
+            }
+          }
+
+          if (bestIdx !== null) {
+            const direction = currentCost < targetTotalValue ? 1 : -1;
+            allocations[bestIdx].shares += direction;
+            currentCost += direction * allocations[bestIdx].stock.price;
+          } else {
+            break; // No further adjustment improves the budget closeness
+          }
+        }
+
+        // Populate global results for applying
+        lastCalculationResults = allocations.map(item => ({
+          code: item.stock.code,
+          diffShares: item.shares - item.stock.sharesOwned,
+          targetShares: item.shares,
+          price: item.stock.price
+        }));
+
+        // Display results
+        let totalRebalanceBoughtVal = 0;
+        let totalRebalanceSoldVal = 0;
+
+        allocations.forEach(item => {
+          const s = item.stock;
+          const targetShares = item.shares;
+          const diffShares = targetShares - s.sharesOwned;
+          const resultingVal = targetShares * s.price;
+          const resultingRatio = (resultingVal / currentCost) * 100;
+          
+          let actionText = '';
+          let badgeClass = '';
+          let diffValText = '';
+          
+          if (diffShares > 0) {
+            actionText = `신규 매수: +${diffShares}주`;
+            badgeClass = 'buy';
+            diffValText = `구매 비용: ${formatMoney(diffShares * s.price)}`;
+            totalRebalanceBoughtVal += (diffShares * s.price);
+          } else if (diffShares < 0) {
+            actionText = `일부 매도: ${diffShares}주`;
+            badgeClass = 'sell';
+            diffValText = `회수 수익: ${formatMoney(Math.abs(diffShares) * s.price)}`;
+            totalRebalanceSoldVal += (Math.abs(diffShares) * s.price);
+          } else {
+            actionText = '현재 유지';
+            badgeClass = 'hold';
+            diffValText = '비율 유지';
+          }
+
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          div.innerHTML = `
+            <div>
+              <div style="font-weight:600;">${s.name} (${s.code})</div>
+              <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.15rem;">
+                현재: ${s.sharesOwned}주 (${((s.sharesOwned * s.price / currentEvalTotal) * 100 || 0).toFixed(1)}%) 
+                ➔ <strong>목표: ${targetShares}주 (${resultingRatio.toFixed(1)}%)</strong>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span class="action-badge ${badgeClass}">${actionText}</span>
+              <div style="font-size:0.8rem; margin-top:0.25rem; font-weight:500;">${diffValText}</div>
+            </div>
+          `;
+          resultsList.appendChild(div);
+        });
+
+        const netDifference = totalRebalanceBoughtVal - totalRebalanceSoldVal;
+        resTotalSpent.innerText = formatMoney(netDifference);
+        
+        // Leftover cash from target budget
+        const remainingCash = cashInputVal - netDifference;
+        resLeftoverCash.innerText = formatMoney(remainingCash);
+
+        // Render explanation text
+        explanationBox.innerHTML = `
+<h3>📊 전체 포트폴리오 리밸런싱 산출 과정 설명</h3>
+1. <strong>총 목표 자산 산출:</strong> 현재 총 자산(${formatMoney(currentEvalTotal)}) + 신규 현금 투입/회수액(${formatMoney(cashInputVal)}) = <strong>${formatMoney(targetTotalValue)}</strong>을 최종 목표 금액으로 설정합니다.
+2. <strong>각 종목의 목표 보유액 계산:</strong> 각 종목의 비중(%)에 따라 목표금액을 가치 분배한 뒤, 주가로 나누어 이상적인 매수 수량(소수점)을 구합니다.
+3. <strong>정밀 정수 최적화(Integer Optimization):</strong> 소수점을 반올림하여 최초 기본 매수 수량을 결정합니다.
+4. <strong>잔액 정합성 조정 (Requirement 6):</strong>
+   - 반올림된 최종 단수 주식 총합 비용(${formatMoney(currentCost)})과 목표 자산(${formatMoney(targetTotalValue)}) 간 차이가 발생하면, <strong>1주당 가격이 잔액차이에 가장 가까운(근접한) 종목의 수량을 순차적으로 가감(+1 / -1)</strong> 하여 투자 금액 한도를 최대한 딱 맞추도록 알고리즘을 최적화 하였습니다.
+5. <strong>동작 결과:</strong> 총 매수 비용으로 <strong>${formatMoney(totalRebalanceBoughtVal)}</strong>을 사용하고, <strong>${formatMoney(totalRebalanceSoldVal)}</strong>의 매도금을 회수하여, 최종적으로 순액 <strong>${formatMoney(netDifference)}</strong>의 현금이 집행되며, <strong>${formatMoney(remainingCash)}</strong>의 잔돈이 남게 됩니다.
+        `;
+
+      } else {
+        // --- 2. NEW BUY MODE (NO SELLING) ---
+        // Initialize bought shares to 0
+        let boughtShares = {};
+        state.stocks.forEach(s => boughtShares[s.code] = 0);
+        
+        let leftoverCash = cashInputVal;
+        
+        // Greedy Allocation Loop: Buy 1 share of the most underweight stock that we can afford
+        while (true) {
+          // Filter stocks we can afford (price <= leftoverCash)
+          let affordable = state.stocks.filter(s => s.price <= leftoverCash);
+          if (affordable.length === 0) break;
+
+          // Find the most underweight stock
+          // Underweight metric = Ideal Target Value - Current Evaluated Value
+          // Current Evaluated Value includes already planned buys: (sharesOwned + boughtShares) * price
+          let mostUnderweight = null;
+          let maxGap = -Infinity;
+
+          const projectedTotalValue = currentEvalTotal + (cashInputVal - leftoverCash);
+
+          affordable.forEach(s => {
+            const targetVal = projectedTotalValue * (s.targetRatio / 100);
+            const currentVal = (s.sharesOwned + boughtShares[s.code]) * s.price;
+            const gap = targetVal - currentVal;
+
+            if (gap > maxGap) {
+              maxGap = gap;
+              mostUnderweight = s;
+            }
+          });
+
+          if (mostUnderweight) {
+            boughtShares[mostUnderweight.code] += 1;
+            leftoverCash -= mostUnderweight.price;
+          } else {
+            break;
+          }
+        }
+
+        // Requirement 6: If leftover cash is not zero, and we can get closer to target by buying one more share of the stock
+        // whose price is closest to the leftover amount (even if it goes slightly over budget)
+        let closestStock = null;
+        if (leftoverCash > 0) {
+          let minDiff = leftoverCash; // Default to current leftover difference (buying 0 more)
+          
+          state.stocks.forEach(s => {
+            // If we buy 1 more share, the new leftover will be (leftoverCash - s.price)
+            // Absolute difference from target budget = |leftoverCash - s.price|
+            const diff = Math.abs(leftoverCash - s.price);
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestStock = s;
+            }
+          });
+
+          // Check if buying 1 more share actually minimizes the overall budget mismatch
+          if (closestStock) {
+            boughtShares[closestStock.code] += 1;
+            leftoverCash -= closestStock.price; // Will become negative
+          }
+        }
+
+        // Populate global results for applying
+        lastCalculationResults = state.stocks.map(s => {
+          const buyCount = boughtShares[s.code];
+          return {
+            code: s.code,
+            diffShares: buyCount,
+            targetShares: s.sharesOwned + buyCount,
+            price: s.price
+          };
+        });
+
+        // Display results
+        const totalNewBuySpent = state.stocks.reduce((sum, s) => sum + (boughtShares[s.code] * s.price), 0);
+        const totalAfterPortfolioVal = currentEvalTotal + totalNewBuySpent;
+
+        state.stocks.forEach(s => {
+          const buyCount = boughtShares[s.code];
+          const targetShares = s.sharesOwned + buyCount;
+          const cost = buyCount * s.price;
+
+          const resultingVal = targetShares * s.price;
+          const resultingRatio = totalAfterPortfolioVal > 0 ? (resultingVal / totalAfterPortfolioVal) * 100 : 0;
+
+          let actionText = '';
+          let badgeClass = '';
+          let diffValText = '';
+
+          if (buyCount > 0) {
+            actionText = `추가 매수: +${buyCount}주`;
+            badgeClass = 'buy';
+            diffValText = `구매 비용: ${formatMoney(cost)}`;
+          } else {
+            actionText = '현재 유지';
+            badgeClass = 'hold';
+            diffValText = '잔액 유지';
+          }
+
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          div.innerHTML = `
+            <div>
+              <div style="font-weight:600;">${s.name} (${s.code})</div>
+              <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.15rem;">
+                현재: ${s.sharesOwned}주 (${((s.sharesOwned * s.price / currentEvalTotal) * 100 || 0).toFixed(1)}%) 
+                ➔ <strong>목표: ${targetShares}주 (${resultingRatio.toFixed(1)}%)</strong>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span class="action-badge ${badgeClass}">${actionText}</span>
+              <div style="font-size:0.8rem; margin-top:0.25rem; font-weight:500;">${diffValText}</div>
+            </div>
+          `;
+          resultsList.appendChild(div);
+        });
+
+        resTotalSpent.innerText = formatMoney(totalNewBuySpent);
+        resLeftoverCash.innerText = formatMoney(leftoverCash);
+
+        // Render explanation text
+        explanationBox.innerHTML = `
+<h3>📊 신규 추가 매수 산출 과정 설명</h3>
+1. <strong>신규 매수 규칙:</strong> 기존 보유 주식을 <strong>절대 매도하지 않고</strong> 오직 신규 투자 현금(${formatMoney(cashInputVal)})만을 분배하여 목표 비중(%)에 접근하도록 유도합니다.
+2. <strong>언더웨이트(Underweight) 우선 매수:</strong> 
+   - 목표 비중 대비 현재 자산 비율이 가장 부족한(언더웨이트가 심한) 종목을 검색하여 1주씩 순차적으로 구매합니다.
+   - 1주 구매할 때마다 남은 자금을 소진하며, 다음으로 가장 비중이 부족한 종목을 실시간으로 추적하여 재평가 및 분배합니다.
+3. <strong>잔액 보정 알고리즘 (Requirement 6):</strong>
+   - 구매 가능한 종목이 없거나 남은 자금이 주가보다 작을 때, <strong>남은 잔돈(${formatMoney(leftoverCash + (closestStock ? closestStock.price : 0))})과 주가 차이가 가장 적게 나는 최적의 단일 종목(가장 가격이 근접한 종목: ${closestStock ? closestStock.name : '없음'})</strong>을 추가 구매합니다.
+   - 이로 인해 투자 잔액이 약간 초과(${formatMoney(Math.abs(leftoverCash))})될 수 있으나, 설정한 예산 범위에 가장 가깝게 전액 투자할 수 있도록 도와줍니다.
+4. <strong>동작 결과:</strong> 총 추가 매수 비용으로 <strong>${formatMoney(totalNewBuySpent)}</strong>을 사용하여, 최종 <strong>${formatMoney(leftoverCash)}</strong>의 현금 정산 오차가 발생합니다.
+        `;
+      }
+    }
+
+    // Open the trade execution modal pre-filled with recommendations
+    function applyCalculationResults() {
+      if (!lastCalculationResults || lastCalculationResults.length === 0) {
+        showToast('반영할 계산 결과가 없습니다.', 'warning');
+        return;
+      }
+
+      const tbody = document.getElementById('modalTableBody');
+      tbody.innerHTML = '';
+
+      lastCalculationResults.forEach(res => {
+        const stock = state.stocks.find(s => s.code === res.code);
+        if (!stock) return;
+
+        // Skip rendering if recommended change is 0 (keep hold clean unless user wants to edit it)
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div style="font-weight: 600;">${stock.name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">${stock.code}</div>
+          </td>
+          <td style="text-align: right; color: var(--text-secondary); font-family: var(--font-display); font-weight: 500;">
+            ${res.diffShares > 0 ? '+' : ''}${res.diffShares}주
+          </td>
+          <td>
+            <input type="number" class="modal-input actual-shares" data-code="${stock.code}" value="${res.diffShares}" style="width: 100px;">
+          </td>
+          <td>
+            <input type="number" class="modal-input actual-price" data-code="${stock.code}" value="${res.price}" style="width: 130px;">
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const modal = document.getElementById('tradeModal');
+      modal.classList.add('active');
+    }
+
+    function closeTradeModal() {
+      const modal = document.getElementById('tradeModal');
+      modal.classList.remove('active');
+    }
+
+    // Submit entered manual execution details and calculate weighted average prices
+    async function submitTradeModal() {
+      const sharesInputs = document.querySelectorAll('.actual-shares');
+      const priceInputs = document.querySelectorAll('.actual-price');
+
+      let changedCount = 0;
+
+      sharesInputs.forEach(sharesInput => {
+        const code = sharesInput.getAttribute('data-code');
+        const priceInput = Array.from(priceInputs).find(p => p.getAttribute('data-code') === code);
+        
+        if (!priceInput) return;
+
+        const actualDiffShares = parseFloat(sharesInput.value) || 0;
+        const actualPrice = parseFloat(priceInput.value) || 0;
+
+        const stock = state.stocks.find(s => s.code === code);
+        if (stock) {
+          if (actualDiffShares > 0) {
+            // BUY adjustment: Weighted average price
+            const currentCost = stock.sharesOwned * stock.purchasePrice;
+            const newCost = actualDiffShares * actualPrice;
+            const totalShares = stock.sharesOwned + actualDiffShares;
+            
+            if (totalShares > 0) {
+              stock.purchasePrice = Math.round((currentCost + newCost) / totalShares);
+            }
+            stock.sharesOwned = totalShares;
+            changedCount++;
+          } else if (actualDiffShares < 0) {
+            // SELL adjustment: reduce shares owned
+            const totalShares = stock.sharesOwned + actualDiffShares;
+            stock.sharesOwned = Math.max(0, totalShares);
+            changedCount++;
+          }
+        }
+      });
+
+      if (changedCount > 0) {
+        await saveState();
+        renderStocksTable();
+        updatePortfolioStats();
+        
+        // Hide/Reset results
+        lastCalculationResults = null;
+        document.getElementById('resultsSection').classList.remove('active');
+        document.getElementById('amountInput').value = '';
+        
+        closeTradeModal();
+        showToast('실제 거래 체결 내역이 반영되었으며 파일에 동기화되었습니다.', 'success');
+      } else {
+        showToast('반영할 변경사항이 없습니다.', 'info');
+      }
+    }
+  </script>
+</body>
+</html>

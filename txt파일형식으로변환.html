@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Individual Log to TXT Converter</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f8f9fa; margin: 0; }
+        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 450px; text-align: center; border: 1px solid #e1e4e8; }
+        h2 { color: #222; margin-bottom: 0.5rem; }
+        p { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+        .upload-area { border: 2px dashed #007bff; border-radius: 10px; padding: 40px 20px; cursor: pointer; background: #fdfdfd; transition: all 0.2s; color: #007bff; font-weight: bold; }
+        .upload-area:hover { background: #f0f7ff; border-color: #0056b3; }
+        #file-input { display: none; }
+        #file-list { margin-top: 20px; text-align: left; max-height: 200px; overflow-y: auto; font-size: 0.85rem; border-top: 1px solid #eee; padding-top: 10px; }
+        .file-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #fafafa; }
+        button { margin-top: 20px; width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .warning { color: #d9534f; font-size: 0.8rem; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>개별 로그 변환기</h2>
+    <p>각 파일을 .txt 확장자로 각각 다운로드합니다.</p>
+    
+    <label for="file-input" class="upload-area">
+        클릭하여 로그 파일들을 선택하세요
+    </label>
+    <input id="file-input" type="file" multiple>
+    
+    <div id="file-list"></div>
+    <button id="download-btn" style="display: none;">모두 TXT로 다운로드</button>
+    <div id="warning-msg" class="warning">※ 브라우저 상단에서 '여러 파일 다운로드'를 허용해 주세요.</div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('file-input');
+    const fileList = document.body.querySelector('#file-list');
+    const downloadBtn = document.getElementById('download-btn');
+    const warningMsg = document.getElementById('warning-msg');
+
+    fileInput.addEventListener('change', () => {
+        const files = Array.from(fileInput.files);
+        fileList.innerHTML = '';
+        
+        if (files.length > 0) {
+            files.forEach(f => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `<span>📄 ${f.name}</span> <span style="color:#28a745;">대기중</span>`;
+                fileList.appendChild(item);
+            });
+            downloadBtn.style.display = 'block';
+            warningMsg.style.display = 'block';
+        }
+    });
+
+    downloadBtn.addEventListener('click', () => {
+        const files = fileInput.files;
+
+        Array.from(files).forEach((file, index) => {
+            // 기존 파일명에서 확장자 제거 후 .txt 붙이기
+            const originalName = file.name;
+            const lastDotIndex = originalName.lastIndexOf('.');
+            const nameWithoutExt = lastDotIndex !== -1 ? originalName.substring(0, lastDotIndex) : originalName;
+            const newName = `${nameWithoutExt}.txt`;
+
+            // 약간의 시간차를 두고 다운로드 실행 (브라우저 차단 방지)
+            setTimeout(() => {
+                const blob = new Blob([file], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = newName;
+                document.body.appendChild(a);
+                a.click();
+                
+                // 메모리 해제
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            }, index * 200); // 0.2초 간격으로 다운로드 트리거
+        });
+    });
+</script>
+
+</body>
+</html>

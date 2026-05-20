@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Factory Digital Twin</title>
+    <!-- Use specific font for aesthetic -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="app">
+      <!-- 3D Canvas -->
+      <canvas id="renderCanvas" touch-action="none"></canvas>
+      
+      <!-- Virtual Joystick container (Babylon native usually injects into document.body, but we keep this for structure if needed) -->
+      
+      <!-- UI Overlay Area -->
+      <div id="ui-layer">
+        
+        <!-- Status Panel (Left on PC, Bottom Sheet on Mobile/PDA) -->
+        <div id="status-panel" class="panel">
+          <div class="panel-header">기계 상태 정보</div>
+          <div class="panel-content" id="machine-info-content">
+            <p>기계를 선택해 주세요.</p>
+          </div>
+        </div>
+
+        <!-- Minimap Area (Right bottom on PC, Right top + Toggle on Mobile) -->
+        <div id="minimap-container">
+          <button id="minimap-toggle" class="fab" style="display: none;">M</button>
+          <div id="minimap-wrapper" class="panel">
+            <div id="minimap-canvas-area">
+              <!-- Grid background placeholder -->
+              <div class="minimap-grid"></div>
+              <!-- Player/Camera position indicator -->
+              <div id="player-indicator"></div>
+            </div>
+            <div class="minimap-controls">
+              <button class="fab floor-btn active" data-floor="0">1F</button>
+              <button class="fab floor-btn" data-floor="20">2F</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

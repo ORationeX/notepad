@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Factory Digital Twin (Standalone)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; user-select: none; -webkit-touch-callout: none; }
+    html, body, #app { width: 100%; height: 100%; overflow: hidden; position: fixed; background-color: #1e1e24; }
+    #renderCanvas { width: 100%; height: 100%; touch-action: none; outline: none; }
+    
+    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+    
+    .panel {
+      pointer-events: auto; background: rgba(30, 30, 36, 0.7); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: #fff;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); transition: all 0.3s ease; display: flex; flex-direction: column;
+    }
+    .panel-header { padding: 12px 16px; font-weight: 600; border-bottom: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); border-radius: 12px 12px 0 0; }
+    .panel-content { padding: 16px; flex: 1; overflow-y: auto; font-size: 0.9rem; }
+    
+    .fab {
+      pointer-events: auto; width: 48px; height: 48px; border-radius: 50%; background: #007bff; color: white; border: none; font-weight: bold; font-size: 1.1rem;
+      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s, background 0.2s;
+    }
+    .fab:active { transform: scale(0.9); background: #0056b3; }
+    .fab.active { background: #28a745; box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4); }
+    
+    #minimap-wrapper { padding: 8px; }
+    #minimap-canvas-area { width: 100%; height: calc(100% - 64px); background: rgba(0,0,0,0.5); border-radius: 8px; position: relative; overflow: hidden; cursor: crosshair;pointer-events: auto; }
+    
+    .minimap-grid { width: 100%; height: 100%; background-image: linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px); background-size: 20px 20px; }
+    #player-indicator {
+      position: absolute; width: 12px; height: 12px; background: #ff4757; border: 2px solid white; border-radius: 50%;
+      transform: translate(-50%, -50%); left: 50%; top: 50%; z-index: 10;
+    }
+    .minimap-controls { display: flex; justify-content: space-around; margin-top: 12px; }
+
+    #interaction-prompt {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.85); color: white; padding: 24px 32px; border-radius: 16px;
+      text-align: center; border: 2px solid #007bff; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      display: none; flex-direction: column; gap: 16px; z-index: 50; pointer-events: auto;
+    }
+    #btn-enter-factory {
+      padding: 14px 28px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;
+    }
+    #btn-enter-factory:active { transform: scale(0.95); background: #218838; }
+
+    @media screen and (min-width: 1024px) {
+      #status-panel { position: absolute; top: 24px; left: 24px; width: 300px; height: calc(100% - 48px); }
+      #minimap-container { position: absolute; bottom: 24px; right: 24px; }
+      #minimap-wrapper { width: 250px; height: 300px; }
+    }
+    @media screen and (max-width: 1023px) {
+      #status-panel { position: absolute; bottom: 0px; left: 0; width: 100%; height: 150px; border-radius: 16px 16px 0 0; border-bottom: none; padding-bottom: env(safe-area-inset-bottom); }
+      #minimap-toggle { display: flex !important; position: absolute; top: 16px; right: 16px; z-index: 20; }
+      #minimap-wrapper { position: absolute; top: 80px; right: 16px; width: 200px; height: 250px; display: none; }
+      #minimap-wrapper.show { display: flex; }
+      #interaction-prompt h2 { font-size: 1.2rem; }
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    #loading-screen {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #1e1e24; z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 0.5s;
+    }
+    .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.1); border-top: 5px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; }
+  </style>
+</head>
+<body>
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <h2 style="margin-top: 24px;">Factory Digital Twin</h2>
+    <p style="margin-top: 8px; color: #aaa;">3D 환경과 데이터를 불러오는 중입니다...</p>
+  </div>
+  <div id="app">
+    <canvas id="renderCanvas"></canvas>
+    
+    <div id="ui-layer">
+      <div id="interaction-prompt">
+        <h2>1층 공장에 입장하시겠습니까?</h2>
+        <p style="color: #aaa; font-size: 0.9rem;">(Enter 키를 누르거나 아래 버튼을 터치하세요)</p>
+        <button id="btn-enter-factory">입장하기</button>
+      </div>
+
+      <div id="status-panel" class="panel">
+        <div class="panel-header">기계 상태 정보</div>
+        <div class="panel-content" id="machine-info-content">
+          <p>기계를 선택해 주세요.</p>
+        </div>
+      </div>
+
+      <div id="minimap-container">
+        <button id="minimap-toggle" class="fab" style="display: none;">M</button>
+        <div id="minimap-wrapper" class="panel">
+          <div id="minimap-canvas-area">
+            <div class="minimap-grid"></div>
+            <div id="player-indicator"></div>
+          </div>
+          <div class="minimap-controls">
+            <button class="fab floor-btn" data-floor="0">1F</button>
+            <button class="fab floor-btn" data-floor="20">2F</button>
+            <button class="fab floor-btn active" data-floor="EXT" style="font-size: 0.9rem; background: #666;">외관</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 설정 및 데이터 계층 -->
+  <script src="js/config/config.js"></script>
+  <script src="js/data/data_mock.js"></script>
+  
+  <!-- 공정 장비 계층 -->
+  <script src="js/models/machine_wet_cleaning.js"></script>
+  <script src="js/models/machine_ultrasonic_cleaning.js"></script>
+  <script src="js/models/machine_plasma_cleaning.js"></script>
+  <script src="js/models/machine_pcb_assembly.js"></script>
+  <script src="js/models/machine_active_alignment.js"></script>
+  <script src="js/models/machine_camera_screw_assembly.js"></script>
+  <script src="js/models/machine_curing_oven.js"></script>
+  <script src="js/models/machine_firmware_download.js"></script>
+  <script src="js/models/machine_intrinsic_calibration.js"></script>
+  <script src="js/models/machine_vision_inspection.js"></script>
+  <script src="js/models/machine_directional_angle_test.js"></script>
+  <script src="js/models/machine_pin_inspection.js"></script>
+  <script src="js/models/machine_final_optical_tester.js"></script>
+  <script src="js/models/machine_eol_tester.js"></script>
+  <script src="js/models/machine_conformal_coating.js"></script>
+  <script src="js/models/machine_coating_aoi.js"></script>
+  <script src="js/models/machine_antistatic_tray.js"></script>
+
+  <!-- 서비스 코어 및 매니저 계층 -->
+  <script src="js/core/engine_core.js"></script>
+  <script src="js/core/camera_movement.js"></script>
+  <script src="js/core/machine_builder.js"></script>
+  <script src="js/managers/portal_manager.js"></script>
+  <script src="js/managers/ui_manager.js"></script>
+  <script src="js/managers/minimap_manager.js"></script>
+  <script src="js/managers/scene_manager.js"></script>
+
+  <!-- 프로덕션 화면 에셋 계층 -->
+  <script src="js/scenes/scene_exterior.js"></script>
+  <script src="js/scenes/scene_floor1.js"></script>
+  <script src="js/scenes/scene_floor2.js"></script>
+
+  <!-- 의존성 주입형 메인 오케스트레이터 -->
+  <script src="js/main.js"></script>
+</body>
+</html>

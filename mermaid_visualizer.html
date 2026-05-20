@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Designer Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --primary-accent: #38bdf8;
+            --secondary-accent: #818cf8;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(129, 140, 248, 0.15) 0px, transparent 50%);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(to right, var(--primary-accent), var(--secondary-accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.025em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--glass-bg);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            gap: 1px;
+            background-color: var(--border-color);
+            overflow: hidden;
+        }
+
+        .panel {
+            flex: 1;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 0.75rem 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #editor-container {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #monaco-editor {
+            width: 100%;
+            height: 100%;
+        }
+
+        #mermaid-output-wrapper {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: 0 0; /* Scaling from top-left for better scroll behavior */
+            display: inline-block; /* Allow container to grow with content */
+            margin: 0 auto;
+            position: relative;
+        }
+
+        #preview-container {
+            flex: 1;
+            position: relative;
+            overflow: auto; /* Enable scrollbars */
+            padding: 4rem; /* Extra padding for easier viewing */
+            display: block; /* Standard block for scrolling child */
+            background-image: 
+                radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 24px 24px;
+            text-align: center; /* Center the inline wrapper */
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--glass-bg);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            margin-right: 1rem;
+        }
+
+        .zoom-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .zoom-btn:hover {
+            color: var(--primary-accent);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        #zoom-level {
+            font-size: 0.75rem;
+            min-width: 40px;
+            text-align: center;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .mermaid {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            visibility: hidden;
+            width: fit-content;
+            min-width: 200px;
+        }
+
+        .mermaid[data-processed="true"] {
+            visibility: visible;
+        }
+
+        /* Mermaid Text & Shape Balance Fix */
+        .mermaid svg {
+            font-size: 16px !important;
+            max-width: 100% !important;
+        }
+        .mermaid .label, .mermaid .nodeText, .mermaid .edgeLabel {
+            font-family: 'Inter', 'Nanum Gothic', sans-serif !important;
+            font-size: 16px !important;
+            font-weight: 500 !important;
+        }
+        .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon {
+            stroke-width: 1.5px !important;
+        }
+
+        .error-overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            right: 2rem;
+            padding: 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            color: #f87171;
+            font-size: 0.875rem;
+            display: none;
+            z-index: 5;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo">Mermaid Designer Pro</div>
+        <div class="controls">
+            <label class="btn btn-secondary" for="file-upload">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Load .md File
+            </label>
+            <input type="file" id="file-upload" accept=".md,.txt">
+            <button class="btn btn-primary" id="render-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+                Force Render
+            </button>
+            <button class="btn btn-secondary" id="copy-svg-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                Copy SVG
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <section class="panel">
+            <div class="panel-header">
+                <span>VS Code Editor</span>
+                <span id="char-count">0 characters</span>
+            </div>
+            <div id="editor-container">
+                <div id="monaco-editor"></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <span>Diagram Preview</span>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoom-out-btn" title="Zoom Out">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <span id="zoom-level">100%</span>
+                    <button class="zoom-btn" id="zoom-in-btn" title="Zoom In">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <button class="zoom-btn" id="zoom-reset-btn" title="Reset Zoom">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                    </button>
+                </div>
+                <span id="status-badge">Loading Editor...</span>
+            </div>
+            <div id="preview-container">
+                <div id="mermaid-output-wrapper">
+                    <div id="mermaid-output" class="mermaid"></div>
+                </div>
+                <div id="error-box" class="error-overlay"></div>
+                <div id="empty-state" class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+                    </svg>
+                    <p>Enter Mermaid syntax on the left<br>and watch the magic happen</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let monacoEditor;
+        let renderTimeout;
+        const DEBOUNCE_DELAY = 400;
+        let currentZoom = 1.0;
+
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+            monacoEditor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                value: `graph TD
+    A[VS Code Editor] --> B{Interactive Zoom}
+    B -- Zoom In --> C[Larger Details]
+    B -- Zoom Out --> D[Overview]
+    B -- Reset --> E[Back to Full Scale]
+    C --> F[Professional Experience]
+    D --> F
+    E --> F`,
+                language: 'markdown',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                fontSize: 14,
+                fontFamily: "'JetBrains Mono', monospace",
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                lineNumbers: 'on',
+                roundedSelection: true,
+                cursorSmoothCaretAnimation: "on",
+                smoothScrolling: true,
+                padding: { top: 20 },
+                tabSize: 4
+            });
+
+            document.getElementById('status-badge').textContent = 'Ready';
+            renderDiagram();
+
+            monacoEditor.onDidChangeModelContent(() => {
+                const text = monacoEditor.getValue();
+                document.getElementById('char-count').textContent = `${text.length} characters`;
+                clearTimeout(renderTimeout);
+                renderTimeout = setTimeout(renderDiagram, DEBOUNCE_DELAY);
+            });
+        });
+
+        const outputWrapper = document.getElementById('mermaid-output-wrapper');
+        const zoomLevelDisplay = document.getElementById('zoom-level');
+
+        function updateZoom(delta) {
+            const inner = output.querySelector('svg');
+            if (!inner) return;
+
+            if (delta === 0) {
+                currentZoom = 1.0;
+            } else {
+                currentZoom = Math.min(Math.max(currentZoom + delta, 0.05), 20.0);
+            }
+
+            // 1. Apply CSS Scale (GPU Accelerated)
+            outputWrapper.style.transform = `scale(${currentZoom})`;
+            
+            // 2. Adjust Wrapper dimensions to trigger parent scrollbars
+            // This prevents the diagram from being "covered" by other UI areas
+            if (!output.dataset.baseWidth) {
+                const rect = inner.getBoundingClientRect();
+                output.dataset.baseWidth = rect.width;
+                output.dataset.baseHeight = rect.height;
+            }
+
+            const w = parseFloat(output.dataset.baseWidth);
+            const h = parseFloat(output.dataset.baseHeight);
+            
+            outputWrapper.style.width = (w * currentZoom) + "px";
+            outputWrapper.style.height = (h * currentZoom) + "px";
+            
+            zoomLevelDisplay.textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        document.getElementById('zoom-in-btn').onclick = () => updateZoom(0.1);
+        document.getElementById('zoom-out-btn').onclick = () => updateZoom(-0.1);
+        document.getElementById('zoom-reset-btn').onclick = () => updateZoom(0);
+
+        // Mouse Wheel Zoom
+        document.getElementById('preview-container').addEventListener('wheel', (e) => {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                updateZoom(e.deltaY < 0 ? 0.05 : -0.05);
+            }
+        }, { passive: false });
+
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                fontSize: '16px',
+                labelFontSize: '16px',
+                fontFamily: "'Inter', sans-serif",
+                primaryColor: '#ffffff',
+                primaryTextColor: '#0f172a',
+                primaryBorderColor: '#38bdf8',
+                lineColor: '#64748b',
+                secondaryColor: '#f8fafc',
+                tertiaryColor: '#f1f5f9'
+            },
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 15
+            },
+            securityLevel: 'loose'
+        });
+
+        const output = document.getElementById('mermaid-output');
+        const errorBox = document.getElementById('error-box');
+        const emptyState = document.getElementById('empty-state');
+        const fileUpload = document.getElementById('file-upload');
+        const copySvgBtn = document.getElementById('copy-svg-btn');
+
+        function extractMermaid(text) {
+            const mermaidRegex = /```mermaid\s*([\s\S]*?)```/g;
+            const matches = [...text.matchAll(mermaidRegex)];
+            if (matches.length > 0) return matches[0][1].trim();
+            return text.trim();
+        }
+
+        async function renderDiagram() {
+            if (!monacoEditor) return;
+            const text = monacoEditor.getValue();
+            if (!text.trim()) {
+                emptyState.style.display = 'flex';
+                output.style.display = 'none';
+                return;
+            }
+            const mermaidCode = extractMermaid(text);
+            emptyState.style.display = 'none';
+            output.style.display = 'block';
+            errorBox.style.display = 'none';
+            const statusBadge = document.getElementById('status-badge');
+            statusBadge.textContent = 'Rendering...';
+            statusBadge.style.color = 'var(--primary-accent)';
+            
+            try {
+                output.innerHTML = mermaidCode;
+                output.removeAttribute('data-processed');
+                // Clear previous measurements
+                delete output.dataset.baseWidth;
+                delete output.dataset.baseHeight;
+                
+                // Re-render
+                await mermaid.run({ nodes: [output] });
+                statusBadge.textContent = 'Live Sync Active';
+                statusBadge.style.color = '#10b981';
+                
+                // Re-apply current zoom to new contents
+                updateZoom(0.0001); 
+            } catch (err) {
+                console.warn('Render issue:', err);
+                statusBadge.textContent = 'Syncing...';
+            }
+        }
+
+        document.getElementById('render-btn').addEventListener('click', renderDiagram);
+
+        fileUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                if (monacoEditor) {
+                    monacoEditor.setValue(event.target.result);
+                    renderDiagram();
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        copySvgBtn.addEventListener('click', () => {
+            const svg = output.querySelector('svg');
+            if (!svg) return;
+            const svgData = new XMLSerializer().serializeToString(svg);
+            navigator.clipboard.writeText(svgData).then(() => {
+                const originalText = copySvgBtn.innerHTML;
+                copySvgBtn.innerHTML = 'Copied!';
+                setTimeout(() => copySvgBtn.innerHTML = originalText, 2000);
+            });
+        });
+    </script>
+</body>
+</html>

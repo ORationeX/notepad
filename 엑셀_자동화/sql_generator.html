@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISM SQL Generator</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --accent: #8b5cf6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: var(--text-dim);
+            margin-bottom: 32px;
+            font-weight: 300;
+        }
+
+        .drop-zone {
+            width: 100%;
+            height: 200px;
+            border: 2px dashed var(--glass-border);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 24px;
+            background: rgba(255, 255, 255, 0.02);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+            transform: scale(1.01);
+        }
+
+        .drop-zone svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+            color: var(--primary);
+            transition: transform 0.3s ease;
+        }
+
+        .drop-zone:hover svg {
+            transform: translateY(-5px);
+        }
+
+        .drop-zone p {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+        }
+
+        .drop-zone span {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .result-container {
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .copy-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 24px;
+            border-radius: 12px;
+            overflow-x: auto;
+            max-height: 400px;
+            border: 1px solid var(--glass-border);
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #e2e8f0;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-success { background: #10b981; }
+        .status-idle { background: var(--text-dim); }
+
+        /* Scrollbar styling */
+        pre::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        pre::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        pre::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 4px;
+        }
+        pre::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Success Message styling */
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 600;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>SQL Generator</h1>
+        <p class="subtitle">ISM 사전조사 분석 데이터를 기반으로 Oracle ADD Query를 생성합니다.</p>
+
+        <div class="drop-zone" id="drop-zone">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <p>Excel 파일을 여기에 <span>드래그앤드롭</span> 하거나</p>
+            <p style="font-size: 0.9rem; margin-top: 8px; opacity: 0.7;">클릭하여 탐색기 열기</p>
+            <input type="file" id="file-input" accept=".xlsx, .xls">
+        </div>
+
+        <div class="result-container" id="result-container-create">
+            <div class="result-header">
+                <div class="result-title">
+                    <span class="status-dot status-success" style="background: #3b82f6;"></span>
+                    CREATE TABLE Statements
+                </div>
+                <button class="copy-btn" id="copy-btn-create" style="background: #3b82f6;">
+                    <svg style="width: 18px; height: 18px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    Copy CREATE SQL
+                </button>
+            </div>
+            <pre id="sql-output-create"></pre>
+        </div>
+
+        <div class="result-container" id="result-container-add" style="margin-top: 24px;">
+            <div class="result-header">
+                <div class="result-title">
+                    <span class="status-dot status-success"></span>
+                    ALTER TABLE ADD Statements
+                </div>
+                <button class="copy-btn" id="copy-btn-add">
+                    <svg style="width: 18px; height: 18px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    Copy ADD SQL
+                </button>
+            </div>
+            <pre id="sql-output-add"></pre>
+        </div>
+
+        <div class="result-container" id="result-container-drop" style="margin-top: 24px;">
+            <div class="result-header">
+                <div class="result-title">
+                    <span class="status-dot status-success" style="background: #ef4444;"></span>
+                    ALTER TABLE DROP Statements
+                </div>
+                <button class="copy-btn" id="copy-btn-drop" style="background: #ef4444;">
+                    <svg style="width: 18px; height: 18px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    Copy DROP SQL
+                </button>
+            </div>
+            <pre id="sql-output-drop"></pre>
+        </div>
+
+        <div class="result-container" id="result-container-comment" style="margin-top: 24px;">
+            <div class="result-header">
+                <div class="result-title">
+                    <span class="status-dot status-success" style="background: var(--accent);"></span>
+                    COLUMN COMMENT Statements
+                </div>
+                <button class="copy-btn" id="copy-btn-comment" style="background: var(--accent);">
+                    <svg style="width: 18px; height: 18px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    Copy Comment SQL
+                </button>
+            </div>
+            <pre id="sql-output-comment"></pre>
+        </div>
+    </div>
+
+    <div id="toast">복사되었습니다!</div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const resultContainerCreate = document.getElementById('result-container-create');
+        const resultContainerAdd = document.getElementById('result-container-add');
+        const resultContainerDrop = document.getElementById('result-container-drop');
+        const resultContainerComment = document.getElementById('result-container-comment');
+        const sqlOutputCreate = document.getElementById('sql-output-create');
+        const sqlOutputAdd = document.getElementById('sql-output-add');
+        const sqlOutputDrop = document.getElementById('sql-output-drop');
+        const sqlOutputComment = document.getElementById('sql-output-comment');
+        const copyBtnCreate = document.getElementById('copy-btn-create');
+        const copyBtnAdd = document.getElementById('copy-btn-add');
+        const copyBtnDrop = document.getElementById('copy-btn-drop');
+        const copyBtnComment = document.getElementById('copy-btn-comment');
+        const toast = document.getElementById('toast');
+
+        // Trigger file input
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Get 3rd sheet (Index 2)
+                const sheetName = workbook.SheetNames[2];
+                if (!sheetName) {
+                    alert("3번째 시트가 존재하지 않습니다.");
+                    return;
+                }
+                const worksheet = workbook.Sheets[sheetName];
+                // Raw json format to handle columns by index
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                processData(jsonData);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processData(rows) {
+            const tablesSipStatus = {};
+            
+            // First pass: identify tables that are strictly for SIP (CREATE TABLE)
+            rows.forEach(row => {
+                if (!row || row.length < 5) return;
+                const tbl = String(row[4] || '').trim().toUpperCase();
+                const val0 = String(row[0] || '').trim();
+                if (tbl && val0 === '테이블이 SIP에만 존재') {
+                    tablesSipStatus[tbl] = true;
+                }
+            });
+
+            const createTables = {};
+            let createResult = "";
+            let addResult = "";
+            let dropResult = "";
+            let commentsResult = "";
+            let totalCreate = 0;
+            let totalAdd = 0;
+            let totalDrop = 0;
+            let hasPk = false;
+
+            /*
+            Column Mapping:
+            A (0) = '테이블이 SIP에만 존재' 여부 판단
+            D (3) = '생성' / '삭제' 여부
+            E (4) = 테이블
+            F (5) = 칼럼명
+            H (7) = 타입
+            I (8) = 길이
+            J (9) = NULL 허용 (Y/N)
+            K (10) = PK 여부 (값 있으면 PK)
+            L (11) = Comment
+            */
+
+            rows.forEach((row, index) => {
+                if (!row || row.length < 6) return;
+
+                const createFlag = String(row[3] || '').trim();
+                const tableName = String(row[4] || '').trim().toUpperCase();
+                const colName = String(row[5] || '').trim().toUpperCase();
+
+                if (!tableName || !colName) return;
+
+                if (tablesSipStatus[tableName]) {
+                    // This table is for CREATE TABLE, ignore ADD/DROP logic
+                    const dataType = String(row[7] || '').trim().toUpperCase();
+                    const dataLen = row[8] ? String(row[8]).trim() : '';
+                    const nullable = String(row[9] || '').trim().toUpperCase();
+                    const pkFlag = String(row[10] || '').trim().toUpperCase() === 'PK';
+                    const colComment = row[11] ? String(row[11]).trim() : '';
+
+                    if (!createTables[tableName]) {
+                        createTables[tableName] = { columns: [], pks: [], comments: [] };
+                    }
+
+                    let colDef = `${colName} ${dataType}`;
+                    if (dataLen && dataType !== 'DATE' && dataType !== 'TIMESTAMP') {
+                        colDef += `(${dataLen})`;
+                    }
+                    
+                    if (nullable === 'N') {
+                        colDef += ` NOT NULL`;
+                    }
+
+                    createTables[tableName].columns.push(colDef);
+                    
+                    if (pkFlag) {
+                        createTables[tableName].pks.push(colName);
+                    }
+                    
+                    if (colComment) {
+                        createTables[tableName].comments.push(`COMMENT ON COLUMN ${tableName}.${colName} IS '${colComment.replace(/'/g, "''")}';`);
+                    }
+                    return;
+                }
+
+                if (createFlag === '생성') {
+                    const dataType = String(row[7] || '').trim().toUpperCase();
+                    const dataLen = row[8] ? String(row[8]).trim() : '';
+                    const nullable = String(row[9] || '').trim().toUpperCase();
+                    const pkFlag = String(row[10] || '').trim().toUpperCase() === 'PK';
+                    const colComment = row[11] ? String(row[11]).trim() : '';
+
+                    let colDef = `${colName} ${dataType}`;
+                    if (dataLen && dataType !== 'DATE' && dataType !== 'TIMESTAMP') {
+                        colDef += `(${dataLen})`;
+                    }
+                    
+                    if (nullable === 'N') {
+                        colDef += ` DEFAULT '기본값' NOT NULL`;
+                    }
+
+                    let sqlLine = `ALTER TABLE ${tableName} ADD ${colDef};`;
+                    if (pkFlag) {
+                        sqlLine += ` -- PK칼럼`;
+                        hasPk = true;
+                    }
+                    addResult += sqlLine + "\n";
+
+                    if (colComment) {
+                        commentsResult += `COMMENT ON COLUMN ${tableName}.${colName} IS '${colComment.replace(/'/g, "''")}';\n`;
+                    }
+                    totalAdd++;
+                } else if (createFlag === '삭제') {
+                    dropResult += `ALTER TABLE ${tableName} DROP COLUMN ${colName};\n`;
+                    totalDrop++;
+                }
+            });
+
+            // CREATE Section Assembly
+            for (const tName in createTables) {
+                const tData = createTables[tName];
+                createResult += `CREATE TABLE ${tName} (\n`;
+                const cols = tData.columns.map(c => `    ${c}`);
+                createResult += cols.join(',\n');
+                if (tData.pks.length > 0) {
+                    createResult += `,\n    CONSTRAINT PK_${tName} PRIMARY KEY (${tData.pks.join(', ')})`;
+                }
+                createResult += `\n);\n`;
+                if (tData.comments.length > 0) {
+                    createResult += `\n${tData.comments.join('\n')}\n`;
+                }
+                createResult += `\n`;
+                totalCreate++;
+            }
+            sqlOutputCreate.textContent = createResult.trim() || "-- No '테이블이 SIP에만 존재' tables found.";
+            resultContainerCreate.style.display = totalCreate > 0 ? 'flex' : 'none';
+
+            // ADD Section Assembly
+            let finalAddSql = "";
+            if (hasPk) finalAddSql += `-- pk 칼럼입니다.\n`;
+            if (totalAdd > 0) finalAddSql += `-- 총 ${totalAdd}개의 칼럼 생성\n\n`;
+            finalAddSql += addResult;
+            sqlOutputAdd.textContent = finalAddSql || "-- No '생성' rows found.";
+            resultContainerAdd.style.display = totalAdd > 0 ? 'flex' : 'none';
+
+            // DROP Section Assembly
+            sqlOutputDrop.textContent = dropResult || "-- No '삭제' rows found.";
+            resultContainerDrop.style.display = totalDrop > 0 ? 'flex' : 'none';
+
+            // COMMENT Section Assembly
+            sqlOutputComment.textContent = commentsResult || "-- No comments found.";
+            resultContainerComment.style.display = commentsResult ? 'flex' : 'none';
+
+            setTimeout(() => {
+                const target = document.querySelector('.result-container[style*="display: flex"]');
+                if (target) target.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+
+        // Copy functionality
+        copyBtnCreate.addEventListener('click', () => {
+            const text = sqlOutputCreate.textContent;
+            navigator.clipboard.writeText(text).then(() => showToast());
+        });
+
+        copyBtnAdd.addEventListener('click', () => {
+            const text = sqlOutputAdd.textContent;
+            navigator.clipboard.writeText(text).then(() => showToast());
+        });
+
+        copyBtnDrop.addEventListener('click', () => {
+            const text = sqlOutputDrop.textContent;
+            navigator.clipboard.writeText(text).then(() => showToast());
+        });
+
+        copyBtnComment.addEventListener('click', () => {
+            const text = sqlOutputComment.textContent;
+            navigator.clipboard.writeText(text).then(() => showToast());
+        });
+
+        function showToast() {
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        function showToast() {
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
