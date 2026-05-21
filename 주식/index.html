@@ -1,810 +1,15 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>스마트 주식 리밸런싱 계산기</title>
   <!-- Google Fonts: Outfit & Noto Sans KR -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
-  <style>
-    /* Premium Slate Dark Theme CSS Variables */
-    :root {
-      --bg-primary: #0b0f19;
-      --bg-secondary: #111827;
-      --bg-card: rgba(31, 41, 55, 0.6);
-      --bg-card-hover: rgba(37, 99, 235, 0.08);
-      --text-primary: #f9fafb;
-      --text-secondary: #9ca3af;
-      --text-muted: #6b7280;
-      
-      --accent-color: #3b82f6;
-      --accent-glow: rgba(59, 130, 246, 0.4);
-      --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-      
-      --success: #10b981;
-      --success-glow: rgba(16, 185, 129, 0.2);
-      --danger: #ef4444;
-      --danger-glow: rgba(239, 68, 68, 0.2);
-      --warning: #f59e0b;
-      --warning-glow: rgba(245, 158, 11, 0.2);
-      
-      --border-color: rgba(255, 255, 255, 0.08);
-      --border-focus: #3b82f6;
-      
-      --font-display: 'Outfit', 'Noto Sans KR', sans-serif;
-      --font-body: 'Noto Sans KR', sans-serif;
-      
-      --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    /* Base reset & styling */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      background-color: var(--bg-primary);
-      color: var(--text-primary);
-      font-family: var(--font-body);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    /* Scrollbars */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: var(--bg-primary);
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #1f2937;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #374151;
-    }
-
-    /* Container */
-    .container {
-      width: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 1.5rem;
-      flex: 1;
-    }
-
-    /* Header styling */
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 1.5rem;
-    }
-
-    .logo-section h1 {
-      font-family: var(--font-display);
-      font-size: 1.75rem;
-      font-weight: 700;
-      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 0.25rem;
-    }
-
-    .logo-section p {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-
-    /* Storage / Sync Panel */
-    .sync-panel {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      background-color: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      padding: 0.5rem 1rem;
-      border-radius: 12px;
-      font-size: 0.85rem;
-      backdrop-filter: blur(10px);
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: var(--text-muted);
-    }
-
-    .status-dot.active {
-      background-color: var(--success);
-      box-shadow: 0 0 8px var(--success);
-    }
-
-    .status-dot.local {
-      background-color: var(--warning);
-      box-shadow: 0 0 8px var(--warning);
-    }
-
-    .sync-btn {
-      background: none;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: var(--text-primary);
-      padding: 0.35rem 0.75rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.75rem;
-      font-weight: 500;
-      transition: var(--transition-fast);
-    }
-
-    .sync-btn:hover {
-      background-color: rgba(255, 255, 255, 0.05);
-      border-color: var(--accent-color);
-    }
-
-    /* Grid Layout */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 1.5rem;
-      align-items: start;
-    }
-
-    @media (max-width: 1024px) {
-      .dashboard-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    /* Card styling */
-    .card {
-      background: var(--bg-card);
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
-      transition: border-color var(--transition-normal);
-    }
-
-    .card:hover {
-      border-color: rgba(59, 130, 246, 0.2);
-    }
-
-    .card-title {
-      font-size: 1.1rem;
-      font-weight: 600;
-      margin-bottom: 1.25rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-left: 4px solid var(--accent-color);
-      padding-left: 0.75rem;
-    }
-
-    /* Live Update Ticker */
-    .ticker-badge {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.75rem;
-      font-family: var(--font-display);
-      background-color: rgba(255, 255, 255, 0.05);
-      padding: 0.25rem 0.6rem;
-      border-radius: 9999px;
-      color: var(--text-secondary);
-    }
-
-    .ticker-spinner {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: var(--accent-color);
-      animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(1); opacity: 0.3; }
-      50% { transform: scale(1.6); opacity: 1; }
-      100% { transform: scale(1); opacity: 0.3; }
-    }
-
-    /* Forms */
-    .input-row {
-      display: grid;
-      grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
-      gap: 0.75rem;
-      margin-bottom: 1.25rem;
-      align-items: end;
-    }
-
-    @media (max-width: 768px) {
-      .input-row {
-        grid-template-columns: 1fr 1fr;
-      }
-      .input-row .btn-add {
-        grid-column: span 2;
-      }
-    }
-
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-    }
-
-    .input-group label {
-      font-size: 0.75rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-    }
-
-    .input-control {
-      background-color: rgba(17, 24, 39, 0.8);
-      border: 1px solid var(--border-color);
-      color: var(--text-primary);
-      padding: 0.6rem 0.85rem;
-      border-radius: 10px;
-      font-family: var(--font-body);
-      font-size: 0.9rem;
-      width: 100%;
-      transition: var(--transition-fast);
-    }
-
-    .input-control:focus {
-      outline: none;
-      border-color: var(--border-focus);
-      box-shadow: 0 0 10px var(--accent-glow);
-    }
-
-    .btn {
-      background: var(--accent-gradient);
-      color: var(--text-primary);
-      border: none;
-      padding: 0.6rem 1.25rem;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.9rem;
-      transition: var(--transition-fast);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-
-    .btn:hover {
-      box-shadow: 0 0 15px var(--accent-glow);
-      transform: translateY(-1px);
-    }
-
-    .btn:active {
-      transform: translateY(1px);
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-color);
-    }
-
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
-      box-shadow: none;
-    }
-
-    .btn-danger {
-      background: var(--danger);
-    }
-
-    .btn-danger:hover {
-      box-shadow: 0 0 15px var(--danger-glow);
-    }
-
-    /* Stock Table & Grid Styling */
-    .table-container {
-      overflow-x: auto;
-      margin-bottom: 1.5rem;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 0.9rem;
-    }
-
-    th {
-      color: var(--text-secondary);
-      font-weight: 500;
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--border-color);
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    td {
-      padding: 0.85rem 1rem;
-      border-bottom: 1px solid var(--border-color);
-      transition: background-color var(--transition-fast);
-    }
-
-    /* Flash keyframes for live updates */
-    @keyframes price-up-flash {
-      0% { background-color: rgba(16, 185, 129, 0.25); }
-      100% { background-color: transparent; }
-    }
-
-    @keyframes price-down-flash {
-      0% { background-color: rgba(239, 68, 68, 0.25); }
-      100% { background-color: transparent; }
-    }
-
-    tr.price-up {
-      animation: price-up-flash 0.8s ease-out;
-    }
-
-    tr.price-down {
-      animation: price-down-flash 0.8s ease-out;
-    }
-
-    /* Price indicator badges */
-    .price-change-badge {
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.15rem 0.4rem;
-      border-radius: 4px;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.2rem;
-    }
-
-    .price-change-badge.up {
-      background-color: rgba(16, 185, 129, 0.1);
-      color: var(--success);
-    }
-
-    .price-change-badge.down {
-      background-color: rgba(239, 68, 68, 0.1);
-      color: var(--danger);
-    }
-
-    .text-up {
-      color: var(--success) !important;
-    }
-
-    .text-down {
-      color: var(--danger) !important;
-    }
-
-    .delete-btn-cell {
-      text-align: center;
-    }
-
-    .delete-action-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 1.15rem;
-      transition: var(--transition-fast);
-    }
-
-    .delete-action-btn:hover {
-      color: var(--danger);
-    }
-
-    /* Table Inputs */
-    .table-input {
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--text-primary);
-      font-family: var(--font-body);
-      font-size: 0.9rem;
-      width: 80px;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-      text-align: right;
-      transition: var(--transition-fast);
-    }
-
-    .table-input:hover {
-      border-color: rgba(255, 255, 255, 0.15);
-      background-color: rgba(255, 255, 255, 0.02);
-    }
-
-    .table-input:focus {
-      outline: none;
-      border-color: var(--accent-color);
-      background-color: var(--bg-secondary);
-    }
-
-    /* Summary Bar */
-    .summary-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem;
-      background-color: var(--bg-secondary);
-      border-radius: 12px;
-      border: 1px solid var(--border-color);
-      margin-bottom: 1.5rem;
-      font-weight: 500;
-    }
-
-    /* Ratios and Warnings */
-    .ratio-badge {
-      padding: 0.25rem 0.6rem;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-
-    .ratio-badge.success {
-      background-color: rgba(16, 185, 129, 0.15);
-      color: var(--success);
-      border: 1px solid rgba(16, 185, 129, 0.2);
-    }
-
-    .ratio-badge.error {
-      background-color: rgba(239, 68, 68, 0.15);
-      color: var(--danger);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      animation: shake 0.5s ease-in-out;
-    }
-
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      20%, 60% { transform: translateX(-4px); }
-      40%, 80% { transform: translateX(4px); }
-    }
-
-    /* Right side panel (Portfolio Stats / Rebalancing Tools) */
-    .stats-card {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .stat-row:last-child {
-      border: none;
-      padding-bottom: 0;
-    }
-
-    .stat-label {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-    }
-
-    .stat-value {
-      font-family: var(--font-display);
-      font-weight: 600;
-      font-size: 1.1rem;
-    }
-
-    /* Calculation Settings Card */
-    .tab-container {
-      display: flex;
-      background-color: rgba(17, 24, 39, 0.8);
-      padding: 0.25rem;
-      border-radius: 10px;
-      border: 1px solid var(--border-color);
-      margin-bottom: 1.25rem;
-    }
-
-    .tab-btn {
-      flex: 1;
-      background: none;
-      border: none;
-      color: var(--text-secondary);
-      padding: 0.5rem;
-      cursor: pointer;
-      font-family: var(--font-body);
-      font-size: 0.85rem;
-      font-weight: 600;
-      border-radius: 8px;
-      transition: var(--transition-fast);
-    }
-
-    .tab-btn.active {
-      background-color: var(--accent-color);
-      color: var(--text-primary);
-      box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
-    }
-
-    /* Results layout */
-    .results-section {
-      margin-top: 1.5rem;
-      border-top: 1px solid var(--border-color);
-      padding-top: 1.5rem;
-      display: none;
-    }
-
-    .results-section.active {
-      display: block;
-      animation: fadeIn var(--transition-normal) ease-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .result-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.85rem 1rem;
-      border-radius: 10px;
-      background-color: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--border-color);
-      margin-bottom: 0.75rem;
-    }
-
-    .action-badge {
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-      text-transform: uppercase;
-    }
-
-    .action-badge.buy {
-      background-color: rgba(16, 185, 129, 0.15);
-      color: var(--success);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-
-    .action-badge.sell {
-      background-color: rgba(239, 68, 68, 0.15);
-      color: var(--danger);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-
-    .action-badge.hold {
-      background-color: rgba(255, 255, 255, 0.05);
-      color: var(--text-secondary);
-      border: 1px solid var(--border-color);
-    }
-
-    /* Explanation Text Area */
-    .explanation-box {
-      background-color: rgba(17, 24, 39, 0.5);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1.25rem;
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      margin-top: 1.25rem;
-      white-space: pre-wrap;
-      line-height: 1.6;
-    }
-
-    .explanation-box strong {
-      color: var(--text-primary);
-    }
-
-    /* Toast notification */
-    .toast {
-      position: fixed;
-      bottom: 2rem;
-      right: 2rem;
-      background-color: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1rem 1.5rem;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      transform: translateY(150%);
-      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      z-index: 1000;
-    }
-
-    .toast.active {
-      transform: translateY(0);
-    }
-
-    .toast-icon {
-      font-size: 1.25rem;
-    }
-
-    /* Responsive adjustments for tables on mobile */
-    @media (max-width: 768px) {
-      table, thead, tbody, th, td, tr {
-        display: block;
-      }
-      
-      thead tr {
-        position: absolute;
-        top: -9999px;
-        left: -9999px;
-      }
-      
-      tr {
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        margin-bottom: 1rem;
-        background-color: rgba(255, 255, 255, 0.01);
-        padding: 0.5rem;
-      }
-      
-      td {
-        border: none;
-        position: relative;
-        padding-left: 50%;
-        text-align: right;
-        min-height: 2.25rem;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-      }
-      
-      td::before {
-        content: attr(data-label);
-        position: absolute;
-        left: 1rem;
-        width: 45%;
-        text-align: left;
-        font-weight: 500;
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-      }
-
-      .table-input {
-        width: 120px;
-      }
-    }
-
-    /* Modal styles */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(8px);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-      opacity: 0;
-      transition: opacity var(--transition-normal) ease;
-    }
-    
-    .modal-overlay.active {
-      display: flex;
-      opacity: 1;
-    }
-    
-    .modal-card {
-      background-color: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      width: 90%;
-      max-width: 650px;
-      padding: 2rem;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-      transform: scale(0.9);
-      transition: transform var(--transition-normal) cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    
-    .modal-overlay.active .modal-card {
-      transform: scale(1);
-    }
-    
-    .modal-title {
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      color: var(--text-primary);
-    }
-    
-    .modal-table-container {
-      margin-top: 1rem;
-      margin-bottom: 1.5rem;
-      max-height: 300px;
-      overflow-y: auto;
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      background-color: rgba(255,255,255,0.01);
-    }
-    
-    .modal-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-    
-    .modal-table th, .modal-table td {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .modal-table th {
-      background-color: rgba(255,255,255,0.02);
-      color: var(--text-secondary);
-      text-align: left;
-      font-weight: 600;
-      position: sticky;
-      top: 0;
-    }
-    
-    .modal-input {
-      width: 100%;
-      background-color: rgba(255,255,255,0.03);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      color: var(--text-primary);
-      padding: 0.35rem 0.5rem;
-      font-family: var(--font-display);
-      text-align: right;
-    }
-    
-    .modal-input:focus {
-      outline: none;
-      border-color: var(--accent-color);
-    }
-    
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.75rem;
-    }
-    
-    .btn-close {
-      background-color: transparent;
-      border: 1px solid var(--border-color);
-      color: var(--text-secondary);
-    }
-    
-    .btn-close:hover {
-      background-color: rgba(255,255,255,0.05);
-      color: var(--text-primary);
-    }
-    
-    .btn-confirm {
-      background-color: var(--success);
-      border: none;
-      color: var(--text-primary);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-    }
-    
-    .btn-confirm:hover {
-      background-color: #059669;
-      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -820,10 +25,55 @@
       <div class="sync-panel" id="syncPanel">
         <span class="status-dot local" id="syncStatusDot"></span>
         <span id="syncStatusText">로컬 브라우저 저장소</span>
-        <button class="sync-btn" id="btnLinkFile" onclick="handleFileSelect()">JSON 파일 연결</button>
+        <button class="sync-btn" id="btnLinkFile" onclick="handleFileSelect()">JSON 파일 불러오기</button>
         <button class="sync-btn" id="btnExportJson" onclick="exportDataToJson()">내보내기</button>
       </div>
     </header>
+
+    <!-- Market Compass Widget -->
+    <div class="market-compass" id="marketCompass">
+      <div class="compass-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap;">
+        <div>
+          <div class="compass-title" style="margin-bottom: 0.15rem;">🧭 시장 나침반 (Market Compass)</div>
+          <div class="compass-stage" id="compassStage">지표 분석 중...</div>
+          <div class="compass-updated" id="compassUpdated">데이터 시점: -</div>
+          <div class="compass-updated" id="compassFreshness">지표 주기: -</div>
+        </div>
+        <button class="preset-btn" onclick="evaluateMarketStage()" style="min-width: unset; width: auto; padding: 0.35rem 0.6rem; font-size: 0.72rem; margin: 0; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2);">
+          🔄 지표 갱신
+        </button>
+      </div>
+      <div class="compass-indicators">
+        <div class="indicator-box">
+          <div class="indicator-name">VIX (공포 지수)</div>
+          <div class="indicator-val" id="indVix">-</div>
+          <div class="indicator-desc">S&P500 옵션 변동성 지수. 15~20 안정(평상시), 25 이상 경고, 30 이상 폭락 진행, 35 이상 후 하락 반전 시 1차 매수 신호.</div>
+        </div>
+        <div class="indicator-box">
+          <div class="indicator-name">장단기 금리차 (10Y-2Y)</div>
+          <div class="indicator-val" id="indYield">-</div>
+          <div class="indicator-desc">미국채 10년물과 2년물 금리 차이. 마이너스(장단기 금리역전) 상태 유지 후, 다시 플러스(+)로 급격히 전환될 때 경기 침체/폭락 시작 신호.</div>
+        </div>
+        <div class="indicator-box">
+          <div class="indicator-name">CNN 공포/탐욕 지수</div>
+          <div class="indicator-val" id="indFg">-</div>
+          <div class="indicator-desc">주가 모멘텀, 채권 수요 등을 종합한 투자 심리 지수. 50~70 탐욕(평상시), 30 이하 공포(매수 검토), 20 이하 극도의 공포(분할 매수 돌입).</div>
+        </div>
+        <div class="indicator-box">
+          <div class="indicator-name">하이일드 스프레드</div>
+          <div class="indicator-val" id="indHySpread">-</div>
+          <div class="indicator-desc">투기등급 회사채와 국채의 금리 차이. 급등하면 신용 스트레스와 기업 도산 우려가 커진 상태로 봅니다.</div>
+        </div>
+        <div class="indicator-box">
+          <div class="indicator-name">미국 실업률</div>
+          <div class="indicator-val" id="indUnrate">-</div>
+          <div class="indicator-desc">최근 발표치가 이전 발표치보다 상승하면 경기 둔화 경고로 보고 주식 비중을 한 단계 더 줄입니다.</div>
+        </div>
+      </div>
+      <div class="compass-advice" id="compassAdvice">
+        실시간 지표를 통해 현재 시장 국면을 분석하고 있습니다...
+      </div>
+    </div>
 
     <!-- Dashboard Grid -->
     <div class="dashboard-grid">
@@ -838,6 +88,13 @@
               <div class="input-group">
                 <label for="stockCode">종목 코드 (6자리)</label>
                 <input type="text" id="stockCode" placeholder="예: 005930" class="input-control" required maxlength="8">
+              </div>
+              <div class="input-group">
+                <label for="assetType">자산 분류</label>
+                <select id="assetType" class="input-control" style="height: 38px;">
+                  <option value="stock">주식</option>
+                  <option value="safe">안전자산 (채권/금 등)</option>
+                </select>
               </div>
               <div class="input-group">
                 <label for="targetRatio">목표 비중 (%)</label>
@@ -871,6 +128,7 @@
               <thead>
                 <tr>
                   <th>종목</th>
+                  <th style="text-align: center;">분류</th>
                   <th style="text-align: right;">현재가</th>
                   <th style="text-align: right;">매수단가 (원)</th>
                   <th style="text-align: right;">보유수량 (주)</th>
@@ -921,6 +179,14 @@
               <span class="stat-label">총 투자 수익률</span>
               <span class="stat-value" id="statTotalROI">0.00%</span>
             </div>
+            <div class="stat-row" style="border-top: 1px solid rgba(255,255,255,0.05); margin-top: 0.5rem; padding-top: 0.5rem;">
+              <span class="stat-label">주식 실제/목표 비중</span>
+              <span class="stat-value" id="statStockRatio">0% / 0%</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">안전자산 실제/목표 비중</span>
+              <span class="stat-value" id="statSafeRatio">0% / 0%</span>
+            </div>
           </div>
         </div>
 
@@ -932,6 +198,15 @@
           <div class="tab-container">
             <button class="tab-btn active" id="tabNewBuy" onclick="switchMode('newbuy')">신규 매수</button>
             <button class="tab-btn" id="tabRebalance" onclick="switchMode('rebalance')">리밸런싱</button>
+          </div>
+
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 500;">가이드라인 추천 비율 프리셋</div>
+          <div class="preset-btn-group">
+            <button class="preset-btn" onclick="applyPresetRatio(30, 'stage1', this)">평상시 70:30</button>
+            <button class="preset-btn" onclick="applyPresetRatio(40, 'stage2a', this)">위기 감지 1 60:40</button>
+            <button class="preset-btn" onclick="applyPresetRatio(55, 'stage2b', this)">위기/폭락 45:55</button>
+            <button class="preset-btn" onclick="applyPresetRatio(40, 'stage4a', this)" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3);">바닥 반등 1 60:40</button>
+            <button class="preset-btn" onclick="applyPresetRatio(30, 'stage4b', this)" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3);">바닥 반등 2 70:30</button>
           </div>
 
           <div class="input-group" style="margin-bottom: 1.25rem;">
@@ -1045,6 +320,38 @@
       });
     }
 
+    const PRICE_POLL_SECONDS = 30;
+    const PRICE_POLL_BACKOFF_SECONDS = 120;
+    let pricePollInFlight = false;
+    let consecutivePriceFailures = 0;
+
+    // CORS proxies list for fallback reliability. Local /proxy is preferred when served by server.js.
+    const CORS_PROXIES = [
+      url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+      url => `https://thingproxy.freeboard.io/fetch/${url}`,
+      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+    ];
+
+    function getProxyUrls(url) {
+      const urls = [];
+      const isLocalHttp = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      if (isLocalHttp) {
+        urls.push(`${window.location.origin}/proxy?url=${encodeURIComponent(url)}`);
+      }
+      urls.push(...CORS_PROXIES.map(proxyFn => proxyFn(url)));
+      return urls;
+    }
+
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
     async function getStoredHandle() {
       try {
         const db = await openDB();
@@ -1076,32 +383,54 @@
       }
     }
 
-    // CORS proxies list for fallback reliability
-    const CORS_PROXIES = [
-      url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-      url => `https://thingproxy.freeboard.io/fetch/${url}`
-    ];
-
-    async function fetchWithProxy(url) {
+    async function fetchWithProxy(url, encoding = 'utf-8') {
       let lastError = null;
-      for (const proxyFn of CORS_PROXIES) {
+      for (const proxyUrl of getProxyUrls(url)) {
         try {
-          const proxyUrl = proxyFn(url);
-          const res = await fetch(proxyUrl);
+          const res = await fetchWithTimeout(proxyUrl);
           if (res.ok) {
+            const contentType = res.headers.get('content-type') || '';
             const buffer = await res.arrayBuffer();
-            const decoder = new TextDecoder('euc-kr');
+            const decoder = new TextDecoder(encoding);
             const text = decoder.decode(buffer);
-            return JSON.parse(text);
+            // If the response is HTML (error page) treat as failure
+            if (!contentType.includes('application/json') && text.trim().startsWith('<')) {
+              throw new Error('HTML error page received');
+            }
+            if (contentType.includes('application/json') || ['{', '['].includes(text.trim().charAt(0))) {
+              try { return JSON.parse(text); } catch (e) { console.warn('JSON parse failed, returning raw text', e); return text; }
+            }
+            // Non‑JSON response – return raw text for caller to handle
+            return text;
           }
+          lastError = new Error(`Proxy HTTP ${res.status}: ${proxyUrl}`);
         } catch (e) {
-          console.warn(`Proxy failed: ${proxyFn.toString().slice(0, 45)}... Trying next.`, e);
           lastError = e;
         }
       }
       throw lastError || new Error('All CORS proxies failed.');
     }
+
+    // Helper to fetch plain text (e.g., CSV) via the same proxy chain
+    async function fetchTextWithProxy(url, encoding = 'utf-8') {
+      let lastError = null;
+      for (const proxyUrl of getProxyUrls(url)) {
+        try {
+          const res = await fetchWithTimeout(proxyUrl);
+          if (res.ok) {
+            const buffer = await res.arrayBuffer();
+            const decoder = new TextDecoder(encoding);
+            return decoder.decode(buffer);
+          }
+          lastError = new Error(`Proxy HTTP ${res.status}: ${proxyUrl}`);
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      throw lastError || new Error('All CORS proxies failed (text).');
+    }
+
+
 
     // Toast show helper
     function showToast(message, type = 'info') {
@@ -1126,13 +455,27 @@
       return new Intl.NumberFormat('ko-KR').format(Math.round(amount)) + '원';
     }
 
+    function normalizeStocks(stocks) {
+      stocks.forEach(stock => {
+        if (!stock.type) {
+          const name = stock.name || '';
+          if (stock.code === 'CASH' || name.includes('국채') || name.includes('채권') || name.includes('금') || name.includes('현금')) {
+            stock.type = 'safe';
+          } else {
+            stock.type = 'stock';
+          }
+        }
+      });
+      return stocks;
+    }
+
     // Initial state loading
     window.addEventListener('DOMContentLoaded', async () => {
       // 1. Load LocalStorage first
       const localData = localStorage.getItem('stock_portfolio');
       if (localData) {
         try {
-          state.stocks = JSON.parse(localData);
+          state.stocks = normalizeStocks(JSON.parse(localData));
         } catch (e) {
           console.error(e);
         }
@@ -1142,16 +485,42 @@
       const savedHandle = await getStoredHandle();
       if (savedHandle) {
         fileHandle = savedHandle;
-        updateSyncStatusUI('linked', savedHandle.name);
-        showToast('보관된 JSON 파일 링크가 탐지되었습니다. 연결하려면 "파일 접근 승인" 버튼을 클릭하세요.', 'warning');
+        const opts = { mode: 'readwrite' };
+        if ((await fileHandle.queryPermission(opts)) === 'granted') {
+          updateSyncStatusUI('linked', savedHandle.name);
+          await loadStateFromFile();
+        } else {
+          updateSyncStatusUI('unauthorized', savedHandle.name);
+          showToast('보관된 JSON 파일 링크가 탐지되었습니다. 연결하려면 "파일 접근 승인" 버튼을 클릭하세요.', 'warning');
+        }
       } else {
         updateSyncStatusUI('local');
+      }
+
+      // Initialize CASH if not present and portfolio is empty
+      if (state.stocks.length === 0) {
+        state.stocks.push({
+          code: 'CASH',
+          name: '현금 (원)',
+          price: 1,
+          purchasePrice: 1,
+          sharesOwned: 0,
+          targetRatio: 30,
+          lastPrice: 1,
+          priceChangeDirection: 'same',
+          type: 'safe'
+        });
+        await saveState();
       }
 
       // Render & Start Polling
       renderStocksTable();
       updatePortfolioStats();
+      if (window.location.protocol === 'file:') {
+        showToast('외부 지표와 시세 조회는 로컬 서버로 열 때 가장 안정적입니다. start-server.bat을 실행한 뒤 표시되는 주소로 접속해 주세요.', 'warning');
+      }
       startPricePolling();
+      evaluateMarketStage();
     });
 
     // Update File system sync UI status
@@ -1175,40 +544,90 @@
       } else {
         dot.className = 'status-dot local';
         text.innerText = '로컬 브라우저 저장소';
-        btn.innerText = 'JSON 파일 연결';
+        btn.innerText = 'JSON 파일 불러오기';
         btn.onclick = handleFileSelect;
         state.syncMode = 'local';
       }
     }
 
-    // File selection / creation (File System Access API)
+    function importJsonText(text, persistLocal = true) {
+      text = text.replace(/^\uFEFF/, '');
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed)) {
+        throw new Error('JSON root must be an array.');
+      }
+      state.stocks = normalizeStocks(parsed);
+      if (persistLocal) saveStateToLocal();
+      renderStocksTable();
+      updatePortfolioStats();
+    }
+
+    // File selection / loading (File System Access API)
     async function handleFileSelect() {
       try {
-        fileHandle = await window.showSaveFilePicker({
-          suggestedName: 'data.json',
+        if (!window.showOpenFilePicker) {
+          importDataFromJsonFile();
+          return;
+        }
+
+        const [handle] = await window.showOpenFilePicker({
+          multiple: false,
           types: [{
             description: 'JSON Files',
             accept: { 'application/json': ['.json'] }
           }]
         });
+        fileHandle = handle;
+
+        const opts = { mode: 'readwrite' };
+        if ((await fileHandle.queryPermission(opts)) !== 'granted' &&
+            (await fileHandle.requestPermission(opts)) !== 'granted') {
+          updateSyncStatusUI('unauthorized', fileHandle.name);
+          showToast('JSON 파일 수정 권한이 필요합니다.', 'warning');
+          return;
+        }
         
+        const loaded = await loadStateFromFile();
+        if (!loaded) throw new Error('Failed to load selected JSON file.');
         await storeHandle(fileHandle);
-        await saveStateToFile();
         updateSyncStatusUI('linked', fileHandle.name);
-        showToast('JSON 파일이 성공적으로 연결 및 생성되었습니다.', 'success');
+        showToast('JSON 파일을 불러오고 동기화 연결했습니다.', 'success');
       } catch (err) {
         if (err.name !== 'AbortError') {
           console.error(err);
-          showToast('파일 생성에 실패했습니다.', 'error');
+          showToast('JSON 파일을 불러오지 못했습니다.', 'error');
         }
       }
+    }
+
+    function importDataFromJsonFile() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json,.json';
+      input.onchange = async () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        try {
+          importJsonText(await file.text());
+          updateSyncStatusUI('local');
+          showToast('JSON 파일을 불러왔습니다. 이 브라우저는 직접 파일 동기화를 지원하지 않아 로컬 저장소에 반영했습니다.', 'success');
+        } catch (e) {
+          console.error('JSON import error', e);
+          showToast('JSON 파일 형식이 올바르지 않습니다.', 'error');
+        }
+      };
+      input.click();
     }
 
     // Authorize persistent file permission
     async function authorizeFilePermission() {
       if (!fileHandle) return;
       const opts = { mode: 'readwrite' };
-      if ((await fileHandle.queryPermission(opts)) === 'granted') return true;
+      if ((await fileHandle.queryPermission(opts)) === 'granted') {
+        updateSyncStatusUI('linked', fileHandle.name);
+        await loadStateFromFile();
+        return true;
+      }
       if ((await fileHandle.requestPermission(opts)) === 'granted') {
         updateSyncStatusUI('linked', fileHandle.name);
         // Load data from file on permission gain
@@ -1226,18 +645,14 @@
       try {
         const file = await fileHandle.getFile();
         const text = await file.text();
-        if (text) {
-          const parsed = JSON.parse(text);
-          if (Array.isArray(parsed)) {
-            state.stocks = parsed;
-            saveStateToLocal();
-            renderStocksTable();
-            updatePortfolioStats();
-          }
+        if (text.trim()) {
+          importJsonText(text);
         }
+        return true;
       } catch (e) {
         console.error('File read error', e);
         showToast('파일 데이터를 불러오는데 실패했습니다.', 'error');
+        return false;
       }
     }
 
@@ -1276,27 +691,31 @@
     }
 
     async function saveStateToFile() {
-      if (fileHandle) {
-        try {
-          // Check permission first
-          const opts = { mode: 'readwrite' };
-          if ((await fileHandle.queryPermission(opts)) !== 'granted') {
-            updateSyncStatusUI('unauthorized', fileHandle.name);
-            return;
-          }
-          const writable = await fileHandle.createWritable();
-          await writable.write(JSON.stringify(state.stocks, null, 2));
-          await writable.close();
-        } catch (e) {
-          console.error('File write error', e);
-          updateSyncStatusUI('unauthorized', fileHandle?.name || '알수없음');
+      if (!fileHandle) return false;
+
+      try {
+        const opts = { mode: 'readwrite' };
+        if ((await fileHandle.queryPermission(opts)) !== 'granted' &&
+            (await fileHandle.requestPermission(opts)) !== 'granted') {
+          updateSyncStatusUI('unauthorized', fileHandle.name);
+          return false;
         }
+
+        const writable = await fileHandle.createWritable();
+        await writable.write(new Blob([JSON.stringify(state.stocks, null, 2)], { type: 'application/json;charset=UTF-8' }));
+        await writable.close();
+        updateSyncStatusUI('linked', fileHandle.name);
+        return true;
+      } catch (e) {
+        console.error('File write error', e);
+        updateSyncStatusUI('unauthorized', fileHandle?.name || '알수없음');
+        return false;
       }
     }
 
     async function saveState() {
       saveStateToLocal();
-      await saveStateToFile();
+      return await saveStateToFile();
     }
 
     // Add Stock Logic
@@ -1304,6 +723,7 @@
       e.preventDefault();
       
       let codeInput = document.getElementById('stockCode').value.trim();
+      const assetType = document.getElementById('assetType').value;
       const targetRatio = parseFloat(document.getElementById('targetRatio').value);
       const purchasePrice = parseFloat(document.getElementById('purchasePrice').value);
       const sharesOwned = parseFloat(document.getElementById('sharesOwned').value);
@@ -1319,13 +739,35 @@
         return;
       }
 
+      // Bypass Naver for CASH/KRW
+      if (codeInput.toUpperCase() === 'CASH' || codeInput.toUpperCase() === 'KRW') {
+        const newStock = {
+          code: codeInput.toUpperCase(),
+          name: '현금 (원)',
+          price: 1,
+          purchasePrice: 1,
+          sharesOwned: sharesOwned,
+          targetRatio: targetRatio,
+          lastPrice: 1,
+          priceChangeDirection: 'same',
+          type: 'safe'
+        };
+        state.stocks.push(newStock);
+        await saveState();
+        document.getElementById('addStockForm').reset();
+        renderStocksTable();
+        updatePortfolioStats();
+        showToast('현금 자산이 추가되었습니다.', 'success');
+        return;
+      }
+
       // Show temporary loading
       showToast('네이버 증권에서 종목 정보를 가져오는 중...', 'info');
 
       try {
         // Fetch to verify code
         const queryUrl = `https://polling.finance.naver.com/api/realtime?query=SERVICE_ITEM:${codeInput}`;
-        const data = await fetchWithProxy(queryUrl);
+        const data = await fetchWithProxy(queryUrl, 'euc-kr');
 
         if (data && data.resultCode === 'success' && data.result.areas[0].datas.length > 0) {
           const item = data.result.areas[0].datas[0];
@@ -1343,7 +785,8 @@
             sharesOwned: sharesOwned,
             targetRatio: targetRatio,
             lastPrice: item.nv,
-            priceChangeDirection: 'same' // 'up', 'down', 'same'
+            priceChangeDirection: 'same', // 'up', 'down', 'same'
+            type: assetType
           };
 
           state.stocks.push(newStock);
@@ -1379,10 +822,24 @@
     async function updateStockField(code, field, value) {
       const stock = state.stocks.find(s => s.code === code);
       if (stock) {
-        const numVal = parseFloat(value) || 0;
-        stock[field] = numVal;
+        if (field === 'type') {
+          stock[field] = value;
+        } else {
+          const numVal = parseFloat(value) || 0;
+          stock[field] = numVal;
+        }
         await saveState();
         updatePortfolioStats();
+        
+        if (field === 'targetRatio') {
+          document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        }
+        
+        if (field === 'type') {
+          renderStocksTable();
+          return;
+        }
+
         // Recalculate totals in table directly
         const evalValCell = document.getElementById(`eval-${code}`);
         const roiCell = document.getElementById(`roi-${code}`);
@@ -1431,6 +888,7 @@
           roiClass = roi >= 0 ? 'text-up' : 'text-down';
         }
 
+        const isCash = stock.code === 'CASH';
         const tr = document.createElement('tr');
         tr.id = `row-${stock.code}`;
         
@@ -1441,34 +899,50 @@
           tr.className = 'price-down';
         }
 
+        const typeSelectHtml = `
+          <select class="table-input" style="width: 85px; text-align: left; background-color: rgba(17, 24, 39, 0.5);" onchange="updateStockField('${stock.code}', 'type', this.value)">
+            <option value="stock" ${stock.type !== 'safe' ? 'selected' : ''}>주식</option>
+            <option value="safe" ${stock.type === 'safe' ? 'selected' : ''}>안전자산</option>
+          </select>
+        `;
+
+        const purchasePriceHtml = isCash ? 
+          `1` : 
+          `<input type="number" class="table-input" value="${stock.purchasePrice}" onchange="updateStockField('${stock.code}', 'purchasePrice', this.value)" min="0">`;
+        
+        const evalValueText = isCash ? formatMoney(stock.sharesOwned) : formatMoney(evalValue);
+        const actionHtml = `<button class="delete-action-btn" onclick="deleteStock('${stock.code}')">🗑️</button>`;
+
         tr.innerHTML = `
           <td data-label="종목">
-            <div style="font-weight: 600;">${stock.name}</div>
+            <div style="font-weight: 600; color: ${isCash ? 'var(--success)' : 'inherit'};">${stock.name}</div>
             <div style="font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-display);">${stock.code}</div>
           </td>
+          <td data-label="분류" style="text-align: center;">
+            ${typeSelectHtml}
+          </td>
           <td data-label="현재가" style="text-align: right; font-family: var(--font-display); font-weight: 500;">
-            ${formatMoney(stock.price)}
+            ${isCash ? '1원' : formatMoney(stock.price)}
           </td>
           <td data-label="매수단가 (원)" style="text-align: right;">
-            <input type="number" class="table-input" value="${stock.purchasePrice}" 
-              onchange="updateStockField('${stock.code}', 'purchasePrice', this.value)" min="0">
+            ${purchasePriceHtml}
           </td>
           <td data-label="보유수량 (주)" style="text-align: right;">
             <input type="number" class="table-input" value="${stock.sharesOwned}" 
               onchange="updateStockField('${stock.code}', 'sharesOwned', this.value)" min="0">
           </td>
           <td data-label="평가금액 (원)" id="eval-${stock.code}" style="text-align: right; font-family: var(--font-display); font-weight: 500;">
-            ${formatMoney(evalValue)}
+            ${evalValueText}
           </td>
           <td data-label="수익률 (ROI)" id="roi-${stock.code}" class="${roiClass}" style="text-align: right; font-family: var(--font-display); font-weight: 600;">
-            ${roi.toFixed(2)}%
+            ${isCash ? '-' : roi.toFixed(2) + '%'}
           </td>
           <td data-label="목표 비중" style="text-align: right;">
             <input type="number" class="table-input" value="${stock.targetRatio}" 
               onchange="updateStockField('${stock.code}', 'targetRatio', this.value)" min="0" max="100" style="width: 60px;"> %
           </td>
           <td data-label="작업" class="delete-btn-cell">
-            <button class="delete-action-btn" onclick="deleteStock('${stock.code}')">🗑️</button>
+            ${actionHtml}
           </td>
         `;
         
@@ -1482,9 +956,31 @@
       let totalEval = 0;
       let totalTargetRatio = 0;
 
+      let totalStockPurchase = 0;
+      let totalStockEval = 0;
+      let totalStockTarget = 0;
+
+      let totalSafePurchase = 0;
+      let totalSafeEval = 0;
+      let totalSafeTarget = 0;
+
       state.stocks.forEach(stock => {
-        totalPurchase += (stock.sharesOwned * stock.purchasePrice);
-        totalEval += (stock.sharesOwned * stock.price);
+        const isSafe = stock.type === 'safe';
+        const cost = stock.sharesOwned * stock.purchasePrice;
+        const evalVal = stock.sharesOwned * stock.price;
+
+        if (isSafe) {
+          totalSafePurchase += cost;
+          totalSafeEval += evalVal;
+          totalSafeTarget += stock.targetRatio;
+        } else {
+          totalStockPurchase += cost;
+          totalStockEval += evalVal;
+          totalStockTarget += stock.targetRatio;
+        }
+
+        totalPurchase += cost;
+        totalEval += evalVal;
         totalTargetRatio += stock.targetRatio;
       });
 
@@ -1505,6 +1001,19 @@
       const roiEl = document.getElementById('statTotalROI');
       roiEl.innerText = (totalROI >= 0 ? '+' : '') + totalROI.toFixed(2) + '%';
       roiEl.className = `stat-value ${totalROI >= 0 ? 'text-up' : 'text-down'}`;
+
+      // Update Stock vs Safe ratios
+      const actualStockPct = totalEval > 0 ? ((totalStockEval / totalEval) * 100).toFixed(1) : '0.0';
+      const actualSafePct = totalEval > 0 ? ((totalSafeEval / totalEval) * 100).toFixed(1) : '0.0';
+      
+      const elStockRatio = document.getElementById('statStockRatio');
+      if (elStockRatio) {
+        elStockRatio.innerText = `${actualStockPct}% / ${totalStockTarget}%`;
+      }
+      const elSafeRatio = document.getElementById('statSafeRatio');
+      if (elSafeRatio) {
+        elSafeRatio.innerText = `${actualSafePct}% / ${totalSafeTarget}%`;
+      }
 
       // Update Bottom Table summary
       document.getElementById('totalEvalValue').innerText = formatMoney(totalEval);
@@ -1543,13 +1052,14 @@
     // Real-time stock polling engine
     function startPricePolling() {
       if (priceUpdateInterval) clearInterval(priceUpdateInterval);
+      countdownTimer = PRICE_POLL_SECONDS;
 
-      // Interval ticker: triggers Naver fetch every 3 seconds
+      // Interval ticker: triggers Naver fetch on a controlled cadence to avoid proxy throttling.
       priceUpdateInterval = setInterval(async () => {
+        if (pricePollInFlight) return;
         countdownTimer--;
         
         if (countdownTimer <= 0) {
-          countdownTimer = 3;
           document.getElementById('tickerText').innerText = '네이버 시세 업데이트 중...';
           await pollPrices();
         } else {
@@ -1564,12 +1074,17 @@
         return;
       }
 
-      const codes = state.stocks.map(s => s.code).join(',');
+      const pollStocks = state.stocks.filter(s => s.code !== 'CASH');
+      if (pollStocks.length === 0) return;
+
+      const codes = pollStocks.map(s => s.code).join(',');
       const url = `https://polling.finance.naver.com/api/realtime?query=SERVICE_ITEM:${codes}`;
 
       try {
-        const data = await fetchWithProxy(url);
+        pricePollInFlight = true;
+        const data = await fetchWithProxy(url, 'euc-kr');
         if (data && data.resultCode === 'success' && data.result.areas[0].datas.length > 0) {
+          consecutivePriceFailures = 0;
           const fetchedItems = data.result.areas[0].datas;
 
           fetchedItems.forEach(item => {
@@ -1592,7 +1107,10 @@
           });
 
           // Save & Redraw
-          saveStateToLocal(); // Save prices locally (don't write to data.json on every 3s tick to preserve SSD/disk health)
+          saveStateToLocal();
+          if (state.syncMode === 'file') {
+            await saveStateToFile();
+          }
           renderStocksTable();
           updatePortfolioStats();
 
@@ -1609,8 +1127,14 @@
           document.getElementById('tickerText').innerText = '시세 반영 완료';
         }
       } catch (err) {
-        console.error('Polling fetch failed', err);
-        document.getElementById('tickerText').innerText = 'CORS 프록시 연결 장애';
+        consecutivePriceFailures++;
+        console.warn('Price polling failed', err);
+        document.getElementById('tickerText').innerText = window.location.protocol === 'file:'
+          ? '시세 조회 실패: 로컬 서버로 실행 권장'
+          : '시세 조회 실패: 잠시 후 재시도';
+      } finally {
+        pricePollInFlight = false;
+        countdownTimer = consecutivePriceFailures >= 2 ? PRICE_POLL_BACKOFF_SECONDS : PRICE_POLL_SECONDS;
       }
     }
 
@@ -1739,6 +1263,9 @@
               <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.15rem;">
                 현재: ${s.sharesOwned}주 (${((s.sharesOwned * s.price / currentEvalTotal) * 100 || 0).toFixed(1)}%) 
                 ➔ <strong>목표: ${targetShares}주 (${resultingRatio.toFixed(1)}%)</strong>
+              </div>
+              <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.2rem; font-family: var(--font-display);">
+                거래 단가(현재가): 1주당 ${formatMoney(s.price)}
               </div>
             </div>
             <div style="text-align:right;">
@@ -1877,6 +1404,9 @@
                 현재: ${s.sharesOwned}주 (${((s.sharesOwned * s.price / currentEvalTotal) * 100 || 0).toFixed(1)}%) 
                 ➔ <strong>목표: ${targetShares}주 (${resultingRatio.toFixed(1)}%)</strong>
               </div>
+              <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.2rem; font-family: var(--font-display);">
+                거래 단가(현재가): 1주당 ${formatMoney(s.price)}
+              </div>
             </div>
             <div style="text-align:right;">
               <span class="action-badge ${badgeClass}">${actionText}</span>
@@ -2000,6 +1530,430 @@
       } else {
         showToast('반영할 변경사항이 없습니다.', 'info');
       }
+    }
+
+    // Market Compass & Preset Logic
+    async function applyPresetRatio(safeRatio, type, btnEl) {
+      const stockRatio = 100 - safeRatio;
+      
+      if (btnEl) {
+        document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        btnEl.classList.add('active');
+      }
+      
+      const stocks = state.stocks.filter(s => s.type === 'stock' || !s.type);
+      const safes = state.stocks.filter(s => s.type === 'safe');
+
+      if (safes.length === 0 && safeRatio > 0) {
+        showToast('포트폴리오에 안전자산(채권/금 등)으로 분류된 종목이 없습니다. 먼저 종목을 추가하거나 기존 종목의 분류를 "안전자산"으로 변경해 주세요.', 'warning');
+        return;
+      }
+
+      const totalCurrentStockTarget = stocks.reduce((sum, s) => sum + s.targetRatio, 0);
+      const totalCurrentSafeTarget = safes.reduce((sum, s) => sum + s.targetRatio, 0);
+
+      // Scale stocks
+      if (stocks.length > 0) {
+        stocks.forEach(s => {
+          if (totalCurrentStockTarget === 0) {
+            s.targetRatio = parseFloat((stockRatio / stocks.length).toFixed(1));
+          } else {
+            s.targetRatio = parseFloat(((s.targetRatio / totalCurrentStockTarget) * stockRatio).toFixed(1));
+          }
+        });
+      }
+
+      // Scale safes
+      if (safes.length > 0) {
+        safes.forEach(s => {
+          if (totalCurrentSafeTarget === 0) {
+            s.targetRatio = parseFloat((safeRatio / safes.length).toFixed(1));
+          } else {
+            s.targetRatio = parseFloat(((s.targetRatio / totalCurrentSafeTarget) * safeRatio).toFixed(1));
+          }
+        });
+      }
+
+      // Adjust any rounding errors to strictly make it 100
+      const currentTotal = state.stocks.reduce((sum, s) => sum + s.targetRatio, 0);
+      if (currentTotal !== 100) {
+        const adjustStock = stocks[0] || safes[0];
+        if (adjustStock) {
+          adjustStock.targetRatio += parseFloat((100 - currentTotal).toFixed(1));
+          adjustStock.targetRatio = parseFloat(adjustStock.targetRatio.toFixed(1));
+        }
+      }
+
+      await saveState();
+      renderStocksTable();
+      updatePortfolioStats();
+      
+      let msg = `주식 ${stockRatio}% / 안전자산 ${safeRatio}% 프리셋이 적용되었습니다.`;
+      if (type === 'stage2a') msg = '위기 감지 1 비중(주식 60% / 안전자산 40%)이 적용되었습니다.';
+      if (type === 'stage2b') msg = '위기 감지 2 또는 폭락 진행 비중(주식 45% / 안전자산 55%)이 적용되었습니다.';
+      if (type === 'stage4a') msg = '바닥 반등 1차 매수 비중(주식 60% / 안전자산 40%)이 적용되었습니다.';
+      if (type === 'stage4b') msg = '바닥 반등 2차 매수 비중(주식 70% / 안전자산 30%)이 적용되었습니다.';
+      showToast(msg, 'success');
+    }
+
+    async function fetchMarketIndicators() {
+      const fetchedAt = new Date();
+      const result = {
+        vix: null,
+        previousVix: null,
+        yieldCurve: null,
+        fearGreed: null,
+        highYieldSpread: null,
+        previousHighYieldSpread: null,
+        unemploymentRate: null,
+        previousUnemploymentRate: null,
+        fetchedAt,
+        sourceTimes: {
+          vix: null,
+          yieldCurve: null,
+          fearGreed: null,
+          highYieldSpread: null,
+          unemploymentRate: null
+        },
+        errors: []
+      };
+
+      // 1. Fetch VIX from Yahoo Finance
+      try {
+        const vixUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/^VIX?interval=1d&range=5d';
+        const data = await fetchWithProxy(vixUrl, 'utf-8');
+        if (data && data.chart && data.chart.result && data.chart.result[0]) {
+          const chart = data.chart.result[0];
+          const meta = chart.meta || {};
+          const closes = ((chart.indicators || {}).quote || [])[0]?.close || [];
+          const validCloses = closes.filter(value => typeof value === 'number');
+          const fetchedVix = meta.regularMarketPrice;
+          if (typeof fetchedVix === 'number') result.vix = parseFloat(fetchedVix.toFixed(2));
+          else if (validCloses.length > 0) result.vix = parseFloat(validCloses[validCloses.length - 1].toFixed(2));
+          if (validCloses.length >= 2) result.previousVix = parseFloat(validCloses[validCloses.length - 2].toFixed(2));
+          if (typeof meta.regularMarketTime === 'number') {
+            result.sourceTimes.vix = new Date(meta.regularMarketTime * 1000);
+          }
+        }
+        if (result.vix === null) throw new Error('VIX value missing');
+      } catch (err) {
+        console.error('Failed to fetch VIX', err);
+        result.errors.push('VIX');
+      }
+
+      // 2. Fetch T10Y2Y from FRED CSV
+      try {
+        const fredUrl = 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=T10Y2Y';
+        const csvText = await fetchTextWithProxy(fredUrl, 'utf-8');
+        const lines = csvText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        for (let i = lines.length - 1; i >= 1; i--) {
+          const parts = lines[i].split(',');
+          if (parts.length === 2) {
+            const val = parseFloat(parts[1]);
+            if (!isNaN(val)) {
+              result.yieldCurve = parseFloat(val.toFixed(3));
+              result.sourceTimes.yieldCurve = parts[0];
+              break;
+            }
+          }
+        }
+        if (result.yieldCurve === null) throw new Error('Yield curve value missing');
+      } catch (err) {
+        console.error('Failed to fetch Yield Curve', err);
+        result.errors.push('장단기 금리차');
+      }
+
+      // 3. Fetch CNN Fear & Greed Index
+      try {
+        const cnnUrl = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata';
+        const cnnData = await fetchWithProxy(cnnUrl, 'utf-8');
+        if (cnnData && cnnData.fear_and_greed && typeof cnnData.fear_and_greed.score === 'number') {
+          result.fearGreed = Math.round(cnnData.fear_and_greed.score);
+          result.sourceTimes.fearGreed = parseMarketTimestamp(cnnData.fear_and_greed.timestamp) ||
+            parseMarketTimestamp(cnnData.fear_and_greed.updated_at) ||
+            parseMarketTimestamp(cnnData.fear_and_greed.last_updated);
+        }
+        if (result.fearGreed === null) throw new Error('Fear & Greed value missing');
+      } catch (err) {
+        console.error('Failed to fetch Fear & Greed', err);
+        result.errors.push('CNN 공포/탐욕 지수');
+      }
+
+      // 4. Fetch High Yield Option-Adjusted Spread from FRED
+      try {
+        const hyData = await fetchFredLatestValues('BAMLH0A0HYM2');
+        result.highYieldSpread = hyData.current.value;
+        result.previousHighYieldSpread = hyData.previous?.value ?? null;
+        result.sourceTimes.highYieldSpread = hyData.current.date;
+      } catch (err) {
+        console.error('Failed to fetch High Yield Spread', err);
+        result.errors.push('하이일드 스프레드');
+      }
+
+      // 5. Fetch US Unemployment Rate from FRED
+      try {
+        const unrateData = await fetchFredLatestValues('UNRATE');
+        result.unemploymentRate = unrateData.current.value;
+        result.previousUnemploymentRate = unrateData.previous?.value ?? null;
+        result.sourceTimes.unemploymentRate = unrateData.current.date;
+      } catch (err) {
+        console.error('Failed to fetch Unemployment Rate', err);
+        result.errors.push('미국 실업률');
+      }
+
+      return result;
+    }
+
+    async function fetchFredLatestValues(seriesId) {
+      const fredUrl = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}`;
+      const csvText = await fetchTextWithProxy(fredUrl, 'utf-8');
+      const lines = csvText.split('\n').map(line => line.trim()).filter(Boolean);
+      const values = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(',');
+        if (parts.length !== 2) continue;
+
+        const value = parseFloat(parts[1]);
+        if (!Number.isNaN(value)) {
+          values.push({ date: parts[0], value: parseFloat(value.toFixed(3)) });
+        }
+      }
+
+      if (values.length === 0) throw new Error(`${seriesId} value missing`);
+      return {
+        current: values[values.length - 1],
+        previous: values.length >= 2 ? values[values.length - 2] : null
+      };
+    }
+
+    function parseMarketTimestamp(value) {
+      if (!value) return null;
+
+      if (typeof value === 'number') {
+        return new Date(value > 1000000000000 ? value : value * 1000);
+      }
+
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (/^\d+$/.test(trimmed)) {
+          const numericValue = Number(trimmed);
+          return new Date(numericValue > 1000000000000 ? numericValue : numericValue * 1000);
+        }
+
+        const parsed = new Date(trimmed);
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+      }
+
+      return null;
+    }
+
+    function formatMarketDateTime(value) {
+      if (!value) return '-';
+      if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+
+      return new Intl.DateTimeFormat('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+    }
+
+    function parseMarketDateOnly(value) {
+      if (!value) return null;
+      if (value instanceof Date) return value;
+      if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return new Date(`${value}T00:00:00`);
+      }
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function getAgeInDays(value, now = new Date()) {
+      const date = parseMarketDateOnly(value);
+      if (!date) return null;
+      return Math.max(0, Math.floor((now - date) / 86400000));
+    }
+
+    function formatAgeLabel(value, cadence) {
+      const days = getAgeInDays(value);
+      if (days === null) return `${cadence}: 시점 확인 불가`;
+      if (days === 0) return `${cadence}: 당일`;
+      if (days === 1) return `${cadence}: 1일 전`;
+      return `${cadence}: ${days}일 전`;
+    }
+
+    async function evaluateMarketStage() {
+      const elStage = document.getElementById('compassStage');
+      const elAdvice = document.getElementById('compassAdvice');
+      const elUpdated = document.getElementById('compassUpdated');
+      const elFreshness = document.getElementById('compassFreshness');
+      
+      elStage.innerHTML = `<span style="font-size:0.95rem; color:var(--accent-color); font-weight: 500;">🔄 실시간 금융 지표 수집 중...</span>`;
+      elUpdated.innerText = '데이터 시점: 수집 중...';
+      elFreshness.innerText = '지표 주기: 수집 중...';
+      
+      let data;
+      try {
+        data = await fetchMarketIndicators();
+      } catch (err) {
+        console.error('Indicator fetch failed', err);
+        data = {
+          vix: null,
+          previousVix: null,
+          yieldCurve: null,
+          fearGreed: null,
+          highYieldSpread: null,
+          previousHighYieldSpread: null,
+          unemploymentRate: null,
+          previousUnemploymentRate: null,
+          fetchedAt: new Date(),
+          sourceTimes: {},
+          errors: ['전체 지표']
+        };
+      }
+
+      const criticalErrors = data.errors.filter(error => error !== 'CNN 공포/탐욕 지수');
+      if (criticalErrors.length > 0) {
+        const failedText = `<span style="color:var(--danger); font-weight:600; font-size:0.82rem;">값 불러오기 실패</span>`;
+        document.getElementById('indVix').innerHTML = data.vix === null ? failedText : `${data.vix}`;
+        document.getElementById('indYield').innerHTML = data.yieldCurve === null ? failedText : `${data.yieldCurve}%`;
+        document.getElementById('indFg').innerHTML = data.fearGreed === null ? failedText : `${data.fearGreed}`;
+        document.getElementById('indHySpread').innerHTML = data.highYieldSpread === null ? failedText : `${data.highYieldSpread}%`;
+        document.getElementById('indUnrate').innerHTML = data.unemploymentRate === null ? failedText : `${data.unemploymentRate}%`;
+        elStage.innerHTML = `<span style="color:var(--danger); font-weight:600;">시장 지표 값 불러오기 실패</span>`;
+        elUpdated.innerText = `마지막 시도: ${formatMarketDateTime(data.fetchedAt)}`;
+        elFreshness.innerText = window.location.protocol === 'file:'
+          ? '원인: file:// 실행은 origin이 null이라 공개 CORS 프록시가 자주 차단됩니다. start-server.bat으로 로컬 서버를 실행해 주세요.'
+          : '원인: 외부 데이터 제공처 또는 공개 프록시 응답 실패입니다. 잠시 후 다시 시도해 주세요.';
+        elAdvice.innerHTML = `핵심 지표(${criticalErrors.join(', ')})를 가져오지 못해 시장 국면을 계산하지 않았습니다. 잠시 후 다시 갱신해 주세요.`;
+        showToast('시장 나침반 지표 값을 불러오지 못했습니다.', 'error');
+        return;
+      }
+
+      elUpdated.innerText =
+        `데이터 시점: VIX ${formatMarketDateTime(data.sourceTimes.vix || data.fetchedAt)} · ` +
+        `금리차 ${formatMarketDateTime(data.sourceTimes.yieldCurve || data.fetchedAt)} · ` +
+        `하이일드 ${formatMarketDateTime(data.sourceTimes.highYieldSpread || data.fetchedAt)} · ` +
+        `실업률 ${formatMarketDateTime(data.sourceTimes.unemploymentRate || data.fetchedAt)} · ` +
+        `공포/탐욕 ${formatMarketDateTime(data.sourceTimes.fearGreed || data.fetchedAt)} ` +
+        `(확인 ${formatMarketDateTime(data.fetchedAt)})`;
+      elFreshness.innerText =
+        `지표 주기: ${formatAgeLabel(data.sourceTimes.vix || data.fetchedAt, 'VIX 장중/종가')} · ` +
+        `${formatAgeLabel(data.sourceTimes.yieldCurve || data.fetchedAt, '금리차 일간')} · ` +
+        `${formatAgeLabel(data.sourceTimes.highYieldSpread || data.fetchedAt, '하이일드 일간')} · ` +
+        `${formatAgeLabel(data.sourceTimes.unemploymentRate || data.fetchedAt, '실업률 월간')} ` +
+        '(미국 지표라 한국 오전에는 전일/전전일 값이 정상일 수 있습니다.)';
+      
+      // VIX HTML
+      let vixText = '';
+      if (data.vix >= 40) {
+        vixText = `${data.vix} <span style="color:var(--danger); font-weight:600; font-size:0.75rem;">(극단적 공포/바닥 시그널)</span>`;
+      } else if (data.vix >= 30) {
+        vixText = `${data.vix} <span style="color:var(--danger); font-weight:600; font-size:0.75rem;">(시장 패닉/위험)</span>`;
+      } else if (data.vix >= 20) {
+        vixText = `${data.vix} <span style="color:var(--warning); font-size:0.75rem;">(변동성 증가)</span>`;
+      } else {
+        vixText = `${data.vix} <span style="color:var(--success); font-size:0.75rem;">(안정)</span>`;
+      }
+      document.getElementById('indVix').innerHTML = vixText;
+
+      // Yield Curve HTML
+      let yieldText = '';
+      if (data.yieldCurve >= 0) {
+        yieldText = `${data.yieldCurve}% <span style="color:var(--danger); font-weight:600; font-size:0.75rem;">(역전 해소 / 침체 경보🚨)</span>`;
+      } else {
+        yieldText = `${data.yieldCurve}% <span style="color:var(--success); font-size:0.75rem;">(역전 상태 유지/안정)</span>`;
+      }
+      document.getElementById('indYield').innerHTML = yieldText;
+
+      // Fear & Greed HTML
+      let fgText = '';
+      if (data.fearGreed === null) {
+        fgText = `<span style="color:var(--danger); font-weight:600; font-size:0.82rem;">값 불러오기 실패</span>`;
+      } else if (data.fearGreed >= 75) {
+        fgText = `${data.fearGreed} <span style="color:var(--danger); font-weight:600; font-size:0.75rem;">(극단적 탐욕)</span>`;
+      } else if (data.fearGreed >= 50) {
+        fgText = `${data.fearGreed} <span style="color:var(--warning); font-size:0.75rem;">(탐욕)</span>`;
+      } else if (data.fearGreed >= 30) {
+        fgText = `${data.fearGreed} <span style="color:var(--info); font-size:0.75rem;">(공포)</span>`;
+      } else {
+        fgText = `${data.fearGreed} <span style="color:var(--success); font-weight:600; font-size:0.75rem;">(극단적 공포/저가 매수 구간)</span>`;
+      }
+      document.getElementById('indFg').innerHTML = fgText;
+
+      // High Yield Spread HTML
+      const hyTrend = data.previousHighYieldSpread === null ? 0 : data.highYieldSpread - data.previousHighYieldSpread;
+      let hyText = '';
+      if (data.highYieldSpread >= 5 || hyTrend >= 0.5) {
+        hyText = `${data.highYieldSpread}% <span style="color:var(--danger); font-weight:600; font-size:0.75rem;">(신용 스트레스 급등)</span>`;
+      } else if (hyTrend > 0) {
+        hyText = `${data.highYieldSpread}% <span style="color:var(--warning); font-size:0.75rem;">(상승 중)</span>`;
+      } else if (hyTrend < 0) {
+        hyText = `${data.highYieldSpread}% <span style="color:var(--success); font-size:0.75rem;">(하락 반전)</span>`;
+      } else {
+        hyText = `${data.highYieldSpread}% <span style="color:var(--text-secondary); font-size:0.75rem;">(변화 확인 중)</span>`;
+      }
+      document.getElementById('indHySpread').innerHTML = hyText;
+
+      // Unemployment Rate HTML
+      const unemploymentTrend = data.previousUnemploymentRate === null ? 0 : data.unemploymentRate - data.previousUnemploymentRate;
+      let unrateText = '';
+      if (unemploymentTrend > 0) {
+        unrateText = `${data.unemploymentRate}% <span style="color:var(--warning); font-weight:600; font-size:0.75rem;">(상승 추세)</span>`;
+      } else if (unemploymentTrend < 0) {
+        unrateText = `${data.unemploymentRate}% <span style="color:var(--success); font-size:0.75rem;">(하락/개선)</span>`;
+      } else {
+        unrateText = `${data.unemploymentRate}% <span style="color:var(--text-secondary); font-size:0.75rem;">(전월 동일)</span>`;
+      }
+      document.getElementById('indUnrate').innerHTML = unrateText;
+
+      // Stage Decision Logic
+      let stageTitle = "";
+      let advice = "";
+
+      const totalEval = state.stocks.reduce((sum, stock) => sum + (stock.sharesOwned * stock.price), 0);
+      const stockEval = state.stocks
+        .filter(stock => stock.type === 'stock' || !stock.type)
+        .reduce((sum, stock) => sum + (stock.sharesOwned * stock.price), 0);
+      const currentStockRatio = totalEval > 0 ? (stockEval / totalEval) * 100 : 0;
+      const vixFallingFromStress = data.previousVix !== null && data.previousVix >= 35 && data.vix < data.previousVix;
+      const highYieldRising = data.previousHighYieldSpread !== null && data.highYieldSpread > data.previousHighYieldSpread;
+      const highYieldRisingFromStress = highYieldRising && data.highYieldSpread >= 4;
+      const highYieldFallingFromStress = data.previousHighYieldSpread !== null && data.previousHighYieldSpread >= 5 && data.highYieldSpread < data.previousHighYieldSpread;
+      const unemploymentRising = data.previousUnemploymentRate !== null && data.unemploymentRate > data.previousUnemploymentRate;
+
+      if (highYieldFallingFromStress) {
+        stageTitle = "🌅 4단계-2: 바닥 반등 2차 매수";
+        advice = "하이일드 스프레드가 하락 반전해 신용 스트레스가 진정되는 흐름입니다. 안전자산을 추가로 주식으로 옮겨 평상시 비중으로 복귀합니다.<br><strong>추천 액션: 주식 70% / 안전자산 30%</strong>";
+      } else if (vixFallingFromStress) {
+        stageTitle = "🌅 4단계-1: 바닥 확인 및 1차 매수";
+        advice = "VIX가 35 이상 스트레스 구간을 찍은 뒤 고점을 낮추며 꺾이기 시작했습니다. 안전자산 일부를 활용해 정찰대 성격의 1차 매수를 진행합니다.<br><strong>추천 액션: 주식 60% / 안전자산 40%</strong>";
+      } else if (data.vix >= 30 || data.highYieldSpread >= 5 || highYieldRisingFromStress) {
+        stageTitle = "⛈️ 3단계: 폭락 진행 (태풍)";
+        advice = "VIX가 30 이상이거나 하이일드 스프레드가 급등/상승 중인 구간입니다. 떨어지는 칼날을 잡지 않고 2단계에서 확보한 안전자산을 유지합니다.<br><strong>추천 액션: 주식 45% / 안전자산 55% 유지</strong>";
+      } else if (data.vix >= 25 || unemploymentRising) {
+        stageTitle = "⛅ 2단계-2: 위기 감지 (거시경제 악화)";
+        advice = "VIX가 25를 돌파했거나 실업률이 상승 추세입니다. 주식 비중을 추가로 15% 줄여 안전자산을 절반 이상 확보합니다.<br><strong>추천 액션: 주식 45% / 안전자산 55%</strong>";
+      } else if (data.yieldCurve >= 0) {
+        stageTitle = "⛅ 2단계-1: 위기 감지 (금리차 정상화)";
+        advice = "마이너스였던 장단기 금리차가 0을 뚫고 플러스로 정상화된 경고 구간입니다. 한 번에 도망치지 않고 주식 비중을 10% 줄입니다.<br><strong>추천 액션: 주식 60% / 안전자산 40%</strong>";
+      } else {
+        stageTitle = "☀️ 1단계: 평상시 (날씨 맑음)";
+        const trimAdvice = currentStockRatio > 75
+          ? `<br><strong>현재 주식 비중이 ${currentStockRatio.toFixed(1)}%로 75%를 넘었습니다. 초과분을 매도해 주식 70% / 안전자산 30%로 복구하세요.</strong>`
+          : '<br><strong>추천 액션: 주식 70% / 안전자산 30% 유지</strong>';
+        advice = `VIX가 20 이하 안정권이고 장단기 금리차가 마이너스 상태로 유지되는 평상시 구간입니다.${trimAdvice}`;
+      }
+
+      elStage.innerHTML = stageTitle;
+      elAdvice.innerHTML = advice;
     }
   </script>
 </body>

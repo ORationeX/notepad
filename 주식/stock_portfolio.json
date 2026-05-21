@@ -1,0 +1,35 @@
+[
+  {
+    "code": "133690",
+    "name": "TIGER 미국나스닥100",
+    "price": 194960,
+    "purchasePrice": 0,
+    "sharesOwned": 0,
+    "targetRatio": 60,
+    "lastPrice": 194500,
+    "priceChangeDirection": "down",
+    "type": "stock"
+  },
+  {
+    "code": "484790",
+    "name": "KODEX 미국30년국채액티브(H)",
+    "price": 8425,
+    "purchasePrice": 0,
+    "sharesOwned": 0,
+    "targetRatio": 20,
+    "lastPrice": 8425,
+    "priceChangeDirection": "same",
+    "type": "safe"
+  },
+  {
+    "code": "0072R0",
+    "name": "TIGER KRX금현물",
+    "price": 14420,
+    "purchasePrice": 0,
+    "sharesOwned": 0,
+    "targetRatio": 20,
+    "lastPrice": 14495,
+    "priceChangeDirection": "up",
+    "type": "safe"
+  }
+]
