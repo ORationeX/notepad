@@ -406,8 +406,28 @@ def main():
 
     # 3. Bulk download historical daily data for the past 2 years (approx 500 trading days)
     print("Downloading historical data using yfinance...")
+    
+    # Ticker mappings for yfinance (e.g. recent ticker changes where yfinance doesn't have 2y historical data for the new ticker yet)
+    YF_TICKER_MAPPINGS = {
+        "BNY": "BK"  # BNY Mellon changed ticker from BK to BNY on May 21, 2026. yfinance does not have historical data for BNY yet.
+    }
+    
+    # Map tickers for download
+    download_tickers = sorted(list(set(YF_TICKER_MAPPINGS.get(t, t) for t in all_tickers)))
+    
     try:
-        raw_data = yf.download(all_tickers, period="2y", group_by="ticker", auto_adjust=True, threads=True)
+        raw_data = yf.download(download_tickers, period="2y", group_by="ticker", auto_adjust=True, threads=True)
+        
+        # Duplicate/map downloaded data under original ticker names in raw_data
+        if not raw_data.empty and isinstance(raw_data.columns, pd.MultiIndex):
+            reverse_mappings = {v: k for k, v in YF_TICKER_MAPPINGS.items()}
+            existing_tickers = raw_data.columns.levels[0]
+            for yf_ticker, orig_ticker in reverse_mappings.items():
+                if yf_ticker in existing_tickers and orig_ticker not in existing_tickers:
+                    # Duplicate columns of yf_ticker under the name orig_ticker
+                    mapped_data = raw_data[yf_ticker].copy()
+                    mapped_data.columns = pd.MultiIndex.from_product([[orig_ticker], mapped_data.columns])
+                    raw_data = pd.concat([raw_data, mapped_data], axis=1)
     except Exception as e:
         print(f"Fatal error during download: {e}")
         raw_data = pd.DataFrame()
