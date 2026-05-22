@@ -416,7 +416,7 @@ def main():
     download_tickers = sorted(list(set(YF_TICKER_MAPPINGS.get(t, t) for t in all_tickers)))
     
     try:
-        raw_data = yf.download(download_tickers, period="2y", group_by="ticker", auto_adjust=True, threads=True)
+        raw_data = yf.download(download_tickers, period="2y", group_by="ticker", auto_adjust=False, threads=True)
         
         # Duplicate/map downloaded data under original ticker names in raw_data
         if not raw_data.empty and isinstance(raw_data.columns, pd.MultiIndex):
