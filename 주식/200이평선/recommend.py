@@ -225,9 +225,13 @@ def get_korea_top100():
     return companies
 
 def analyze_stocks(tickers, companies_map, raw_data):
-    """Analyzes moving averages and breakout conditions for given tickers. Returns (recommended, filtered, failed)."""
-    recommended = []
-    filtered = []
+    """Analyzes moving averages and RSI conditions for given tickers.
+    Returns (ma_recommended, ma_filtered, rsi_recommended, rsi_filtered, failed).
+    """
+    ma_recommended = []
+    ma_filtered = []
+    rsi_recommended = []
+    rsi_filtered = []
     failed = []
 
     for ticker in tickers:
@@ -259,12 +263,21 @@ def analyze_stocks(tickers, companies_map, raw_data):
             df['SMA30'] = df['Close'].rolling(window=30).mean()
             df['SMA200'] = df['Close'].rolling(window=200).mean()
 
-            # Check if SMA200 is available for the latest row
-            if pd.isna(df['SMA200'].iloc[-1]):
+            # Calculate RSI (14)
+            delta = df['Close'].diff()
+            gain = delta.clip(lower=0)
+            loss = -delta.clip(upper=0)
+            avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
+            avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
+            rs = avg_gain / avg_loss.replace(0, 1e-9)
+            df['RSI'] = 100 - (100 / (1 + rs))
+
+            # Check if SMA200 and RSI are available for the latest row
+            if pd.isna(df['SMA200'].iloc[-1]) or pd.isna(df['RSI'].iloc[-1]):
                 failed.append({
                     "ticker": ticker,
                     "name": name,
-                    "reason": "이동평균선 계산 실패 (200일선 데이터 누락)"
+                    "reason": "이동평균선 또는 RSI 계산 실패 (데이터 누락)"
                 })
                 continue
 
@@ -273,6 +286,7 @@ def analyze_stocks(tickers, companies_map, raw_data):
             sma7_today = float(df['SMA7'].iloc[-1])
             sma30_today = float(df['SMA30'].iloc[-1])
             sma200_today = float(df['SMA200'].iloc[-1])
+            rsi_today = float(df['RSI'].iloc[-1])
 
             # Filtering conditions:
             # 1. 7일선 > 200일선
@@ -336,6 +350,7 @@ def analyze_stocks(tickers, companies_map, raw_data):
             sma7_hist = [round(float(v), 2) if not pd.isna(v) else None for v in chart_df['SMA7']]
             sma30_hist = [round(float(v), 2) if not pd.isna(v) else None for v in chart_df['SMA30']]
             sma200_hist = [round(float(v), 2) if not pd.isna(v) else None for v in chart_df['SMA200']]
+            rsi_hist = [round(float(v), 2) if not pd.isna(v) else None for v in chart_df['RSI']]
 
             stock_info = {
                 "ticker": ticker,
@@ -344,6 +359,7 @@ def analyze_stocks(tickers, companies_map, raw_data):
                 "sma7": round(sma7_today, 2),
                 "sma30": round(sma30_today, 2),
                 "sma200": round(sma200_today, 2),
+                "rsi": round(rsi_today, 2),
                 "breakout_days_ago": breakout_days_ago,
                 "breakout_200_days_ago": breakout_200_days_ago,
                 "history": {
@@ -351,16 +367,24 @@ def analyze_stocks(tickers, companies_map, raw_data):
                     "prices": prices,
                     "sma7": sma7_hist,
                     "sma30": sma30_hist,
-                    "sma200": sma200_hist
+                    "sma200": sma200_hist,
+                    "rsi": rsi_hist
                 }
             }
 
+            # MA Screener lists
             if cond1 and cond2 and cond3 and cond4:
-                recommended.append(stock_info)
+                ma_recommended.append(stock_info)
             else:
-                filtered_stock = stock_info.copy()
-                filtered_stock.pop("history")
-                filtered.append(filtered_stock)
+                filtered_stock = {k: v for k, v in stock_info.items() if k != "history"}
+                ma_filtered.append(filtered_stock)
+
+            # RSI Screener lists
+            if rsi_today < 30:
+                rsi_recommended.append(stock_info)
+            else:
+                filtered_stock = {k: v for k, v in stock_info.items() if k != "history"}
+                rsi_filtered.append(filtered_stock)
 
         except Exception as e:
             failed.append({
@@ -369,7 +393,7 @@ def analyze_stocks(tickers, companies_map, raw_data):
                 "reason": f"오류 발생 ({str(e)})"
             })
             
-    return recommended, filtered, failed
+    return ma_recommended, ma_filtered, rsi_recommended, rsi_filtered, failed
 
 def main():
     # 2. Get tickers and names
@@ -434,22 +458,22 @@ def main():
 
     # 4. Process each group separately
     print("Analyzing S&P 100 stocks...")
-    top100_recommended, top100_filtered, top100_failed = analyze_stocks(
+    top100_ma_rec, top100_ma_filt, top100_rsi_rec, top100_rsi_filt, top100_failed = analyze_stocks(
         list(sp100_companies.keys()), sp100_companies, raw_data
     )
 
     print("Analyzing S&P 500 stocks...")
-    top500_recommended, top500_filtered, top500_failed = analyze_stocks(
+    top500_ma_rec, top500_ma_filt, top500_rsi_rec, top500_rsi_filt, top500_failed = analyze_stocks(
         list(sp500_companies.keys()), sp500_companies, raw_data
     )
 
     print("Analyzing Nasdaq 100 stocks...")
-    nasdaq100_recommended, nasdaq100_filtered, nasdaq100_failed = analyze_stocks(
+    nasdaq100_ma_rec, nasdaq100_ma_filt, nasdaq100_rsi_rec, nasdaq100_rsi_filt, nasdaq100_failed = analyze_stocks(
         list(nasdaq100_companies.keys()), nasdaq100_companies, raw_data
     )
 
     print("Analyzing Korean Top 100 stocks...")
-    korea100_recommended, korea100_filtered, korea100_failed = analyze_stocks(
+    korea100_ma_rec, korea100_ma_filt, korea100_rsi_rec, korea100_rsi_filt, korea100_failed = analyze_stocks(
         list(korea100_companies.keys()), korea100_companies, raw_data
     )
 
@@ -457,48 +481,100 @@ def main():
     result_data = {
         "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "top100": {
-            "stats": {
-                "total": len(sp100_companies),
-                "recommended": len(top100_recommended),
-                "filtered": len(top100_filtered),
-                "failed": len(top100_failed)
+            "ma": {
+                "stats": {
+                    "total": len(sp100_companies),
+                    "recommended": len(top100_ma_rec),
+                    "filtered": len(top100_ma_filt),
+                    "failed": len(top100_failed)
+                },
+                "recommended": top100_ma_rec,
+                "filtered": top100_ma_filt,
+                "failed": top100_failed
             },
-            "recommended": top100_recommended,
-            "filtered": top100_filtered,
-            "failed": top100_failed
+            "rsi": {
+                "stats": {
+                    "total": len(sp100_companies),
+                    "recommended": len(top100_rsi_rec),
+                    "filtered": len(top100_rsi_filt),
+                    "failed": len(top100_failed)
+                },
+                "recommended": top100_rsi_rec,
+                "filtered": top100_rsi_filt,
+                "failed": top100_failed
+            }
         },
         "top500": {
-            "stats": {
-                "total": len(sp500_companies),
-                "recommended": len(top500_recommended),
-                "filtered": len(top500_filtered),
-                "failed": len(top500_failed)
+            "ma": {
+                "stats": {
+                    "total": len(sp500_companies),
+                    "recommended": len(top500_ma_rec),
+                    "filtered": len(top500_ma_filt),
+                    "failed": len(top500_failed)
+                },
+                "recommended": top500_ma_rec,
+                "filtered": top500_ma_filt,
+                "failed": top500_failed
             },
-            "recommended": top500_recommended,
-            "filtered": top500_filtered,
-            "failed": top500_failed
+            "rsi": {
+                "stats": {
+                    "total": len(sp500_companies),
+                    "recommended": len(top500_rsi_rec),
+                    "filtered": len(top500_rsi_filt),
+                    "failed": len(top500_failed)
+                },
+                "recommended": top500_rsi_rec,
+                "filtered": top500_rsi_filt,
+                "failed": top500_failed
+            }
         },
         "nasdaq100": {
-            "stats": {
-                "total": len(nasdaq100_companies),
-                "recommended": len(nasdaq100_recommended),
-                "filtered": len(nasdaq100_filtered),
-                "failed": len(nasdaq100_failed)
+            "ma": {
+                "stats": {
+                    "total": len(nasdaq100_companies),
+                    "recommended": len(nasdaq100_ma_rec),
+                    "filtered": len(nasdaq100_ma_filt),
+                    "failed": len(nasdaq100_failed)
+                },
+                "recommended": nasdaq100_ma_rec,
+                "filtered": nasdaq100_ma_filt,
+                "failed": nasdaq100_failed
             },
-            "recommended": nasdaq100_recommended,
-            "filtered": nasdaq100_filtered,
-            "failed": nasdaq100_failed
+            "rsi": {
+                "stats": {
+                    "total": len(nasdaq100_companies),
+                    "recommended": len(nasdaq100_rsi_rec),
+                    "filtered": len(nasdaq100_rsi_filt),
+                    "failed": len(nasdaq100_failed)
+                },
+                "recommended": nasdaq100_rsi_rec,
+                "filtered": nasdaq100_rsi_filt,
+                "failed": nasdaq100_failed
+            }
         },
         "korea100": {
-            "stats": {
-                "total": len(korea100_companies),
-                "recommended": len(korea100_recommended),
-                "filtered": len(korea100_filtered),
-                "failed": len(korea100_failed)
+            "ma": {
+                "stats": {
+                    "total": len(korea100_companies),
+                    "recommended": len(korea100_ma_rec),
+                    "filtered": len(korea100_ma_filt),
+                    "failed": len(korea100_failed)
+                },
+                "recommended": korea100_ma_rec,
+                "filtered": korea100_ma_filt,
+                "failed": korea100_failed
             },
-            "recommended": korea100_recommended,
-            "filtered": korea100_filtered,
-            "failed": korea100_failed
+            "rsi": {
+                "stats": {
+                    "total": len(korea100_companies),
+                    "recommended": len(korea100_rsi_rec),
+                    "filtered": len(korea100_rsi_filt),
+                    "failed": len(korea100_failed)
+                },
+                "recommended": korea100_rsi_rec,
+                "filtered": korea100_rsi_filt,
+                "failed": korea100_failed
+            }
         }
     }
 
@@ -521,10 +597,10 @@ def main():
         f.write(html_content)
 
     print(f"\nAnalysis complete!")
-    print(f"Top 100 Stats - Total: {result_data['top100']['stats']['total']}, Recommended: {len(top100_recommended)}")
-    print(f"Top 500 Stats - Total: {result_data['top500']['stats']['total']}, Recommended: {len(top500_recommended)}")
-    print(f"Nasdaq 100 Stats - Total: {result_data['nasdaq100']['stats']['total']}, Recommended: {len(nasdaq100_recommended)}")
-    print(f"Korea 100 Stats - Total: {result_data['korea100']['stats']['total']}, Recommended: {len(korea100_recommended)}")
+    print(f"Top 100 Stats - Total: {result_data['top100']['ma']['stats']['total']}, MA Rec: {len(top100_ma_rec)}, RSI Rec: {len(top100_rsi_rec)}")
+    print(f"Top 500 Stats - Total: {result_data['top500']['ma']['stats']['total']}, MA Rec: {len(top500_ma_rec)}, RSI Rec: {len(top500_rsi_rec)}")
+    print(f"Nasdaq 100 Stats - Total: {result_data['nasdaq100']['ma']['stats']['total']}, MA Rec: {len(nasdaq100_ma_rec)}, RSI Rec: {len(nasdaq100_rsi_rec)}")
+    print(f"Korea 100 Stats - Total: {result_data['korea100']['ma']['stats']['total']}, MA Rec: {len(korea100_ma_rec)}, RSI Rec: {len(korea100_rsi_rec)}")
     print(f"Results written to: {os.path.abspath(output_path)}")
 
 if __name__ == "__main__":

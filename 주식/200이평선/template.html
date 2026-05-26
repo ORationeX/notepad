@@ -468,6 +468,55 @@
             color: #ffffff;
             box-shadow: var(--shadow-sm);
         }
+
+        /* Screener Selector Navigation Bar */
+        .screener-nav-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            background-color: var(--card-bg);
+            padding: 0.375rem;
+            border-radius: 10px;
+            border: 1px solid var(--card-border);
+            width: fit-content;
+        }
+
+        .screener-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .screener-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .screener-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: #ffffff;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .price-metrics.rsi-mode {
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        .metric-value.rsi {
+            color: #d8b4fe;
+        }
+
+        .stock-badge.rsi-badge {
+            background-color: rgba(139, 92, 246, 0.15);
+            color: var(--accent-purple);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -482,6 +531,12 @@
                 조회 시간: 2026-05-22 08:43
             </div>
         </header>
+
+        <!-- Screener Method Selector Navigation Bar -->
+        <div class="screener-nav-bar">
+            <button class="screener-btn active" id="screener-btn-ma" onclick="switchScreener('ma')">이평선 200기준</button>
+            <button class="screener-btn" id="screener-btn-rsi" onclick="switchScreener('rsi')">RSI 기준</button>
+        </div>
 
         <!-- Dataset Selector Navigation Bar -->
         <div class="nav-bar">
@@ -545,6 +600,7 @@
                             <th>7일선</th>
                             <th>30일선</th>
                             <th>200일선</th>
+                            <th>RSI</th>
                             <th>돌파 여부</th>
                         </tr>
                     </thead>
@@ -576,10 +632,30 @@
     <!-- Main JavaScript Logic -->
     <script>
         let currentDataset = 'top100';
+        let currentScreener = 'ma';
 
         document.addEventListener('DOMContentLoaded', () => {
             updateDashboard();
         });
+
+        // Screener Selector Logic
+        function switchScreener(screenerKey) {
+            if (currentScreener === screenerKey) return;
+            currentScreener = screenerKey;
+            
+            document.querySelectorAll('.screener-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const clickedBtn = document.getElementById(`screener-btn-${screenerKey}`);
+            if (clickedBtn) clickedBtn.classList.add('active');
+
+            // Reset search input when switching screeners
+            const searchInput = document.getElementById('search-input-el');
+            if (searchInput) searchInput.value = '';
+
+            updateDashboard();
+        }
 
         // Dataset Toggle Logic
         function switchNav(datasetKey) {
@@ -604,7 +680,9 @@
 
         // Update Dashboard Elements based on active dataset
         function updateDashboard() {
-            const data = stockData[currentDataset];
+            const dataset = stockData[currentDataset];
+            if (!dataset) return;
+            const data = dataset[currentScreener];
             if (!data) return;
 
             document.getElementById('update-time-el').innerText = `조회 시간: ${stockData.update_time}`;
@@ -620,7 +698,13 @@
                 subtitleText = '한국 KOSPI 시가총액 상위 ';
             }
             
-            document.getElementById('header-subtitle-el').innerHTML = `${subtitleText}<span id="header-total-el">${data.stats.total}</span>개 대상 200일선 / 30일선 / 7일선 분석 결과`;
+            if (currentScreener === 'ma') {
+                document.getElementById('header-subtitle-el').innerHTML = `${subtitleText}<span id="header-total-el">${data.stats.total}</span>개 대상 200일선 / 30일선 / 7일선 분석 결과`;
+                document.getElementById('no-recommendation-el').querySelector('p').innerText = '현재 조건(200일선 위, 7일선 > 200일선, 3거래일 이내 7일선 상향 돌파)을 만족하는 종목이 없습니다.';
+            } else {
+                document.getElementById('header-subtitle-el').innerHTML = `${subtitleText}<span id="header-total-el">${data.stats.total}</span>개 대상 RSI(14) 분석 결과`;
+                document.getElementById('no-recommendation-el').querySelector('p').innerText = '현재 조건(RSI 30 미만 과매도 상태)을 만족하는 종목이 없습니다.';
+            }
 
             document.getElementById('total-count-el').innerText = data.stats.total;
             document.getElementById('recommended-count-el').innerText = data.stats.recommended;
@@ -665,7 +749,9 @@
             const noDataEl = document.getElementById('no-recommendation-el');
             grid.innerHTML = '';
 
-            const data = stockData[currentDataset];
+            const dataset = stockData[currentDataset];
+            if (!dataset) return;
+            const data = dataset[currentScreener];
             if (!data || data.recommended.length === 0) {
                 noDataEl.style.display = 'block';
                 return;
@@ -677,43 +763,81 @@
                 card.className = 'stock-card';
                 card.id = `card-${stock.ticker}`;
 
-                // Calculate breakout description
+                // Calculate breakout/RSI description and badges
                 let breakoutDesc = '';
-                if (stock.breakout_days_ago === 0) breakoutDesc = '7일선: 오늘 돌파';
-                else breakoutDesc = `7일선: ${stock.breakout_days_ago}일 전`;
+                let badgesHtml = '';
+                let metricsHtml = '';
 
-                if (stock.breakout_200_days_ago !== undefined && stock.breakout_200_days_ago !== -1) {
-                    let desc200 = stock.breakout_200_days_ago === 0 ? '오늘 돌파' : `${stock.breakout_200_days_ago}일 전`;
-                    breakoutDesc += ` | 200일선: ${desc200}`;
+                if (currentScreener === 'ma') {
+                    if (stock.breakout_days_ago === 0) breakoutDesc = '7일선: 오늘 돌파';
+                    else breakoutDesc = `7일선: ${stock.breakout_days_ago}일 전`;
+
+                    if (stock.breakout_200_days_ago !== undefined && stock.breakout_200_days_ago !== -1) {
+                        let desc200 = stock.breakout_200_days_ago === 0 ? '오늘 돌파' : `${stock.breakout_200_days_ago}일 전`;
+                        breakoutDesc += ` | 200일선: ${desc200}`;
+                    }
+                    badgesHtml = '<span class="stock-badge">이평선 돌파</span>';
+
+                    metricsHtml = `
+                        <div class="price-metrics">
+                            <div class="metric-box">
+                                <span class="metric-label">현재가</span>
+                                <span class="metric-value current-price">${formatPrice(stock.current_price, stock.ticker)}</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">7일선</span>
+                                <span class="metric-value sma7">${formatPrice(stock.sma7, stock.ticker)}</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">30일선</span>
+                                <span class="metric-value sma30">${formatPrice(stock.sma30, stock.ticker)}</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">200일선</span>
+                                <span class="metric-value sma200">${formatPrice(stock.sma200, stock.ticker)}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    breakoutDesc = `RSI: ${stock.rsi !== null ? stock.rsi.toFixed(2) : '-'} (과매도)`;
+                    badgesHtml = '<span class="stock-badge rsi-badge">RSI 과매도</span>';
+
+                    metricsHtml = `
+                        <div class="price-metrics rsi-mode">
+                            <div class="metric-box">
+                                <span class="metric-label">현재가</span>
+                                <span class="metric-value current-price">${formatPrice(stock.current_price, stock.ticker)}</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">7일선</span>
+                                <span class="metric-value sma7">${formatPrice(stock.sma7, stock.ticker)}</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">30일선</span>
+                                <span class="metric-value sma30">${formatPrice(stock.sma30, stock.ticker)}</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">200일선</span>
+                                <span class="metric-value sma200">${formatPrice(stock.sma200, stock.ticker)}</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">RSI(14)</span>
+                                <span class="metric-value rsi">${stock.rsi !== null ? stock.rsi.toFixed(2) : '-'}</span>
+                            </div>
+                        </div>
+                    `;
                 }
 
                 card.innerHTML = `
                     <div class="stock-header">
                         <div class="stock-name-symbol">
-                            <span class="stock-symbol">${stock.ticker} <span class="stock-badge">추천됨</span></span>
+                            <span class="stock-symbol">${stock.ticker} ${badgesHtml}</span>
                             <span class="stock-company">${stock.name}</span>
                         </div>
                         <span class="breakout-badge">${breakoutDesc}</span>
                     </div>
 
-                    <div class="price-metrics">
-                        <div class="metric-box">
-                            <span class="metric-label">현재가</span>
-                            <span class="metric-value current-price">${formatPrice(stock.current_price, stock.ticker)}</span>
-                        </div>
-                        <div class="metric-box">
-                            <span class="metric-label">7일선</span>
-                            <span class="metric-value sma7">${formatPrice(stock.sma7, stock.ticker)}</span>
-                        </div>
-                        <div class="metric-box">
-                            <span class="metric-label">30일선</span>
-                            <span class="metric-value sma30">${formatPrice(stock.sma30, stock.ticker)}</span>
-                        </div>
-                        <div class="metric-box">
-                            <span class="metric-label">200일선</span>
-                            <span class="metric-value sma200">${formatPrice(stock.sma200, stock.ticker)}</span>
-                        </div>
-                    </div>
+                    ${metricsHtml}
 
                     <div class="chart-container">
                         <canvas id="chart-${stock.ticker}"></canvas>
@@ -735,49 +859,105 @@
             const sma7 = stock.history.sma7;
             const sma30 = stock.history.sma30;
             const sma200 = stock.history.sma200;
+            const rsi = stock.history.rsi;
+
+            const datasets = [
+                {
+                    label: '종가',
+                    data: prices,
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: '7일선',
+                    data: sma7,
+                    borderColor: '#f59e0b',
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: '30일선',
+                    data: sma30,
+                    borderColor: '#8b5cf6',
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: '200일선',
+                    data: sma200,
+                    borderColor: '#ef4444',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                }
+            ];
+
+            if (currentScreener === 'rsi' && rsi) {
+                datasets.push({
+                    label: 'RSI(14)',
+                    data: rsi,
+                    borderColor: '#d8b4fe',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    tension: 0.1,
+                    yAxisID: 'y1'
+                });
+            }
+
+            const yScalesConfig = {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    grid: {
+                        color: '#1f2937',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#9ca3af',
+                        font: { size: 10 },
+                        callback: function(value) {
+                            return formatPrice(value, stock.ticker);
+                        }
+                    }
+                }
+            };
+
+            if (currentScreener === 'rsi') {
+                yScalesConfig.y1 = {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    min: 0,
+                    max: 100,
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                    ticks: {
+                        color: '#d8b4fe',
+                        font: { size: 10 }
+                    }
+                };
+            }
 
             new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: dates,
-                    datasets: [
-                        {
-                            label: '종가',
-                            data: prices,
-                            borderColor: '#3b82f6',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            tension: 0.1
-                        },
-                        {
-                            label: '7일선',
-                            data: sma7,
-                            borderColor: '#f59e0b',
-                            borderWidth: 1.5,
-                            pointRadius: 0,
-                            pointHoverRadius: 0,
-                            tension: 0.1
-                        },
-                        {
-                            label: '30일선',
-                            data: sma30,
-                            borderColor: '#8b5cf6',
-                            borderWidth: 1.5,
-                            pointRadius: 0,
-                            pointHoverRadius: 0,
-                            tension: 0.1
-                        },
-                        {
-                            label: '200일선',
-                            data: sma200,
-                            borderColor: '#ef4444',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            pointHoverRadius: 0,
-                            tension: 0.1
-                        }
-                    ]
+                    datasets: datasets
                 },
                 options: {
                     responsive: true,
@@ -793,9 +973,7 @@
                             labels: {
                                 color: '#9ca3af',
                                 boxWidth: 12,
-                                font: {
-                                    size: 11
-                                }
+                                font: { size: 11 }
                             }
                         },
                         tooltip: {
@@ -811,7 +989,11 @@
                                         label += ': ';
                                     }
                                     if (context.parsed.y !== null) {
-                                        label += formatPrice(context.parsed.y, stock.ticker);
+                                        if (context.dataset.yAxisID === 'y1') {
+                                            label += Number(context.parsed.y).toFixed(2);
+                                        } else {
+                                            label += formatPrice(context.parsed.y, stock.ticker);
+                                        }
                                     }
                                     return label;
                                 }
@@ -827,26 +1009,10 @@
                             ticks: {
                                 color: '#9ca3af',
                                 maxTicksLimit: 8,
-                                font: {
-                                    size: 10
-                                }
+                                font: { size: 10 }
                             }
                         },
-                        y: {
-                            grid: {
-                                color: '#1f2937',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: '#9ca3af',
-                                font: {
-                                    size: 10
-                                },
-                                callback: function(value, index, ticks) {
-                                    return formatPrice(value, stock.ticker);
-                                }
-                            }
-                        }
+                        ...yScalesConfig
                     }
                 }
             });
@@ -857,7 +1023,9 @@
             const tbody = document.getElementById('all-stocks-tbody-el');
             tbody.innerHTML = '';
 
-            const data = stockData[currentDataset];
+            const dataset = stockData[currentDataset];
+            if (!dataset) return;
+            const data = dataset[currentScreener];
             if (!data) return;
 
             const allList = [];
@@ -868,7 +1036,7 @@
             allList.sort((a, b) => a.ticker.localeCompare(b.ticker));
 
             if (allList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-secondary);">조회 가능한 분석 데이터가 없습니다.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-secondary);">조회 가능한 분석 데이터가 없습니다.</td></tr>';
                 return;
             }
 
@@ -878,18 +1046,30 @@
                 
                 let statusBadge = '';
                 if (stock.status === 'recommended') {
-                    statusBadge = '<span class="badge success">추천</span>';
+                    if (currentScreener === 'ma') {
+                        statusBadge = '<span class="badge success">돌파 추천</span>';
+                    } else {
+                        statusBadge = '<span class="badge success" style="background-color: rgba(139, 92, 246, 0.15); color: var(--accent-purple); border: 1px solid rgba(139, 92, 246, 0.3);">RSI 추천</span>';
+                    }
                 } else {
                     statusBadge = '<span class="badge info">분석 완료</span>';
                 }
 
                 let breakoutCell = '';
                 if (stock.status === 'recommended') {
-                    let desc7 = stock.breakout_days_ago === 0 ? '오늘' : `${stock.breakout_days_ago}일 전`;
-                    let desc200 = stock.breakout_200_days_ago === 0 ? '오늘' : `${stock.breakout_200_days_ago}일 전`;
-                    breakoutCell = `7일선(${desc7}) | 200일선(${desc200})`;
+                    if (currentScreener === 'ma') {
+                        let desc7 = stock.breakout_days_ago === 0 ? '오늘' : `${stock.breakout_days_ago}일 전`;
+                        let desc200 = stock.breakout_200_days_ago === 0 ? '오늘' : `${stock.breakout_200_days_ago}일 전`;
+                        breakoutCell = `7일선(${desc7}) | 200일선(${desc200})`;
+                    } else {
+                        breakoutCell = `RSI ${stock.rsi !== null ? stock.rsi.toFixed(2) : '-'} (30 미만)`;
+                    }
                 } else {
-                    breakoutCell = stock.current_price > stock.sma7 ? '7일선 위' : '7일선 아래';
+                    if (currentScreener === 'ma') {
+                        breakoutCell = stock.current_price > stock.sma7 ? '7일선 위' : '7일선 아래';
+                    } else {
+                        breakoutCell = stock.rsi < 30 ? '과매도 (30 미만)' : '정상';
+                    }
                 }
 
                 tr.innerHTML = `
@@ -900,6 +1080,7 @@
                     <td style="color: var(--accent-amber);">${formatPrice(stock.sma7, stock.ticker)}</td>
                     <td style="color: var(--accent-purple);">${formatPrice(stock.sma30, stock.ticker)}</td>
                     <td style="color: var(--accent-red);">${formatPrice(stock.sma200, stock.ticker)}</td>
+                    <td style="color: #d8b4fe; font-weight: 500;">${stock.rsi !== null ? stock.rsi.toFixed(2) : '-'}</td>
                     <td>${breakoutCell}</td>
                 `;
 
@@ -945,7 +1126,9 @@
             const noFailedEl = document.getElementById('no-failed-el');
             grid.innerHTML = '';
 
-            const data = stockData[currentDataset];
+            const dataset = stockData[currentDataset];
+            if (!dataset) return;
+            const data = dataset[currentScreener];
             if (!data || data.failed.length === 0) {
                 noFailedEl.style.display = 'block';
                 return;
