@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>이동평균선 기반 주식 추천 프로그램</title>
+    <title>이동평균선 및 PER 기반 주식 추천 프로그램</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -536,6 +536,7 @@
         <div class="screener-nav-bar">
             <button class="screener-btn active" id="screener-btn-ma" onclick="switchScreener('ma')">이평선 200기준</button>
             <button class="screener-btn" id="screener-btn-rsi" onclick="switchScreener('rsi')">RSI 기준</button>
+            <button class="screener-btn" id="screener-btn-per" onclick="switchScreener('per')">PER 기준</button>
         </div>
 
         <!-- Dataset Selector Navigation Bar -->
@@ -701,9 +702,12 @@
             if (currentScreener === 'ma') {
                 document.getElementById('header-subtitle-el').innerHTML = `${subtitleText}<span id="header-total-el">${data.stats.total}</span>개 대상 200일선 / 30일선 / 7일선 분석 결과`;
                 document.getElementById('no-recommendation-el').querySelector('p').innerText = '현재 조건(200일선 위, 7일선 > 200일선, 3거래일 이내 7일선 상향 돌파)을 만족하는 종목이 없습니다.';
-            } else {
+            } else if (currentScreener === 'rsi') {
                 document.getElementById('header-subtitle-el').innerHTML = `${subtitleText}<span id="header-total-el">${data.stats.total}</span>개 대상 RSI(14) 분석 결과`;
                 document.getElementById('no-recommendation-el').querySelector('p').innerText = '현재 조건(RSI 30 미만 과매도 상태)을 만족하는 종목이 없습니다.';
+            } else if (currentScreener === 'per') {
+                document.getElementById('header-subtitle-el').innerHTML = `${subtitleText}<span id="header-total-el">${data.stats.total}</span>개 대상 PER 기준 분석 결과`;
+                document.getElementById('no-recommendation-el').querySelector('p').innerText = '현재 조건(PER 0 초과 20 이하 저평가 상태)을 만족하는 종목이 없습니다.';
             }
 
             document.getElementById('total-count-el').innerText = data.stats.total;
@@ -743,6 +747,27 @@
             return '$' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        // Helper to format revenue
+        function formatRevenue(val, ticker = '') {
+            if (val === null || val === undefined || isNaN(val)) return '-';
+            const num = Number(val);
+            if ((ticker && ticker.endsWith('.KS')) || (!ticker && currentDataset === 'korea100')) {
+                const trillion = num / 1000000000000;
+                if (trillion >= 1.0) {
+                    return trillion.toFixed(2) + '조원';
+                }
+                const billion = num / 100000000;
+                return billion.toFixed(0) + '억원';
+            } else {
+                const billion = num / 1000000000;
+                if (billion >= 1.0) {
+                    return '$' + billion.toFixed(2) + ' B';
+                }
+                const million = num / 1000000;
+                return '$' + million.toFixed(1) + ' M';
+            }
+        }
+
         // Render Tab 1: Recommended Cards
         function renderRecommended() {
             const grid = document.getElementById('recommendation-grid-el');
@@ -763,7 +788,7 @@
                 card.className = 'stock-card';
                 card.id = `card-${stock.ticker}`;
 
-                // Calculate breakout/RSI description and badges
+                // Calculate breakout/RSI/PER description and badges
                 let breakoutDesc = '';
                 let badgesHtml = '';
                 let metricsHtml = '';
@@ -798,7 +823,7 @@
                             </div>
                         </div>
                     `;
-                } else {
+                } else if (currentScreener === 'rsi') {
                     breakoutDesc = `RSI: ${stock.rsi !== null ? stock.rsi.toFixed(2) : '-'} (과매도)`;
                     badgesHtml = '<span class="stock-badge rsi-badge">RSI 과매도</span>';
 
@@ -823,6 +848,30 @@
                             <div class="metric-box">
                                 <span class="metric-label">RSI(14)</span>
                                 <span class="metric-value rsi">${stock.rsi !== null ? stock.rsi.toFixed(2) : '-'}</span>
+                            </div>
+                        </div>
+                    `;
+                } else if (currentScreener === 'per') {
+                    breakoutDesc = `PER: ${stock.pe !== null ? stock.pe.toFixed(2) + '배' : '-'} (${stock.pe_date || '-'})`;
+                    badgesHtml = '<span class="stock-badge" style="background-color: rgba(59, 130, 246, 0.15); color: var(--accent-blue); border: 1px solid rgba(59, 130, 246, 0.3);">저PER 추천</span>';
+
+                    metricsHtml = `
+                        <div class="price-metrics">
+                            <div class="metric-box">
+                                <span class="metric-label">현재가</span>
+                                <span class="metric-value current-price">${formatPrice(stock.current_price, stock.ticker)}</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">PER</span>
+                                <span class="metric-value" style="color: var(--accent-green); font-weight: 600;">${stock.pe !== null ? stock.pe.toFixed(2) + '배' : '-'}</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">기준일</span>
+                                <span class="metric-value" style="color: var(--text-secondary); font-size: 0.8rem;">${stock.pe_date || '-'}</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">총 매출</span>
+                                <span class="metric-value" style="color: var(--accent-amber); font-weight: 600;">${formatRevenue(stock.revenue, stock.ticker)}</span>
                             </div>
                         </div>
                     `;
@@ -1032,11 +1081,58 @@
             data.recommended.forEach(s => allList.push({...s, status: 'recommended'}));
             data.filtered.forEach(s => allList.push({...s, status: 'filtered'}));
             
-            // Sort alphabetically by ticker
-            allList.sort((a, b) => a.ticker.localeCompare(b.ticker));
+            // Sort
+            if (currentScreener === 'per') {
+                allList.sort((a, b) => {
+                    const peA = a.pe;
+                    const peB = b.pe;
+                    if (peA === null && peB === null) return 0;
+                    if (peA === null) return 1;
+                    if (peB === null) return -1;
+                    if (peA > 0 && peB > 0) return peA - peB;
+                    if (peA <= 0 && peB <= 0) return peA - peB;
+                    if (peA > 0) return -1;
+                    return 1;
+                });
+            } else {
+                allList.sort((a, b) => a.ticker.localeCompare(b.ticker));
+            }
+
+            // Update Table Headers dynamically
+            const thead = document.querySelector('#tab-all table thead');
+            if (thead) {
+                if (currentScreener === 'per') {
+                    thead.innerHTML = `
+                        <tr>
+                            <th>티커</th>
+                            <th>회사명</th>
+                            <th>상태</th>
+                            <th>현재가</th>
+                            <th>PER</th>
+                            <th>기준일</th>
+                            <th>총 매출</th>
+                        </tr>
+                    `;
+                } else {
+                    thead.innerHTML = `
+                        <tr>
+                            <th>티커</th>
+                            <th>회사명</th>
+                            <th>상태</th>
+                            <th>현재가</th>
+                            <th>7일선</th>
+                            <th>30일선</th>
+                            <th>200일선</th>
+                            <th>RSI</th>
+                            <th>돌파 여부</th>
+                        </tr>
+                    `;
+                }
+            }
 
             if (allList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-secondary);">조회 가능한 분석 데이터가 없습니다.</td></tr>';
+                const cols = currentScreener === 'per' ? 7 : 9;
+                tbody.innerHTML = `<tr><td colspan="${cols}" style="text-align: center; color: var(--text-secondary);">조회 가능한 분석 데이터가 없습니다.</td></tr>`;
                 return;
             }
 
@@ -1048,41 +1144,55 @@
                 if (stock.status === 'recommended') {
                     if (currentScreener === 'ma') {
                         statusBadge = '<span class="badge success">돌파 추천</span>';
-                    } else {
+                    } else if (currentScreener === 'rsi') {
                         statusBadge = '<span class="badge success" style="background-color: rgba(139, 92, 246, 0.15); color: var(--accent-purple); border: 1px solid rgba(139, 92, 246, 0.3);">RSI 추천</span>';
+                    } else if (currentScreener === 'per') {
+                        statusBadge = '<span class="badge success" style="background-color: rgba(59, 130, 246, 0.15); color: var(--accent-blue); border: 1px solid rgba(59, 130, 246, 0.3);">저PER 추천</span>';
                     }
                 } else {
                     statusBadge = '<span class="badge info">분석 완료</span>';
                 }
 
-                let breakoutCell = '';
-                if (stock.status === 'recommended') {
-                    if (currentScreener === 'ma') {
-                        let desc7 = stock.breakout_days_ago === 0 ? '오늘' : `${stock.breakout_days_ago}일 전`;
-                        let desc200 = stock.breakout_200_days_ago === 0 ? '오늘' : `${stock.breakout_200_days_ago}일 전`;
-                        breakoutCell = `7일선(${desc7}) | 200일선(${desc200})`;
-                    } else {
-                        breakoutCell = `RSI ${stock.rsi !== null ? stock.rsi.toFixed(2) : '-'} (30 미만)`;
-                    }
+                if (currentScreener === 'per') {
+                    tr.innerHTML = `
+                        <td style="font-weight: 700;">${stock.ticker}</td>
+                        <td>${stock.name}</td>
+                        <td>${statusBadge}</td>
+                        <td style="color: #60a5fa; font-weight: 600;">${formatPrice(stock.current_price, stock.ticker)}</td>
+                        <td style="color: var(--accent-green); font-weight: 600;">${stock.pe !== null ? stock.pe.toFixed(2) + '배' : '-'}</td>
+                        <td style="color: var(--text-secondary);">${stock.pe_date || '-'}</td>
+                        <td style="color: var(--accent-amber); font-weight: 500;">${formatRevenue(stock.revenue, stock.ticker)}</td>
+                    `;
                 } else {
-                    if (currentScreener === 'ma') {
-                        breakoutCell = stock.current_price > stock.sma7 ? '7일선 위' : '7일선 아래';
+                    let breakoutCell = '';
+                    if (stock.status === 'recommended') {
+                        if (currentScreener === 'ma') {
+                            let desc7 = stock.breakout_days_ago === 0 ? '오늘' : `${stock.breakout_days_ago}일 전`;
+                            let desc200 = stock.breakout_200_days_ago === 0 ? '오늘' : `${stock.breakout_200_days_ago}일 전`;
+                            breakoutCell = `7일선(${desc7}) | 200일선(${desc200})`;
+                        } else {
+                            breakoutCell = `RSI ${stock.rsi !== null ? stock.rsi.toFixed(2) : '-'} (30 미만)`;
+                        }
                     } else {
-                        breakoutCell = stock.rsi < 30 ? '과매도 (30 미만)' : '정상';
+                        if (currentScreener === 'ma') {
+                            breakoutCell = stock.current_price > stock.sma7 ? '7일선 위' : '7일선 아래';
+                        } else {
+                            breakoutCell = stock.rsi < 30 ? '과매도 (30 미만)' : '정상';
+                        }
                     }
-                }
 
-                tr.innerHTML = `
-                    <td style="font-weight: 700;">${stock.ticker}</td>
-                    <td>${stock.name}</td>
-                    <td>${statusBadge}</td>
-                    <td style="color: #60a5fa; font-weight: 600;">${formatPrice(stock.current_price, stock.ticker)}</td>
-                    <td style="color: var(--accent-amber);">${formatPrice(stock.sma7, stock.ticker)}</td>
-                    <td style="color: var(--accent-purple);">${formatPrice(stock.sma30, stock.ticker)}</td>
-                    <td style="color: var(--accent-red);">${formatPrice(stock.sma200, stock.ticker)}</td>
-                    <td style="color: #d8b4fe; font-weight: 500;">${stock.rsi !== null ? stock.rsi.toFixed(2) : '-'}</td>
-                    <td>${breakoutCell}</td>
-                `;
+                    tr.innerHTML = `
+                        <td style="font-weight: 700;">${stock.ticker}</td>
+                        <td>${stock.name}</td>
+                        <td>${statusBadge}</td>
+                        <td style="color: #60a5fa; font-weight: 600;">${formatPrice(stock.current_price, stock.ticker)}</td>
+                        <td style="color: var(--accent-amber);">${formatPrice(stock.sma7, stock.ticker)}</td>
+                        <td style="color: var(--accent-purple);">${formatPrice(stock.sma30, stock.ticker)}</td>
+                        <td style="color: var(--accent-red);">${formatPrice(stock.sma200, stock.ticker)}</td>
+                        <td style="color: #d8b4fe; font-weight: 500;">${stock.rsi !== null ? stock.rsi.toFixed(2) : '-'}</td>
+                        <td>${breakoutCell}</td>
+                    `;
+                }
 
                 // If recommended, clicking row redirects to recommended tab and focuses card
                 if (stock.status === 'recommended') {

@@ -6,6 +6,118 @@ import re
 import yfinance as yf
 import pandas as pd
 from bs4 import BeautifulSoup
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+FUNDAMENTALS_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fundamentals_cache.json")
+
+def load_cache():
+    if os.path.exists(FUNDAMENTALS_CACHE_FILE):
+        try:
+            mtime = os.path.getmtime(FUNDAMENTALS_CACHE_FILE)
+            if time.time() - mtime < 86400: # 24 hours
+                with open(FUNDAMENTALS_CACHE_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Error reading fundamentals cache: {e}")
+    return {}
+
+def save_cache(cache_data):
+    try:
+        with open(FUNDAMENTALS_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(cache_data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Error writing fundamentals cache: {e}")
+
+def fetch_ticker_info(ticker):
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info
+        
+        # 1. Try trailingEps from info (TTM EPS, most accurate for US stocks)
+        eps = info.get('trailingEps')
+        
+        # 2. Try financials Diluted/Basic EPS (last audited fiscal year, accurate for Korean stocks)
+        if eps is None:
+            try:
+                fin = t.financials
+                if fin is not None and not fin.empty:
+                    for idx in ['Diluted EPS', 'Basic EPS']:
+                        if idx in fin.index:
+                            val = fin.loc[idx].iloc[0]
+                            if val is not None and not pd.isna(val) and val != 0:
+                                eps = float(val)
+                                break
+            except:
+                pass
+                
+        # 3. Try forwardEps or epsCurrentYear from info
+        if eps is None:
+            eps = info.get('forwardEps') or info.get('epsCurrentYear')
+            
+        # 4. Calculate from PE ratio as last resort
+        pe_ratio = info.get('trailingPE') or info.get('forwardPE')
+        if eps is None and pe_ratio is not None and pe_ratio != 0:
+            price_val = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('open')
+            if price_val:
+                eps = price_val / pe_ratio
+                
+        revenue = info.get('totalRevenue')
+        
+        quarter = info.get('mostRecentQuarter')
+        fiscal = info.get('lastFiscalYearEnd')
+        
+        pe_date = None
+        if quarter:
+            pe_date = datetime.fromtimestamp(quarter).strftime('%Y-%m-%d')
+        elif fiscal:
+            pe_date = datetime.fromtimestamp(fiscal).strftime('%Y-%m-%d')
+            
+        return ticker, {
+            "eps": float(eps) if eps is not None else None,
+            "revenue": int(revenue) if revenue is not None else None,
+            "pe_date": pe_date,
+            "pe_ratio": float(pe_ratio) if pe_ratio is not None else None
+        }
+    except Exception as e:
+        return ticker, {
+            "eps": None,
+            "revenue": None,
+            "pe_date": None,
+            "pe_ratio": None
+        }
+
+def get_all_fundamentals(all_tickers):
+    cache = load_cache()
+    
+    is_cache_valid = False
+    if cache:
+        try:
+            mtime = os.path.getmtime(FUNDAMENTALS_CACHE_FILE)
+            if time.time() - mtime < 86400:
+                is_cache_valid = True
+        except:
+            pass
+            
+    tickers_to_fetch = all_tickers if not is_cache_valid else [t for t in all_tickers if t not in cache]
+    
+    if tickers_to_fetch:
+        print(f"Fetching fundamentals for {len(tickers_to_fetch)} tickers in parallel...")
+        completed = 0
+        total = len(tickers_to_fetch)
+        
+        with ThreadPoolExecutor(max_workers=25) as executor:
+            future_to_ticker = {executor.submit(fetch_ticker_info, ticker): ticker for ticker in tickers_to_fetch}
+            for future in as_completed(future_to_ticker):
+                ticker, info_dict = future.result()
+                cache[ticker] = info_dict
+                completed += 1
+                if completed % 50 == 0 or completed == total:
+                    print(f"Progress: {completed}/{total} fundamentals fetched...")
+                    
+        save_cache(cache)
+        
+    return cache
 
 # 1. Fallback Ticker list & Company Names mapping (used if Wikipedia scraping fails or as a base reference)
 FALLBACK_COMPANIES = {
@@ -224,14 +336,16 @@ def get_korea_top100():
     print(f"Successfully scraped {len(companies)} Korean tickers.")
     return companies
 
-def analyze_stocks(tickers, companies_map, raw_data):
-    """Analyzes moving averages and RSI conditions for given tickers.
-    Returns (ma_recommended, ma_filtered, rsi_recommended, rsi_filtered, failed).
+def analyze_stocks(tickers, companies_map, raw_data, fundamentals_map):
+    """Analyzes moving averages, RSI, and PER conditions for given tickers.
+    Returns (ma_recommended, ma_filtered, rsi_recommended, rsi_filtered, per_recommended, per_filtered, failed).
     """
     ma_recommended = []
     ma_filtered = []
     rsi_recommended = []
     rsi_filtered = []
+    per_recommended = []
+    per_filtered = []
     failed = []
 
     for ticker in tickers:
@@ -255,7 +369,7 @@ def analyze_stocks(tickers, companies_map, raw_data):
                     "ticker": ticker,
                     "name": name,
                     "reason": f"데이터 부족 (조회된 거래일수: {len(df)}일, 최소 200일 필요)"
-                })
+                  })
                 continue
 
             # Calculate Moving Averages (SMA)
@@ -352,6 +466,15 @@ def analyze_stocks(tickers, companies_map, raw_data):
             sma200_hist = [round(float(v), 2) if not pd.isna(v) else None for v in chart_df['SMA200']]
             rsi_hist = [round(float(v), 2) if not pd.isna(v) else None for v in chart_df['RSI']]
 
+            # Get fundamentals
+            f_info = fundamentals_map.get(ticker, {"eps": None, "revenue": None, "pe_date": None, "pe_ratio": None})
+            eps = f_info.get("eps")
+            pe = None
+            if eps is not None and eps != 0:
+                pe = round(close_today / eps, 2)
+            else:
+                pe = f_info.get("pe_ratio")
+
             stock_info = {
                 "ticker": ticker,
                 "name": name,
@@ -360,6 +483,9 @@ def analyze_stocks(tickers, companies_map, raw_data):
                 "sma30": round(sma30_today, 2),
                 "sma200": round(sma200_today, 2),
                 "rsi": round(rsi_today, 2),
+                "pe": pe,
+                "revenue": f_info.get("revenue"),
+                "pe_date": f_info.get("pe_date"),
                 "breakout_days_ago": breakout_days_ago,
                 "breakout_200_days_ago": breakout_200_days_ago,
                 "history": {
@@ -386,6 +512,13 @@ def analyze_stocks(tickers, companies_map, raw_data):
                 filtered_stock = {k: v for k, v in stock_info.items() if k != "history"}
                 rsi_filtered.append(filtered_stock)
 
+            # PER Screener lists
+            if pe is not None and 0 < pe <= 20:
+                per_recommended.append(stock_info)
+            else:
+                filtered_stock = {k: v for k, v in stock_info.items() if k != "history"}
+                per_filtered.append(filtered_stock)
+
         except Exception as e:
             failed.append({
                 "ticker": ticker,
@@ -393,7 +526,19 @@ def analyze_stocks(tickers, companies_map, raw_data):
                 "reason": f"오류 발생 ({str(e)})"
             })
             
-    return ma_recommended, ma_filtered, rsi_recommended, rsi_filtered, failed
+    # Sort PER lists
+    def per_sort_key(stock):
+        pe = stock.get("pe")
+        if pe is None:
+            return (2, 0)
+        if pe <= 0:
+            return (1, pe)
+        return (0, pe)
+
+    per_recommended.sort(key=lambda s: s["pe"] if s["pe"] is not None else float('inf'))
+    per_filtered.sort(key=per_sort_key)
+            
+    return ma_recommended, ma_filtered, rsi_recommended, rsi_filtered, per_recommended, per_filtered, failed
 
 def main():
     # 2. Get tickers and names
@@ -419,7 +564,7 @@ def main():
         print("Korean Top 100 fetch failed or returned too few tickers. Using fallback...")
         korea100_companies = FALLBACK_KOREA
 
-    # Combine all unique tickers for bulk download
+    # Combine all unique tickers for bulk download and fundamentals fetch
     all_tickers = sorted(list(set(
         list(sp100_companies.keys()) + 
         list(sp500_companies.keys()) + 
@@ -427,6 +572,9 @@ def main():
         list(korea100_companies.keys())
     )))
     print(f"Total unique tickers to analyze: {len(all_tickers)}")
+
+    # Fetch fundamentals in parallel / load from cache
+    fundamentals_map = get_all_fundamentals(all_tickers)
 
     # 3. Bulk download historical daily data for the past 2 years (approx 500 trading days)
     print("Downloading historical data using yfinance...")
@@ -458,23 +606,23 @@ def main():
 
     # 4. Process each group separately
     print("Analyzing S&P 100 stocks...")
-    top100_ma_rec, top100_ma_filt, top100_rsi_rec, top100_rsi_filt, top100_failed = analyze_stocks(
-        list(sp100_companies.keys()), sp100_companies, raw_data
+    top100_ma_rec, top100_ma_filt, top100_rsi_rec, top100_rsi_filt, top100_per_rec, top100_per_filt, top100_failed = analyze_stocks(
+        list(sp100_companies.keys()), sp100_companies, raw_data, fundamentals_map
     )
 
     print("Analyzing S&P 500 stocks...")
-    top500_ma_rec, top500_ma_filt, top500_rsi_rec, top500_rsi_filt, top500_failed = analyze_stocks(
-        list(sp500_companies.keys()), sp500_companies, raw_data
+    top500_ma_rec, top500_ma_filt, top500_rsi_rec, top500_rsi_filt, top500_per_rec, top500_per_filt, top500_failed = analyze_stocks(
+        list(sp500_companies.keys()), sp500_companies, raw_data, fundamentals_map
     )
 
     print("Analyzing Nasdaq 100 stocks...")
-    nasdaq100_ma_rec, nasdaq100_ma_filt, nasdaq100_rsi_rec, nasdaq100_rsi_filt, nasdaq100_failed = analyze_stocks(
-        list(nasdaq100_companies.keys()), nasdaq100_companies, raw_data
+    nasdaq100_ma_rec, nasdaq100_ma_filt, nasdaq100_rsi_rec, nasdaq100_rsi_filt, nasdaq100_per_rec, nasdaq100_per_filt, nasdaq100_failed = analyze_stocks(
+        list(nasdaq100_companies.keys()), nasdaq100_companies, raw_data, fundamentals_map
     )
 
     print("Analyzing Korean Top 100 stocks...")
-    korea100_ma_rec, korea100_ma_filt, korea100_rsi_rec, korea100_rsi_filt, korea100_failed = analyze_stocks(
-        list(korea100_companies.keys()), korea100_companies, raw_data
+    korea100_ma_rec, korea100_ma_filt, korea100_rsi_rec, korea100_rsi_filt, korea100_per_rec, korea100_per_filt, korea100_failed = analyze_stocks(
+        list(korea100_companies.keys()), korea100_companies, raw_data, fundamentals_map
     )
 
     # 5. Build output data JSON
@@ -502,6 +650,17 @@ def main():
                 "recommended": top100_rsi_rec,
                 "filtered": top100_rsi_filt,
                 "failed": top100_failed
+            },
+            "per": {
+                "stats": {
+                    "total": len(sp100_companies),
+                    "recommended": len(top100_per_rec),
+                    "filtered": len(top100_per_filt),
+                    "failed": len(top100_failed)
+                },
+                "recommended": top100_per_rec,
+                "filtered": top100_per_filt,
+                "failed": top100_failed
             }
         },
         "top500": {
@@ -525,6 +684,17 @@ def main():
                 },
                 "recommended": top500_rsi_rec,
                 "filtered": top500_rsi_filt,
+                "failed": top500_failed
+            },
+            "per": {
+                "stats": {
+                    "total": len(sp500_companies),
+                    "recommended": len(top500_per_rec),
+                    "filtered": len(top500_per_filt),
+                    "failed": len(top500_failed)
+                },
+                "recommended": top500_per_rec,
+                "filtered": top500_per_filt,
                 "failed": top500_failed
             }
         },
@@ -550,6 +720,17 @@ def main():
                 "recommended": nasdaq100_rsi_rec,
                 "filtered": nasdaq100_rsi_filt,
                 "failed": nasdaq100_failed
+            },
+            "per": {
+                "stats": {
+                    "total": len(nasdaq100_companies),
+                    "recommended": len(nasdaq100_per_rec),
+                    "filtered": len(nasdaq100_per_filt),
+                    "failed": len(nasdaq100_failed)
+                },
+                "recommended": nasdaq100_per_rec,
+                "filtered": nasdaq100_per_filt,
+                "failed": nasdaq100_failed
             }
         },
         "korea100": {
@@ -574,6 +755,17 @@ def main():
                 "recommended": korea100_rsi_rec,
                 "filtered": korea100_rsi_filt,
                 "failed": korea100_failed
+            },
+            "per": {
+                "stats": {
+                    "total": len(korea100_companies),
+                    "recommended": len(korea100_per_rec),
+                    "filtered": len(korea100_per_filt),
+                    "failed": len(korea100_failed)
+                },
+                "recommended": korea100_per_rec,
+                "filtered": korea100_per_filt,
+                "failed": korea100_failed
             }
         }
     }
@@ -597,10 +789,10 @@ def main():
         f.write(html_content)
 
     print(f"\nAnalysis complete!")
-    print(f"Top 100 Stats - Total: {result_data['top100']['ma']['stats']['total']}, MA Rec: {len(top100_ma_rec)}, RSI Rec: {len(top100_rsi_rec)}")
-    print(f"Top 500 Stats - Total: {result_data['top500']['ma']['stats']['total']}, MA Rec: {len(top500_ma_rec)}, RSI Rec: {len(top500_rsi_rec)}")
-    print(f"Nasdaq 100 Stats - Total: {result_data['nasdaq100']['ma']['stats']['total']}, MA Rec: {len(nasdaq100_ma_rec)}, RSI Rec: {len(nasdaq100_rsi_rec)}")
-    print(f"Korea 100 Stats - Total: {result_data['korea100']['ma']['stats']['total']}, MA Rec: {len(korea100_ma_rec)}, RSI Rec: {len(korea100_rsi_rec)}")
+    print(f"Top 100 Stats - Total: {result_data['top100']['ma']['stats']['total']}, MA Rec: {len(top100_ma_rec)}, RSI Rec: {len(top100_rsi_rec)}, PER Rec: {len(top100_per_rec)}")
+    print(f"Top 500 Stats - Total: {result_data['top500']['ma']['stats']['total']}, MA Rec: {len(top500_ma_rec)}, RSI Rec: {len(top500_rsi_rec)}, PER Rec: {len(top500_per_rec)}")
+    print(f"Nasdaq 100 Stats - Total: {result_data['nasdaq100']['ma']['stats']['total']}, MA Rec: {len(nasdaq100_ma_rec)}, RSI Rec: {len(nasdaq100_rsi_rec)}, PER Rec: {len(nasdaq100_per_rec)}")
+    print(f"Korea 100 Stats - Total: {result_data['korea100']['ma']['stats']['total']}, MA Rec: {len(korea100_ma_rec)}, RSI Rec: {len(korea100_rsi_rec)}, PER Rec: {len(korea100_per_rec)}")
     print(f"Results written to: {os.path.abspath(output_path)}")
 
 if __name__ == "__main__":
