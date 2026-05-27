@@ -10,6 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <!-- Chart.js for Backtest Visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js Zoom Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 </head>
 <body>
 
@@ -30,224 +34,413 @@
       </div>
     </header>
 
-    <!-- Market Compass Widget -->
-    <div class="market-compass" id="marketCompass">
-      <div class="compass-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap;">
-        <div>
-          <div class="compass-title" style="margin-bottom: 0.15rem;">🧭 시장 나침반 (Market Compass)</div>
-          <div class="compass-stage" id="compassStage">지표 분석 중...</div>
-          <div class="compass-updated" id="compassUpdated">데이터 시점: -</div>
-          <div class="compass-updated" id="compassFreshness">지표 주기: -</div>
-        </div>
-        <button class="preset-btn" onclick="evaluateMarketStage()" style="min-width: unset; width: auto; padding: 0.35rem 0.6rem; font-size: 0.72rem; margin: 0; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2);">
-          🔄 지표 갱신
-        </button>
-      </div>
-      <div class="compass-indicators">
-        <div class="indicator-box">
-          <div class="indicator-name">VIX (공포 지수)</div>
-          <div class="indicator-val" id="indVix">-</div>
-          <div class="indicator-desc">S&P500 옵션 변동성 지수. 15~20 안정(평상시), 25 이상 경고, 30 이상 폭락 진행, 35 이상 후 하락 반전 시 1차 매수 신호.</div>
-        </div>
-        <div class="indicator-box">
-          <div class="indicator-name">장단기 금리차 (10Y-2Y)</div>
-          <div class="indicator-val" id="indYield">-</div>
-          <div class="indicator-desc">미국채 10년물과 2년물 금리 차이. 마이너스(장단기 금리역전) 상태 유지 후, 다시 플러스(+)로 급격히 전환될 때 경기 침체/폭락 시작 신호.</div>
-        </div>
-        <div class="indicator-box">
-          <div class="indicator-name">CNN 공포/탐욕 지수</div>
-          <div class="indicator-val" id="indFg">-</div>
-          <div class="indicator-desc">주가 모멘텀, 채권 수요 등을 종합한 투자 심리 지수. 50~70 탐욕(평상시), 30 이하 공포(매수 검토), 20 이하 극도의 공포(분할 매수 돌입).</div>
-        </div>
-        <div class="indicator-box">
-          <div class="indicator-name">하이일드 스프레드</div>
-          <div class="indicator-val" id="indHySpread">-</div>
-          <div class="indicator-desc">투기등급 회사채와 국채의 금리 차이. 급등하면 신용 스트레스와 기업 도산 우려가 커진 상태로 봅니다.</div>
-        </div>
-        <div class="indicator-box">
-          <div class="indicator-name">미국 실업률</div>
-          <div class="indicator-val" id="indUnrate">-</div>
-          <div class="indicator-desc">최근 발표치가 이전 발표치보다 상승하면 경기 둔화 경고로 보고 주식 비중을 한 단계 더 줄입니다.</div>
-        </div>
-      </div>
-      <div class="compass-advice" id="compassAdvice">
-        실시간 지표를 통해 현재 시장 국면을 분석하고 있습니다...
-      </div>
+    <!-- Main Navigation Tabs -->
+    <div class="main-tabs">
+      <button class="main-tab-btn active" id="btnTabDashboard" onclick="switchMainTab('dashboard')">실시간 자산 관리</button>
+      <button class="main-tab-btn" id="btnTabBacktest" onclick="switchMainTab('backtest')">백테스트 시뮬레이터</button>
     </div>
 
-    <!-- Dashboard Grid -->
-    <div class="dashboard-grid">
-      
-      <!-- Left side: Stock Management -->
-      <main>
-        <!-- Add Stock Form -->
-        <div class="card">
-          <h2 class="card-title">종목 추가</h2>
-          <form id="addStockForm" onsubmit="addStock(event)">
-            <div class="input-row">
-              <div class="input-group">
-                <label for="stockCode">종목 코드 (6자리)</label>
-                <input type="text" id="stockCode" placeholder="예: 005930" class="input-control" required maxlength="8">
+    <!-- Realtime Content Wrapper -->
+    <div id="realtimeContent">
+      <!-- Market Compass Widget -->
+      <div class="market-compass" id="marketCompass">
+        <div class="compass-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap;">
+          <div>
+            <div class="compass-title" style="margin-bottom: 0.15rem;">🧭 시장 나침반 (Market Compass)</div>
+            <div class="compass-stage" id="compassStage">지표 분석 중...</div>
+            <div class="compass-updated" id="compassUpdated">데이터 시점: -</div>
+            <div class="compass-updated" id="compassFreshness">지표 주기: -</div>
+          </div>
+          <button class="preset-btn" onclick="evaluateMarketStage()" style="min-width: unset; width: auto; padding: 0.35rem 0.6rem; font-size: 0.72rem; margin: 0; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2);">
+            🔄 지표 갱신
+          </button>
+        </div>
+        <div class="compass-indicators">
+          <div class="indicator-box">
+            <div class="indicator-name">VIX (공포 지수)</div>
+            <div class="indicator-val" id="indVix">-</div>
+            <div class="indicator-desc">S&P500 옵션 변동성 지수. 15~20 안정(평상시), 25 이상 경고, 30 이상 폭락 진행, 35 이상 후 하락 반전 시 1차 매수 신호.</div>
+          </div>
+          <div class="indicator-box">
+            <div class="indicator-name">장단기 금리차 (10Y-2Y)</div>
+            <div class="indicator-val" id="indYield">-</div>
+            <div class="indicator-desc">미국채 10년물과 2년물 금리 차이. 마이너스(장단기 금리역전) 상태 유지 후, 다시 플러스(+)로 급격히 전환될 때 경기 침체/폭락 시작 신호.</div>
+          </div>
+          <div class="indicator-box">
+            <div class="indicator-name">CNN 공포/탐욕 지수</div>
+            <div class="indicator-val" id="indFg">-</div>
+            <div class="indicator-desc">주가 모멘텀, 채권 수요 등을 종합한 투자 심리 지수. 50~70 탐욕(평상시), 30 이하 공포(매수 검토), 20 이하 극도의 공포(분할 매수 돌입).</div>
+          </div>
+          <div class="indicator-box">
+            <div class="indicator-name">하이일드 스프레드</div>
+            <div class="indicator-val" id="indHySpread">-</div>
+            <div class="indicator-desc">투기등급 회사채와 국채의 금리 차이. 급등하면 신용 스트레스와 기업 도산 우려가 커진 상태로 봅니다.</div>
+          </div>
+          <div class="indicator-box">
+            <div class="indicator-name">미국 실업률</div>
+            <div class="indicator-val" id="indUnrate">-</div>
+            <div class="indicator-desc">최근 발표치가 이전 발표치보다 상승하면 경기 둔화 경고로 보고 주식 비중을 한 단계 더 줄입니다.</div>
+          </div>
+        </div>
+        <div class="compass-advice" id="compassAdvice">
+          실시간 지표를 통해 현재 시장 국면을 분석하고 있습니다...
+        </div>
+      </div>
+
+      <!-- Dashboard Grid -->
+      <div class="dashboard-grid">
+        
+        <!-- Left side: Stock Management -->
+        <main>
+          <!-- Add Stock Form -->
+          <div class="card">
+            <h2 class="card-title">종목 추가</h2>
+            <form id="addStockForm" onsubmit="addStock(event)">
+              <div class="input-row">
+                <div class="input-group">
+                  <label for="stockCode">종목 코드 (6자리)</label>
+                  <input type="text" id="stockCode" placeholder="예: 005930" class="input-control" required maxlength="8">
+                </div>
+                <div class="input-group">
+                  <label for="assetType">자산 분류</label>
+                  <select id="assetType" class="input-control" style="height: 38px;">
+                    <option value="stock">주식</option>
+                    <option value="safe">안전자산 (채권/금 등)</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="targetRatio">목표 비중 (%)</label>
+                  <input type="number" id="targetRatio" placeholder="0" class="input-control" required min="0" max="100">
+                </div>
+                <div class="input-group">
+                  <label for="purchasePrice">매수 단가 (원)</label>
+                  <input type="number" id="purchasePrice" placeholder="0" class="input-control" required min="0">
+                </div>
+                <div class="input-group">
+                  <label for="sharesOwned">보유 수량 (주)</label>
+                  <input type="number" id="sharesOwned" placeholder="0" class="input-control" required min="0">
+                </div>
+                <button type="submit" class="btn btn-add" style="height: 40px; margin-top: auto;">추가</button>
               </div>
-              <div class="input-group">
-                <label for="assetType">자산 분류</label>
-                <select id="assetType" class="input-control" style="height: 38px;">
-                  <option value="stock">주식</option>
-                  <option value="safe">안전자산 (채권/금 등)</option>
-                </select>
+            </form>
+          </div>
+
+          <!-- Stock List -->
+          <div class="card">
+            <h2 class="card-title">
+              보유 종목 리스트
+              <div class="ticker-badge" id="tickerBadge">
+                <span class="ticker-spinner"></span>
+                <span id="tickerText">네이버 시세 대기 중...</span>
               </div>
-              <div class="input-group">
-                <label for="targetRatio">목표 비중 (%)</label>
-                <input type="number" id="targetRatio" placeholder="0" class="input-control" required min="0" max="100">
-              </div>
-              <div class="input-group">
-                <label for="purchasePrice">매수 단가 (원)</label>
-                <input type="number" id="purchasePrice" placeholder="0" class="input-control" required min="0">
-              </div>
-              <div class="input-group">
-                <label for="sharesOwned">보유 수량 (주)</label>
-                <input type="number" id="sharesOwned" placeholder="0" class="input-control" required min="0">
-              </div>
-              <button type="submit" class="btn btn-add" style="height: 40px; margin-top: auto;">추가</button>
+            </h2>
+            
+            <div class="table-container">
+              <table id="stockTable">
+                <thead>
+                  <tr>
+                    <th>종목</th>
+                    <th style="text-align: center;">분류</th>
+                    <th style="text-align: right;">현재가</th>
+                    <th style="text-align: right;">매수단가 (원)</th>
+                    <th style="text-align: right;">보유수량 (주)</th>
+                    <th style="text-align: right;">평가금액 (원)</th>
+                    <th style="text-align: right;">수익률 (ROI)</th>
+                    <th style="text-align: right;">목표 비중</th>
+                    <th style="text-align: center;">작업</th>
+                  </tr>
+                </thead>
+                <tbody id="stockTableBody">
+                  <!-- Dynamic Content -->
+                </tbody>
+              </table>
             </div>
-          </form>
+
+            <!-- Total Summary & Ratio Validation Banner -->
+            <div class="summary-bar" id="summaryBar">
+              <div>
+                <span>총 목표 비중: </span>
+                <span id="totalTargetRatioBadge" class="ratio-badge error">0%</span>
+              </div>
+              <div>
+                <span>총 평가 금액: <strong id="totalEvalValue">0원</strong></span>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <!-- Right side: Calculation & Statistics -->
+        <aside>
+          <!-- Statistics Card -->
+          <div class="card">
+            <h2 class="card-title">포트폴리오 요약</h2>
+            <div class="stats-card">
+              <div class="stat-row">
+                <span class="stat-label">총 매수 금액</span>
+                <span class="stat-value" id="statTotalPurchase">0원</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">총 평가 금액</span>
+                <span class="stat-value" id="statTotalEval" style="color: var(--accent-color);">0원</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">총 투자 손익</span>
+                <span class="stat-value" id="statTotalPL">0원</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">총 투자 수익률</span>
+                <span class="stat-value" id="statTotalROI">0.00%</span>
+              </div>
+              <div class="stat-row" style="border-top: 1px solid rgba(255,255,255,0.05); margin-top: 0.5rem; padding-top: 0.5rem;">
+                <span class="stat-label">주식 실제/목표 비중</span>
+                <span class="stat-value" id="statStockRatio">0% / 0%</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">안전자산 실제/목표 비중</span>
+                <span class="stat-value" id="statSafeRatio">0% / 0%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rebalancing Input Card -->
+          <div class="card">
+            <h2 class="card-title">리밸런싱 계산기</h2>
+            
+            <!-- Tab selector -->
+            <div class="tab-container">
+              <button class="tab-btn active" id="tabNewBuy" onclick="switchMode('newbuy')">신규 매수</button>
+              <button class="tab-btn" id="tabRebalance" onclick="switchMode('rebalance')">리밸런싱</button>
+            </div>
+
+            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 500;">가이드라인 추천 비율 프리셋</div>
+            <div class="preset-btn-group">
+              <button class="preset-btn" onclick="applyPresetRatio(30, 'stage1', this)">평상시 70:30</button>
+              <button class="preset-btn" onclick="applyPresetRatio(40, 'stage2a', this)">위기 감지 1 60:40</button>
+              <button class="preset-btn" onclick="applyPresetRatio(55, 'stage2b', this)">위기/폭락 45:55</button>
+              <button class="preset-btn" onclick="applyPresetRatio(40, 'stage4a', this)" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3);">바닥 반등 1 60:40</button>
+              <button class="preset-btn" onclick="applyPresetRatio(30, 'stage4b', this)" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3);">바닥 반등 2 70:30</button>
+            </div>
+
+            <div class="input-group" style="margin-bottom: 1.25rem;">
+              <label id="lblAmountInput" for="amountInput">신규 투자 금액 (원)</label>
+              <input type="number" id="amountInput" placeholder="예: 1000000" class="input-control">
+            </div>
+
+            <button class="btn" style="width: 100%; padding: 0.75rem;" onclick="runRebalanceCalculation()">
+              계산 실행하기
+            </button>
+          </div>
+        </aside>
+
+      </div> <!-- /dashboard-grid -->
+
+      <!-- Calculations Results Section -->
+      <div class="card results-section" id="resultsSection">
+        <h2 class="card-title">리밸런싱 제안 결과</h2>
+        
+        <div id="resultsList">
+          <!-- Dynamic Result Items -->
         </div>
 
-        <!-- Stock List -->
-        <div class="card">
-          <h2 class="card-title">
-            보유 종목 리스트
-            <div class="ticker-badge" id="tickerBadge">
-              <span class="ticker-spinner"></span>
-              <span id="tickerText">네이버 시세 대기 중...</span>
+        <div class="summary-bar" style="margin-top: 1rem; background-color: rgba(255,255,255,0.01);">
+          <div>
+            <span>총 집행 금액: <strong id="resTotalSpent" style="color: var(--accent-color);">0원</strong></span>
+          </div>
+          <div>
+            <span>미투자 잔액: <strong id="resLeftoverCash">0원</strong></span>
+          </div>
+        </div>
+
+        <button class="btn" id="btnReflectResults" onclick="applyCalculationResults()" style="width: 100%; margin-top: 1.25rem; background-color: var(--success); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25); font-weight: 600; padding: 0.85rem; border: none;">
+          📥 실제 거래 결과 포트폴리오에 반영하기 (매수 평단가 자동 계산)
+        </button>
+
+        <div class="explanation-box" id="explanationBox">
+          <!-- Dynamic math explanations -->
+        </div>
+      </div>
+    </div> <!-- /realtimeContent -->
+
+    <!-- Backtest Simulator Section -->
+    <div id="backtestContent" style="display: none;">
+      <!-- Backtest Controls -->
+      <div class="card">
+        <h2 class="card-title">백테스트 시뮬레이터 설정</h2>
+        <div class="backtest-controls-row">
+          <div class="input-group">
+            <label for="backtestStartDate">시작일</label>
+            <input type="date" id="backtestStartDate" class="input-control">
+          </div>
+          <div class="input-group">
+            <label for="backtestEndDate">종료일</label>
+            <input type="date" id="backtestEndDate" class="input-control">
+          </div>
+          <div class="input-group">
+            <label for="backtestPrincipal">초기 투자 금액 (원)</label>
+            <input type="number" id="backtestPrincipal" value="10000000" class="input-control" min="100000">
+          </div>
+          <div class="input-group">
+            <label for="backtestRebalanceFreq">리밸런싱 빈도</label>
+            <select id="backtestRebalanceFreq" class="input-control" style="height: 38px;">
+              <option value="weekly">주간 (Weekly) 진단 및 리밸런싱</option>
+              <option value="monthly">월간 (Monthly) 진단 및 리밸런싱</option>
+              <option value="stage">시장 국면(Stage) 변경 시 즉시 (일별)</option>
+              <option value="stage_monthly">Stage 변경 시 + 매월 말 정기</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="backtestWeightModel">비중 모델 (전략 3)</label>
+            <select id="backtestWeightModel" class="input-control" style="height: 38px;" onchange="toggleCustomWeights()">
+              <option value="def70">기본형 (70:30 기준)</option>
+              <option value="agg80">공격형 (80:20 기준)</option>
+              <option value="hyper90">초공격형 (90:10 기준)</option>
+              <option value="custom">직접 지정 (Custom)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="backtestFee">거래 수수료 및 슬리피지 (%)</label>
+            <input type="number" id="backtestFee" value="0.1" step="0.01" class="input-control" min="0" max="5">
+          </div>
+          <button class="btn btn-primary" onclick="runHistoricalBacktest()" style="height: 40px; margin-top: auto;">시뮬레이션 실행</button>
+        </div>
+
+        <!-- Custom Weights Inputs (Hidden by default) -->
+        <div id="customWeightsContainer" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+          <div class="input-group">
+            <label for="customWeightStage1">평상시 (Stage 1 / 4-2) 주식 비중 (%)</label>
+            <input type="number" id="customWeightStage1" value="90" class="input-control" min="0" max="100">
+          </div>
+          <div class="input-group">
+            <label for="customWeightStage2">위기대기 (Stage 2-1 / 4-1) 주식 비중 (%)</label>
+            <input type="number" id="customWeightStage2" value="80" class="input-control" min="0" max="100">
+          </div>
+          <div class="input-group">
+            <label for="customWeightStage3">폭락진행 (Stage 2-2 / 3) 주식 비중 (%)</label>
+            <input type="number" id="customWeightStage3" value="70" class="input-control" min="0" max="100">
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading / Progress -->
+      <div class="card" id="backtestProgressCard" style="display: none;">
+        <h2 class="card-title">데이터 다운로드 및 시뮬레이션 중</h2>
+        <div id="backtestProgressText" style="font-size: 0.9rem; margin-bottom: 0.75rem; color: var(--text-secondary);">데이터 요청 중...</div>
+        <div class="progress-bar-bg" style="width: 100%; height: 12px; background-color: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; margin-bottom: 0.5rem;">
+          <div class="progress-bar-fill" id="backtestProgressBar" style="width: 0%; height: 100%; background: var(--accent-gradient); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <!-- Results Grid -->
+      <div id="backtestResultsSection" style="display: none;">
+        <!-- KPI Cards Grid -->
+        <!-- KPI Cards Grid -->
+        <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+          <!-- Strategy 1 -->
+          <div class="card kpi-card" style="margin-bottom: 0; border-left: 4px solid #f97316;">
+            <div class="kpi-title" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">전략 1: 나스닥 100% 매수보유 (QQQ)</div>
+            <div class="kpi-value" id="s1FinalAsset" style="font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0; font-family: var(--font-display);">0원</div>
+            <div class="kpi-stats" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.6;">
+              <div>누적 수익률: <span id="s1Return" style="font-weight: 600;">0.00%</span></div>
+              <div>연평균 수익률 (CAGR): <span id="s1Cagr" style="font-weight: 600;">0.00%</span></div>
+              <div>최대 낙폭 (MDD): <span id="s1Mdd" style="font-weight: 600; color: var(--danger);">0.00%</span></div>
+              <div>샤프 지수 (Sharpe): <span id="s1Sharpe" style="font-weight: 600;">0.00</span></div>
             </div>
-          </h2>
+          </div>
+        </div>
+
+        <!-- Market Stage Distribution Card -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <h2 class="card-title">선택 기간 내 시장 국면(Stage) 분포 분석</h2>
+          <div style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+            백테스트 기간 동안 시장 나침반 지표에 의해 분류된 각 단계별 거래일수와 비율입니다.
+          </div>
           
-          <div class="table-container">
-            <table id="stockTable">
+          <!-- Segmented Visual Bar -->
+          <div id="backtestStageBar" style="display: flex; width: 100%; height: 26px; border-radius: 13px; overflow: hidden; margin-bottom: 1.5rem; background-color: rgba(255,255,255,0.03); border: 1px solid var(--border-color); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);">
+            <!-- Dynamic segments -->
+          </div>
+
+          <div id="backtestStageGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+            <!-- Dynamic stats elements -->
+          </div>
+        </div>
+
+        <!-- Chart Card -->
+        <div class="card">
+          <h2 class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+            나스닥 100% 매수보유 (QQQ) 수익률 차트
+            <button class="preset-btn" onclick="resetChartZoom()" style="margin: 0; padding: 0.35rem 0.65rem; font-size: 0.72rem; background: rgba(249, 115, 22, 0.1); border-color: rgba(249, 115, 22, 0.2); color: #f97316; font-weight: 600; cursor: pointer;">
+              🔍 줌 초기화 (Reset)
+            </button>
+          </h2>
+          <div class="backtest-chart-container" style="position: relative; height: 400px; width: 100%;">
+            <canvas id="backtestChart"></canvas>
+          </div>
+
+          <!-- Chart Scroll & Zoom Controls -->
+          <div class="chart-controls-panel">
+            <!-- Range Scrollbar -->
+            <div style="display: flex; align-items: center; gap: 1rem; justify-content: space-between;">
+              <span id="chartMinDateLabel" style="font-size: 0.75rem; color: var(--text-secondary); min-width: 80px; font-family: var(--font-display);">-----</span>
+              <div style="position: relative; flex: 1; display: flex; align-items: center;">
+                <input type="range" id="chartScrollbar" min="0" max="0" value="0">
+              </div>
+              <span id="chartMaxDateLabel" style="font-size: 0.75rem; color: var(--text-secondary); min-width: 80px; text-align: right; font-family: var(--font-display);">-----</span>
+            </div>
+            
+            <!-- Zoom Control and Status -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">🔍 확대 비율 (Zoom):</span>
+                <input type="range" id="chartZoomSlider" min="5" max="100" value="100" style="width: 120px;">
+                <span id="chartZoomValue" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); min-width: 35px; font-family: var(--font-display);">100%</span>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">
+                * 슬라이더나 마우스 휠로 차트를 확대하고 가로 스크롤바로 이동하며 세부 시점을 관찰할 수 있습니다.
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Strategy Description Box -->
+        <div class="card explanation-box" style="margin-bottom: 1.5rem; background-color: rgba(17, 24, 39, 0.5); width: 100%;">
+          <h3>📝 백테스트 전략 설명</h3>
+          <p style="margin-bottom: 0.5rem; color: var(--text-secondary);">• <strong>전략 1 (나스닥 100% 매수보유)</strong>: 시작일에 나스닥 ETF(QQQ)를 전량 매수한 뒤 리밸런싱 없이 만기까지 보유하는 가장 단순한 벤치마크입니다.</p>
+          <p style="margin-bottom: 0.5rem; color: var(--text-secondary);">• <strong>전략 2 (고정 비중 70:30)</strong>: 상시 주식(QQQ) 70%, 채권(TLT) 30% 비율을 타겟으로 매월 말일에 리밸런싱을 강제 수행하는 자산배분 모델입니다.</p>
+          <p style="margin-bottom: 0.5rem; color: var(--text-secondary);">• <strong>전략 3 (나침반 동적 배분 70:30)</strong>: 시장 나침반 지표를 트래킹하여 시장 국면(1~4단계)을 진단하고, 위험 신호 감지 시 안전자산 비중을 최대 55%까지 늘리고 바닥 확인 시 주식 비중을 70%까지 점진적으로 복구하는 기본 동적 조절 전략입니다.</p>
+          <p style="margin-bottom: 0.5rem; color: var(--text-secondary);">• <strong>전략 4 (나침반 동적 배분 80:20)</strong>: 나침반 지표를 따르되 기본형보다 주식 비중을 10%씩 상향하여 평상시 주식 80%, 위기대기 70%, 폭락/지표악화 시 주식 60% 비중으로 공격적으로 보유하는 동적 전략입니다.</p>
+          <p style="margin-bottom: 0.5rem; color: var(--text-secondary);">• <strong>전략 5 (나침반 동적 배분 90:10)</strong>: 나침반 지표를 따르되 기본형보다 주식 비중을 20%씩 상향하여 평상시 주식 90%, 위기대기 80%, 폭락/지표악화 시 주식 70% 비중으로 초공격적인 자산 배분을 유지합니다.</p>
+          <p style="color: var(--text-secondary);">• <strong>거래 비용 반영</strong>: 모든 자산의 매매 시 설정한 거래 수수료 및 슬리피지 비율(기본 0.1%)을 차감하여 실거래와 유사한 성과를 산출했습니다.</p>
+        </div>
+
+        <!-- Trade Logs Card -->
+        <div class="card">
+          <h2 class="card-title">전략 3 (동적 배분) 백테스트 거래 기록</h2>
+          <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+            <table>
               <thead>
                 <tr>
-                  <th>종목</th>
-                  <th style="text-align: center;">분류</th>
-                  <th style="text-align: right;">현재가</th>
-                  <th style="text-align: right;">매수단가 (원)</th>
-                  <th style="text-align: right;">보유수량 (주)</th>
-                  <th style="text-align: right;">평가금액 (원)</th>
-                  <th style="text-align: right;">수익률 (ROI)</th>
-                  <th style="text-align: right;">목표 비중</th>
-                  <th style="text-align: center;">작업</th>
+                  <th>날짜</th>
+                  <th>시장 상태 (Stage)</th>
+                  <th style="text-align: right;">VIX</th>
+                  <th style="text-align: right;">금리차</th>
+                  <th style="text-align: right;">하이일드</th>
+                  <th style="text-align: right;">실업률</th>
+                  <th style="text-align: right;">QQQ 가격</th>
+                  <th style="text-align: right;">TLT 가격</th>
+                  <th style="text-align: right;">목표 비율 (주:채)</th>
+                  <th style="text-align: center;">거래 액션</th>
                 </tr>
               </thead>
-              <tbody id="stockTableBody">
-                <!-- Dynamic Content -->
+              <tbody id="backtestLogBody">
+                <!-- Dynamic Logs -->
               </tbody>
             </table>
           </div>
-
-          <!-- Total Summary & Ratio Validation Banner -->
-          <div class="summary-bar" id="summaryBar">
-            <div>
-              <span>총 목표 비중: </span>
-              <span id="totalTargetRatioBadge" class="ratio-badge error">0%</span>
-            </div>
-            <div>
-              <span>총 평가 금액: <strong id="totalEvalValue">0원</strong></span>
-            </div>
-          </div>
         </div>
-      </main>
-
-      <!-- Right side: Calculation & Statistics -->
-      <aside>
-        <!-- Statistics Card -->
-        <div class="card">
-          <h2 class="card-title">포트폴리오 요약</h2>
-          <div class="stats-card">
-            <div class="stat-row">
-              <span class="stat-label">총 매수 금액</span>
-              <span class="stat-value" id="statTotalPurchase">0원</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">총 평가 금액</span>
-              <span class="stat-value" id="statTotalEval" style="color: var(--accent-color);">0원</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">총 투자 손익</span>
-              <span class="stat-value" id="statTotalPL">0원</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">총 투자 수익률</span>
-              <span class="stat-value" id="statTotalROI">0.00%</span>
-            </div>
-            <div class="stat-row" style="border-top: 1px solid rgba(255,255,255,0.05); margin-top: 0.5rem; padding-top: 0.5rem;">
-              <span class="stat-label">주식 실제/목표 비중</span>
-              <span class="stat-value" id="statStockRatio">0% / 0%</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">안전자산 실제/목표 비중</span>
-              <span class="stat-value" id="statSafeRatio">0% / 0%</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Rebalancing Input Card -->
-        <div class="card">
-          <h2 class="card-title">리밸런싱 계산기</h2>
-          
-          <!-- Tab selector -->
-          <div class="tab-container">
-            <button class="tab-btn active" id="tabNewBuy" onclick="switchMode('newbuy')">신규 매수</button>
-            <button class="tab-btn" id="tabRebalance" onclick="switchMode('rebalance')">리밸런싱</button>
-          </div>
-
-          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 500;">가이드라인 추천 비율 프리셋</div>
-          <div class="preset-btn-group">
-            <button class="preset-btn" onclick="applyPresetRatio(30, 'stage1', this)">평상시 70:30</button>
-            <button class="preset-btn" onclick="applyPresetRatio(40, 'stage2a', this)">위기 감지 1 60:40</button>
-            <button class="preset-btn" onclick="applyPresetRatio(55, 'stage2b', this)">위기/폭락 45:55</button>
-            <button class="preset-btn" onclick="applyPresetRatio(40, 'stage4a', this)" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3);">바닥 반등 1 60:40</button>
-            <button class="preset-btn" onclick="applyPresetRatio(30, 'stage4b', this)" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3);">바닥 반등 2 70:30</button>
-          </div>
-
-          <div class="input-group" style="margin-bottom: 1.25rem;">
-            <label id="lblAmountInput" for="amountInput">신규 투자 금액 (원)</label>
-            <input type="number" id="amountInput" placeholder="예: 1000000" class="input-control">
-          </div>
-
-          <button class="btn" style="width: 100%; padding: 0.75rem;" onclick="runRebalanceCalculation()">
-            계산 실행하기
-          </button>
-        </div>
-      </aside>
-
-    </div> <!-- /dashboard-grid -->
-
-    <!-- Calculations Results Section -->
-    <div class="card results-section" id="resultsSection">
-      <h2 class="card-title">리밸런싱 제안 결과</h2>
-      
-      <div id="resultsList">
-        <!-- Dynamic Result Items -->
-      </div>
-
-      <div class="summary-bar" style="margin-top: 1rem; background-color: rgba(255,255,255,0.01);">
-        <div>
-          <span>총 집행 금액: <strong id="resTotalSpent" style="color: var(--accent-color);">0원</strong></span>
-        </div>
-        <div>
-          <span>미투자 잔액: <strong id="resLeftoverCash">0원</strong></span>
-        </div>
-      </div>
-
-      <button class="btn" id="btnReflectResults" onclick="applyCalculationResults()" style="width: 100%; margin-top: 1.25rem; background-color: var(--success); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25); font-weight: 600; padding: 0.85rem; border: none;">
-        📥 실제 거래 결과 포트폴리오에 반영하기 (매수 평단가 자동 계산)
-      </button>
-
-      <div class="explanation-box" id="explanationBox">
-        <!-- Dynamic math explanations -->
       </div>
     </div>
-
   </div> <!-- /container -->
 
   <!-- Trade Reflect Modal -->
@@ -1596,17 +1789,22 @@
       showToast(msg, 'success');
     }
 
-    async function fetchMarketIndicators() {
+     async function fetchMarketIndicators() {
       const fetchedAt = new Date();
       const result = {
         vix: null,
         previousVix: null,
+        vixHistory: [], // Stores last 30 closes for SMA calculation
+        qqqHistory: [],
         yieldCurve: null,
+        yieldCurveHistory: [],
         fearGreed: null,
         highYieldSpread: null,
         previousHighYieldSpread: null,
+        highYieldHistory: [],
         unemploymentRate: null,
         previousUnemploymentRate: null,
+        unemploymentHistory: [],
         fetchedAt,
         sourceTimes: {
           vix: null,
@@ -1618,19 +1816,23 @@
         errors: []
       };
 
-      // 1. Fetch VIX from Yahoo Finance
+      // 1. Fetch VIX from Yahoo Finance (30 days range for SMA & Peak calculation)
       try {
-        const vixUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/^VIX?interval=1d&range=5d';
+        const vixUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/^VIX?interval=1d&range=30d';
         const data = await fetchWithProxy(vixUrl, 'utf-8');
         if (data && data.chart && data.chart.result && data.chart.result[0]) {
           const chart = data.chart.result[0];
           const meta = chart.meta || {};
           const closes = ((chart.indicators || {}).quote || [])[0]?.close || [];
           const validCloses = closes.filter(value => typeof value === 'number');
-          const fetchedVix = meta.regularMarketPrice;
-          if (typeof fetchedVix === 'number') result.vix = parseFloat(fetchedVix.toFixed(2));
-          else if (validCloses.length > 0) result.vix = parseFloat(validCloses[validCloses.length - 1].toFixed(2));
-          if (validCloses.length >= 2) result.previousVix = parseFloat(validCloses[validCloses.length - 2].toFixed(2));
+          
+          if (validCloses.length > 0) {
+            result.vix = parseFloat(validCloses[validCloses.length - 1].toFixed(2));
+            result.vixHistory = validCloses; // List of last 30 daily close prices
+          }
+          if (validCloses.length >= 2) {
+            result.previousVix = parseFloat(validCloses[validCloses.length - 2].toFixed(2));
+          }
           if (typeof meta.regularMarketTime === 'number') {
             result.sourceTimes.vix = new Date(meta.regularMarketTime * 1000);
           }
@@ -1641,23 +1843,30 @@
         result.errors.push('VIX');
       }
 
+      // 1-1. Fetch QQQ trend data for price confirmation
+      try {
+        const qqqUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1y';
+        const data = await fetchWithProxy(qqqUrl, 'utf-8');
+        if (data && data.chart && data.chart.result && data.chart.result[0]) {
+          const chart = data.chart.result[0];
+          const timestamps = chart.timestamp || [];
+          const closes = ((chart.indicators || {}).quote || [])[0]?.close || [];
+          result.qqqHistory = closes
+            .map((close, idx) => ({ date: timestamps[idx] ? new Date(timestamps[idx] * 1000).toISOString().split('T')[0] : null, close }))
+            .filter(item => item.date && typeof item.close === 'number');
+        }
+        if (result.qqqHistory.length === 0) throw new Error('QQQ trend missing');
+      } catch (err) {
+        console.error('Failed to fetch QQQ trend', err);
+        result.errors.push('QQQ 추세');
+      }
+
       // 2. Fetch T10Y2Y from FRED CSV
       try {
-        const fredUrl = 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=T10Y2Y';
-        const csvText = await fetchTextWithProxy(fredUrl, 'utf-8');
-        const lines = csvText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        for (let i = lines.length - 1; i >= 1; i--) {
-          const parts = lines[i].split(',');
-          if (parts.length === 2) {
-            const val = parseFloat(parts[1]);
-            if (!isNaN(val)) {
-              result.yieldCurve = parseFloat(val.toFixed(3));
-              result.sourceTimes.yieldCurve = parts[0];
-              break;
-            }
-          }
-        }
-        if (result.yieldCurve === null) throw new Error('Yield curve value missing');
+        const yieldData = await fetchFredLatestValues('T10Y2Y');
+        result.yieldCurve = yieldData.current.value;
+        result.yieldCurveHistory = yieldData.allValues;
+        result.sourceTimes.yieldCurve = yieldData.current.date;
       } catch (err) {
         console.error('Failed to fetch Yield Curve', err);
         result.errors.push('장단기 금리차');
@@ -1684,6 +1893,7 @@
         const hyData = await fetchFredLatestValues('BAMLH0A0HYM2');
         result.highYieldSpread = hyData.current.value;
         result.previousHighYieldSpread = hyData.previous?.value ?? null;
+        result.highYieldHistory = hyData.allValues;
         result.sourceTimes.highYieldSpread = hyData.current.date;
       } catch (err) {
         console.error('Failed to fetch High Yield Spread', err);
@@ -1695,6 +1905,7 @@
         const unrateData = await fetchFredLatestValues('UNRATE');
         result.unemploymentRate = unrateData.current.value;
         result.previousUnemploymentRate = unrateData.previous?.value ?? null;
+        result.unemploymentHistory = unrateData.allValues;
         result.sourceTimes.unemploymentRate = unrateData.current.date;
       } catch (err) {
         console.error('Failed to fetch Unemployment Rate', err);
@@ -1723,7 +1934,8 @@
       if (values.length === 0) throw new Error(`${seriesId} value missing`);
       return {
         current: values[values.length - 1],
-        previous: values.length >= 2 ? values[values.length - 2] : null
+        previous: values.length >= 2 ? values[values.length - 2] : null,
+        allValues: values
       };
     }
 
@@ -1819,7 +2031,7 @@
         };
       }
 
-      const criticalErrors = data.errors.filter(error => error !== 'CNN 공포/탐욕 지수');
+      const criticalErrors = data.errors.filter(error => error !== 'CNN 공포/탐욕 지수' && error !== 'QQQ 추세');
       if (criticalErrors.length > 0) {
         const failedText = `<span style="color:var(--danger); font-weight:600; font-size:0.82rem;">값 불러오기 실패</span>`;
         document.getElementById('indVix').innerHTML = data.vix === null ? failedText : `${data.vix}`;
@@ -1914,7 +2126,63 @@
       }
       document.getElementById('indUnrate').innerHTML = unrateText;
 
-      // Stage Decision Logic
+      // --- Refined Stage Decision Logic ---
+      // 1. VIX SMA (5d) & VIX Peak (20d)
+      const vixHistory = data.vixHistory || [];
+      const vixSMA = vixHistory.length >= 5 ? vixHistory.slice(-5).reduce((sum, v) => sum + v, 0) / 5 : data.vix;
+      const previousVixSMA = vixHistory.length >= 6 ? vixHistory.slice(-6, -1).reduce((sum, v) => sum + v, 0) / 5 : vixSMA;
+      
+      let vixPeak20d = vixSMA;
+      if (vixHistory.length >= 25) {
+        let maxSma = -Infinity;
+        for (let i = 0; i < 20; i++) {
+          const sliceIdx = vixHistory.length - 1 - i;
+          const sma = vixHistory.slice(sliceIdx - 4, sliceIdx + 1).reduce((sum, v) => sum + v, 0) / 5;
+          if (sma > maxSma) maxSma = sma;
+        }
+        vixPeak20d = maxSma;
+      }
+
+      // 2. High Yield Spread SMA (5d) & Peak (20d)
+      const hyHistory = data.highYieldHistory || [];
+      const hySMA = hyHistory.length >= 5 ? hyHistory.slice(-5).map(item => item.value).reduce((sum, v) => sum + v, 0) / 5 : data.highYieldSpread;
+      const previousHySMA = hyHistory.length >= 6 ? hyHistory.slice(-6, -1).map(item => item.value).reduce((sum, v) => sum + v, 0) / 5 : hySMA;
+
+      let hyPeak20d = hySMA;
+      if (hyHistory.length >= 25) {
+        let maxSma = -Infinity;
+        for (let i = 0; i < 20; i++) {
+          const sliceIdx = hyHistory.length - 1 - i;
+          const sma = hyHistory.slice(sliceIdx - 4, sliceIdx + 1).map(item => item.value).reduce((sum, v) => sum + v, 0) / 5;
+          if (sma > maxSma) maxSma = sma;
+        }
+        hyPeak20d = maxSma;
+      }
+
+      // 3. Yield Curve Inversion Warning (Past 252 Business Days Check)
+      const yieldHistory = data.yieldCurveHistory || [];
+      let yieldCurveInvertedRecently = false;
+      if (yieldHistory.length > 0) {
+        const searchLimit = Math.min(yieldHistory.length, 252);
+        for (let i = 0; i < searchLimit; i++) {
+          if (yieldHistory[yieldHistory.length - 1 - i].value < 0) {
+            yieldCurveInvertedRecently = true;
+            break;
+          }
+        }
+      }
+
+      const vixFallingFromStress = vixPeak20d >= 28 && vixSMA <= vixPeak20d - 3;
+      const highYieldRising = previousHySMA !== null && hySMA > previousHySMA;
+      const highYieldRisingFromStress = highYieldRising && hySMA >= 4.0;
+      const highYieldFallingFromStress = hyPeak20d >= 4.5 && hySMA <= hyPeak20d - 0.2;
+      const unemploymentRising = data.previousUnemploymentRate !== null && data.unemploymentRate > data.previousUnemploymentRate;
+      const priceSignal = getPriceTrendSignal(data.qqqHistory);
+      const hasPriceSignal = priceSignal.current !== null;
+      const priceWeakWarning = hasPriceSignal && (priceSignal.weakTrend || priceSignal.deepDrawdown);
+      const priceRecoveryConfirmed = hasPriceSignal && (priceSignal.recovering || priceSignal.trendUp);
+      const yieldCurveRiskConfirmed = yieldCurveInvertedRecently && (data.vix >= 20 || (hasPriceSignal && (priceSignal.weakTrend || !priceSignal.aboveSma100)));
+
       let stageTitle = "";
       let advice = "";
 
@@ -1923,38 +2191,1236 @@
         .filter(stock => stock.type === 'stock' || !stock.type)
         .reduce((sum, stock) => sum + (stock.sharesOwned * stock.price), 0);
       const currentStockRatio = totalEval > 0 ? (stockEval / totalEval) * 100 : 0;
-      const vixFallingFromStress = data.previousVix !== null && data.previousVix >= 35 && data.vix < data.previousVix;
-      const highYieldRising = data.previousHighYieldSpread !== null && data.highYieldSpread > data.previousHighYieldSpread;
-      const highYieldRisingFromStress = highYieldRising && data.highYieldSpread >= 4;
-      const highYieldFallingFromStress = data.previousHighYieldSpread !== null && data.previousHighYieldSpread >= 5 && data.highYieldSpread < data.previousHighYieldSpread;
-      const unemploymentRising = data.previousUnemploymentRate !== null && data.unemploymentRate > data.previousUnemploymentRate;
 
-      if (highYieldFallingFromStress) {
-        stageTitle = "🌅 4단계-2: 바닥 반등 2차 매수";
-        advice = "하이일드 스프레드가 하락 반전해 신용 스트레스가 진정되는 흐름입니다. 안전자산을 추가로 주식으로 옮겨 평상시 비중으로 복귀합니다.<br><strong>추천 액션: 주식 70% / 안전자산 30%</strong>";
-      } else if (vixFallingFromStress) {
-        stageTitle = "🌅 4단계-1: 바닥 확인 및 1차 매수";
-        advice = "VIX가 35 이상 스트레스 구간을 찍은 뒤 고점을 낮추며 꺾이기 시작했습니다. 안전자산 일부를 활용해 정찰대 성격의 1차 매수를 진행합니다.<br><strong>추천 액션: 주식 60% / 안전자산 40%</strong>";
-      } else if (data.vix >= 30 || data.highYieldSpread >= 5 || highYieldRisingFromStress) {
+      if (highYieldFallingFromStress && priceRecoveryConfirmed) {
+        stageTitle = "🌅 4단계-2: 회복 확인 및 비중 복원";
+        advice = "하이일드 스프레드가 고점에서 안정되고 QQQ 가격 추세도 회복 조건을 통과했습니다. 안전자산 일부를 주식으로 전환해 평상시 비중으로 복원합니다.<br><strong>추천 액션: 주식 70% / 안전자산 30%</strong>";
+      } else if (vixFallingFromStress && priceRecoveryConfirmed) {
+        stageTitle = "🌅 4단계-1: 변동성 완화 + 가격 회복";
+        advice = "VIX가 스트레스 고점에서 내려왔고 QQQ가 단기 회복 추세를 보입니다. 다만 신용 위험 안정까지는 확인 전이므로 1차 분할 복구만 검토합니다.<br><strong>추천 액션: 주식 60% / 안전자산 40%</strong>";
+      } else if (vixSMA >= 30 || hySMA >= 5.0 || highYieldRisingFromStress || (priceSignal.deepDrawdown && priceSignal.weakTrend)) {
         stageTitle = "⛈️ 3단계: 폭락 진행 (태풍)";
-        advice = "VIX가 30 이상이거나 하이일드 스프레드가 급등/상승 중인 구간입니다. 떨어지는 칼날을 잡지 않고 2단계에서 확보한 안전자산을 유지합니다.<br><strong>추천 액션: 주식 45% / 안전자산 55% 유지</strong>";
-      } else if (data.vix >= 25 || unemploymentRising) {
-        stageTitle = "⛅ 2단계-2: 위기 감지 (거시경제 악화)";
-        advice = "VIX가 25를 돌파했거나 실업률이 상승 추세입니다. 주식 비중을 추가로 15% 줄여 안전자산을 절반 이상 확보합니다.<br><strong>추천 액션: 주식 45% / 안전자산 55%</strong>";
-      } else if (data.yieldCurve >= 0) {
-        stageTitle = "⛅ 2단계-1: 위기 감지 (금리차 정상화)";
-        advice = "마이너스였던 장단기 금리차가 0을 뚫고 플러스로 정상화된 경고 구간입니다. 한 번에 도망치지 않고 주식 비중을 10% 줄입니다.<br><strong>추천 액션: 주식 60% / 안전자산 40%</strong>";
+        advice = "변동성/신용 위험이 높거나 QQQ가 최근 고점 대비 크게 밀린 상태에서 추세도 약합니다. 추가 하락에 대비해 안전자산을 두텁게 유지합니다.<br><strong>추천 액션: 주식 45% / 안전자산 55% 유지</strong>";
+      } else if (vixSMA >= 25 || unemploymentRising || priceWeakWarning) {
+        stageTitle = "⛅ 2단계-2: 위기 감지 (지표/가격 악화)";
+        advice = "변동성, 고용, 또는 QQQ 가격 추세가 방어 신호를 보냅니다. 거시 지표만 기다리지 않고 가격 훼손까지 반영해 주식 비중을 낮춥니다.<br><strong>추천 액션: 주식 45% / 안전자산 55%</strong>";
+      } else if (yieldCurveRiskConfirmed) {
+        stageTitle = "⛅ 2단계-1: 위기 감지 (금리차 + 확인 신호)";
+        advice = "최근 1년 이내 장단기 금리차 역전 이력이 있고, 변동성 또는 가격 추세 확인 신호가 함께 나타났습니다. 주식 비중을 선제적으로 한 단계 낮춥니다.<br><strong>추천 액션: 주식 60% / 안전자산 40%</strong>";
       } else {
         stageTitle = "☀️ 1단계: 평상시 (날씨 맑음)";
         const trimAdvice = currentStockRatio > 75
           ? `<br><strong>현재 주식 비중이 ${currentStockRatio.toFixed(1)}%로 75%를 넘었습니다. 초과분을 매도해 주식 70% / 안전자산 30%로 복구하세요.</strong>`
           : '<br><strong>추천 액션: 주식 70% / 안전자산 30% 유지</strong>';
-        advice = `VIX가 20 이하 안정권이고 장단기 금리차가 마이너스 상태로 유지되는 평상시 구간입니다.${trimAdvice}`;
+        advice = `변동성 및 거시 지표가 안정권이며 최근 1년간 장단기 금리차 역전 이력도 없는 온전한 성장기입니다.${trimAdvice}`;
       }
 
       elStage.innerHTML = stageTitle;
       elAdvice.innerHTML = advice;
     }
+
+    // --- MAIN TAB SWITCHING ---
+    function switchMainTab(tab) {
+      const realtime = document.getElementById('realtimeContent');
+      const backtest = document.getElementById('backtestContent');
+      const btnDash = document.getElementById('btnTabDashboard');
+      const btnBack = document.getElementById('btnTabBacktest');
+      
+      if (tab === 'dashboard') {
+        realtime.style.display = 'block';
+        backtest.style.display = 'none';
+        btnDash.classList.add('active');
+        btnBack.classList.remove('active');
+      } else {
+        realtime.style.display = 'none';
+        backtest.style.display = 'block';
+        btnDash.classList.remove('active');
+        btnBack.classList.add('active');
+        
+        // Initialize default dates if empty
+        if (!document.getElementById('backtestStartDate').value) {
+          const today = new Date();
+          const fiveYearsAgo = new Date();
+          fiveYearsAgo.setFullYear(today.getFullYear() - 5);
+          document.getElementById('backtestEndDate').value = today.toISOString().split('T')[0];
+          document.getElementById('backtestStartDate').value = fiveYearsAgo.toISOString().split('T')[0];
+        }
+      }
+    }
+
+    function toggleCustomWeights() {
+      const model = document.getElementById('backtestWeightModel').value;
+      const container = document.getElementById('customWeightsContainer');
+      if (model === 'custom') {
+        container.style.display = 'grid';
+      } else {
+        container.style.display = 'none';
+      }
+    }
+
+    // --- HISTORICAL DATA LOADING HELPERS ---
+    async function loadYahooHistory(ticker, start, end) {
+      const p1 = Math.floor(start.getTime() / 1000);
+      const p2 = Math.floor(end.getTime() / 1000);
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${p1}&period2=${p2}&interval=1d`;
+      const data = await fetchWithProxy(url);
+      if (!data || !data.chart || !data.chart.result || !data.chart.result[0]) {
+        throw new Error(`${ticker} 데이터를 가져오지 못했습니다.`);
+      }
+      const result = data.chart.result[0];
+      const timestamps = result.timestamp || [];
+      const closes = result.indicators.quote[0].close || [];
+      const history = [];
+      for (let i = 0; i < timestamps.length; i++) {
+        if (closes[i] === null || closes[i] === undefined || isNaN(closes[i])) continue;
+        const dateStr = new Date(timestamps[i] * 1000).toISOString().split('T')[0];
+        history.push({ date: dateStr, close: parseFloat(closes[i].toFixed(4)) });
+      }
+      return history;
+    }
+
+    async function loadFredHistory(seriesId) {
+      const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}`;
+      const text = await fetchTextWithProxy(url);
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const history = [];
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(',');
+        if (parts.length !== 2) continue;
+        const val = parseFloat(parts[1]);
+        if (!isNaN(val)) {
+          history.push({ date: parts[0], value: parseFloat(val.toFixed(4)) });
+        }
+      }
+      return history;
+    }
+
+    // --- ALIGNING HELPERS ---
+    function getDailyIndicator(dateStr, history) {
+      let val = null;
+      let prevVal = null;
+      for (let i = 0; i < history.length; i++) {
+        if (history[i].date < dateStr) {
+          prevVal = val;
+          val = history[i].value;
+        } else {
+          break;
+        }
+      }
+      return { current: val, previous: prevVal };
+    }
+
+    function getUnemploymentRates(dateStr, unrateHistory) {
+      const date = new Date(dateStr);
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const day = date.getDate();
+      
+      let publishLimit;
+      if (day >= 8) {
+        publishLimit = new Date(year, month - 1, 1);
+      } else {
+        publishLimit = new Date(year, month - 2, 1);
+      }
+      
+      const available = unrateHistory.filter(item => new Date(item.date) <= publishLimit);
+      if (available.length >= 2) {
+        const current = available[available.length - 1].value;
+        const previous = available[available.length - 2].value;
+        return { current, previous };
+      } else if (available.length === 1) {
+        return { current: available[0].value, previous: available[0].value };
+      }
+      return { current: 4.0, previous: 4.0 };
+    }
+
+    function getVixValues(dateStr, vixHistory) {
+      const idx = vixHistory.findIndex(item => item.date === dateStr);
+      if (idx !== -1) {
+        const current = vixHistory[idx].close;
+        const previous = idx > 0 ? vixHistory[idx - 1].close : current;
+        return { current, previous };
+      }
+      let current = null;
+      let previous = null;
+      for (let i = 0; i < vixHistory.length; i++) {
+        if (vixHistory[i].date <= dateStr) {
+          previous = current;
+          current = vixHistory[i].close;
+        } else {
+          break;
+        }
+      }
+      return { current, previous: previous || current };
+    }
+
+    function getSMAValue(dateStr, history, index, period = 5) {
+      let startIdx = index;
+      if (startIdx === undefined || startIdx === null) {
+        startIdx = history.findIndex(item => item.date === dateStr);
+        if (startIdx === -1) {
+          for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i].date <= dateStr) {
+              startIdx = i;
+              break;
+            }
+          }
+        }
+      }
+      if (startIdx === -1 || startIdx === undefined || startIdx === null) return null;
+      
+      let sum = 0;
+      let count = 0;
+      for (let i = 0; i < period; i++) {
+        const curIdx = startIdx - i;
+        if (curIdx >= 0) {
+          sum += (history[curIdx].close !== undefined) ? history[curIdx].close : history[curIdx].value;
+          count++;
+        }
+      }
+      return count > 0 ? sum / count : null;
+    }
+
+    function getPeakInWindow(dateStr, history, index, windowSize = 20) {
+      let startIdx = index;
+      if (startIdx === undefined || startIdx === null) {
+        startIdx = history.findIndex(item => item.date === dateStr);
+        if (startIdx === -1) {
+          for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i].date <= dateStr) {
+              startIdx = i;
+              break;
+            }
+          }
+        }
+      }
+      if (startIdx === -1 || startIdx === undefined || startIdx === null) return null;
+      
+      let maxVal = -Infinity;
+      for (let i = 0; i < windowSize; i++) {
+        const curIdx = startIdx - i;
+        if (curIdx >= 0) {
+          const sma = getSMAValue(null, history, curIdx, 5);
+          if (sma !== null && sma > maxVal) {
+            maxVal = sma;
+          }
+        }
+      }
+      return maxVal === -Infinity ? null : maxVal;
+    }
+
+    function getPriceTrendSignal(history, index = null) {
+      if (!history || history.length === 0) {
+        return {
+          current: null,
+          sma20: null,
+          sma50: null,
+          sma100: null,
+          momentum20: 0,
+          drawdown63: 0,
+          recoveryFrom63Low: 0,
+          aboveSma50: false,
+          aboveSma100: false,
+          trendUp: false,
+          weakTrend: false,
+          deepDrawdown: false,
+          recovering: false
+        };
+      }
+
+      const endIdx = index === null || index === undefined ? history.length - 1 : index;
+      const safeIdx = Math.max(0, Math.min(endIdx, history.length - 1));
+      const getClose = (item) => item.close !== undefined ? item.close : item.value;
+      const current = getClose(history[safeIdx]);
+
+      const calcSma = (period) => {
+        let sum = 0;
+        let count = 0;
+        for (let i = safeIdx; i >= 0 && count < period; i--) {
+          const close = getClose(history[i]);
+          if (typeof close === 'number') {
+            sum += close;
+            count++;
+          }
+        }
+        return count > 0 ? sum / count : current;
+      };
+
+      const sma20 = calcSma(20);
+      const sma50 = calcSma(50);
+      const sma100 = calcSma(100);
+      const close20Ago = safeIdx >= 20 ? getClose(history[safeIdx - 20]) : current;
+      const momentum20 = close20Ago ? ((current - close20Ago) / close20Ago) * 100 : 0;
+
+      let high63 = current;
+      let low63 = current;
+      for (let i = safeIdx; i >= 0 && safeIdx - i < 63; i--) {
+        const close = getClose(history[i]);
+        if (typeof close !== 'number') continue;
+        if (close > high63) high63 = close;
+        if (close < low63) low63 = close;
+      }
+
+      const drawdown63 = high63 ? ((current - high63) / high63) * 100 : 0;
+      const recoveryFrom63Low = low63 ? ((current - low63) / low63) * 100 : 0;
+      const aboveSma50 = current >= sma50;
+      const aboveSma100 = current >= sma100;
+      const trendUp = aboveSma50 && sma20 >= sma50 && momentum20 >= 0;
+      const weakTrend = (!aboveSma50 && momentum20 < 0) || (!aboveSma100 && momentum20 < -3);
+      const deepDrawdown = drawdown63 <= -10;
+      const recovering = current >= sma20 && momentum20 > 0 && recoveryFrom63Low >= 5;
+
+      return {
+        current,
+        sma20,
+        sma50,
+        sma100,
+        momentum20,
+        drawdown63,
+        recoveryFrom63Low,
+        aboveSma50,
+        aboveSma100,
+        trendUp,
+        weakTrend,
+        deepDrawdown,
+        recovering
+      };
+    }
+
+    // Chart.js instance variable
+    let backtestChartInstance = null;
+
+    // --- MAIN BACKTEST FUNCTION ---
+    async function runHistoricalBacktest() {
+      const startStr = document.getElementById('backtestStartDate').value;
+      const endStr = document.getElementById('backtestEndDate').value;
+      const principal = parseFloat(document.getElementById('backtestPrincipal').value) || 10000000;
+      const freq = document.getElementById('backtestRebalanceFreq').value;
+      const feeRate = (parseFloat(document.getElementById('backtestFee').value) || 0.1) / 100;
+
+      if (!startStr || !endStr) {
+        showToast('시작일과 종료일을 지정하세요.', 'warning');
+        return;
+      }
+
+      const startDate = new Date(startStr);
+      const endDate = new Date(endStr);
+
+      if (startDate >= endDate) {
+        showToast('시작일은 종료일보다 이전이어야 합니다.', 'warning');
+        return;
+      }
+
+      // Show progress
+      const progressCard = document.getElementById('backtestProgressCard');
+      const progressText = document.getElementById('backtestProgressText');
+      const progressBar = document.getElementById('backtestProgressBar');
+      const resultsSection = document.getElementById('backtestResultsSection');
+
+      progressCard.style.display = 'block';
+      resultsSection.style.display = 'none';
+      progressBar.style.width = '0%';
+
+      try {
+        // Step 1: Load QQQ history
+        progressText.innerText = '나스닥 (QQQ) 역사적 시세 다운로드 중...';
+        progressBar.style.width = '15%';
+        const qqqHistory = await loadYahooHistory('QQQ', startDate, endDate);
+
+        // Step 2: Load TLT history
+        progressText.innerText = '미국 장기채 (TLT) 역사적 시세 다운로드 중...';
+        progressBar.style.width = '30%';
+        const tltHistory = await loadYahooHistory('TLT', startDate, endDate);
+
+        // Step 3: Load VIX history
+        progressText.innerText = '변동성 지수 (VIX) 역사적 시세 다운로드 중...';
+        progressBar.style.width = '45%';
+        const vixHistory = await loadYahooHistory('^VIX', startDate, endDate);
+
+        // Step 4: Load FRED indicators
+        progressText.innerText = '미국채 장단기 금리차 (10Y-2Y) 데이터 다운로드 중...';
+        progressBar.style.width = '60%';
+        const yieldHistory = await loadFredHistory('T10Y2Y');
+
+        progressText.innerText = '미국 하이일드 스프레드 데이터 다운로드 중...';
+        progressBar.style.width = '75%';
+        const hyHistory = await loadFredHistory('BAMLH0A0HYM2');
+
+        progressText.innerText = '미국 실업률 데이터 다운로드 중...';
+        progressBar.style.width = '90%';
+        const unrateHistory = await loadFredHistory('UNRATE');
+
+        // Step 5: Simulation
+        progressText.innerText = '자산 배분 백테스트 시뮬레이션 계산 중...';
+        progressBar.style.width = '95%';
+
+        // Map pricing histories for O(1) lookups
+        const tltMap = new Map();
+        tltHistory.forEach(item => tltMap.set(item.date, item.close));
+
+        // Setup timeline of trading days where both exist
+        const timeline = qqqHistory.filter(item => tltMap.has(item.date));
+
+        if (timeline.length === 0) {
+          throw new Error('선택된 기간에 유효한 시세 데이터 거래일이 존재하지 않습니다.');
+        }
+
+        // Initialize variables for strategies
+        // Strategy 1: 100% QQQ
+        let s1Shares = 0;
+        let s1Cash = principal;
+        
+        // Strategy 2: Static 70:30 (QQQ:TLT), monthly rebalance
+        let s2Cash = 0;
+        let s2QqqShares = 0;
+        let s2TltShares = 0;
+
+        // Strategy 3: Dynamic Rebalancing (Market Compass 70:30)
+        let s3Cash = 0;
+        let s3QqqShares = 0;
+        let s3TltShares = 0;
+        let s3LastStage = null;
+
+        // Strategy 4: Dynamic Rebalancing (Aggressive 80:20)
+        let s4Cash = 0;
+        let s4QqqShares = 0;
+        let s4TltShares = 0;
+        let s4LastStage = null;
+
+        // Strategy 5: Dynamic Rebalancing (Super Aggressive 90:10)
+        let s5Cash = 0;
+        let s5QqqShares = 0;
+        let s5TltShares = 0;
+        let s5LastStage = null;
+
+        // History logs for chart
+        const dates = [];
+        const s1Values = [];
+        const s2Values = [];
+        const s3Values = [];
+        const s4Values = [];
+        const s5Values = [];
+        const tradeLogs = [];
+        const stages = [];
+
+        const stageCounts = {
+          "1단계: 평상시": 0,
+          "2-1단계: 위기 감지 (역전 정상화 대기)": 0,
+          "2-2단계: 위기 감지 (지표 악화)": 0,
+          "3단계: 폭락 진행": 0,
+          "4-1단계: 바닥 반등 1차": 0,
+          "4-2단계: 바닥 반등 2차": 0
+        };
+
+        // Loop over the timeline
+        for (let idx = 0; idx < timeline.length; idx++) {
+          const item = timeline[idx];
+          const dateStr = item.date;
+          const qqqPrice = item.close;
+          const tltPrice = tltMap.get(dateStr);
+
+          // Get macro indicators for this day
+          const vix = getVixValues(dateStr, vixHistory);
+          const yieldCurve = getDailyIndicator(dateStr, yieldHistory);
+          const hy = getDailyIndicator(dateStr, hyHistory);
+          const unrate = getUnemploymentRates(dateStr, unrateHistory);
+
+          // Find current indexes in history lists to compute SMA
+          let vixIdx = vixHistory.findIndex(v => v.date === dateStr);
+          if (vixIdx === -1) vixIdx = vixHistory.findIndex(v => v.date <= dateStr);
+          
+          let yieldIdx = yieldHistory.findIndex(y => y.date === dateStr);
+          if (yieldIdx === -1) {
+            for (let i = yieldHistory.length - 1; i >= 0; i--) {
+              if (yieldHistory[i].date <= dateStr) { yieldIdx = i; break; }
+            }
+          }
+
+          let hyIdx = hyHistory.findIndex(h => h.date === dateStr);
+          if (hyIdx === -1) {
+            for (let i = hyHistory.length - 1; i >= 0; i--) {
+              if (hyHistory[i].date <= dateStr) { hyIdx = i; break; }
+            }
+          }
+
+          // Calculate smoothed SMA indicators
+          const vixSMA = getSMAValue(null, vixHistory, vixIdx, 5) || vix.current;
+          const previousVixSMA = getSMAValue(null, vixHistory, vixIdx - 1, 5) || vixSMA;
+          const vixPeak20d = getPeakInWindow(null, vixHistory, vixIdx, 20) || vixSMA;
+
+          const hySMA = getSMAValue(null, hyHistory, hyIdx, 5) || hy.current;
+          const previousHySMA = getSMAValue(null, hyHistory, hyIdx - 1, 5) || hySMA;
+          const hyPeak20d = getPeakInWindow(null, hyHistory, hyIdx, 20) || hySMA;
+
+          // Check T10Y2Y recent inversion in past 252 business days
+          let yieldCurveInvertedRecently = false;
+          if (yieldIdx !== -1) {
+            const limit = Math.min(yieldIdx + 1, 252);
+            for (let i = 0; i < limit; i++) {
+              if (yieldHistory[yieldIdx - i].value < 0) {
+                yieldCurveInvertedRecently = true;
+                break;
+              }
+            }
+          }
+
+          // Refined Stage Decision Logic
+          const vixFallingFromStress = vixPeak20d >= 28 && vixSMA <= vixPeak20d - 3;
+          const highYieldRising = previousHySMA !== null && hySMA > previousHySMA;
+          const highYieldRisingFromStress = highYieldRising && hySMA >= 4.0;
+          const highYieldFallingFromStress = hyPeak20d >= 4.5 && hySMA <= hyPeak20d - 0.2;
+          const unemploymentRising = unrate.previous !== null && unrate.current > unrate.previous;
+          const priceSignal = getPriceTrendSignal(qqqHistory, qqqHistory.findIndex(q => q.date === dateStr));
+          const hasPriceSignal = priceSignal.current !== null;
+          const priceWeakWarning = hasPriceSignal && (priceSignal.weakTrend || priceSignal.deepDrawdown);
+          const priceRecoveryConfirmed = hasPriceSignal && (priceSignal.recovering || priceSignal.trendUp);
+          const yieldCurveRiskConfirmed = yieldCurveInvertedRecently && (vix.current >= 20 || (hasPriceSignal && (priceSignal.weakTrend || !priceSignal.aboveSma100)));
+
+          let stageTitle = "";
+          let targetStock3 = 70; // Default Stage 1
+          let targetStock4 = 80;
+          let targetStock5 = 90;
+
+          if (highYieldFallingFromStress && priceRecoveryConfirmed) {
+            stageTitle = "4-2단계: 바닥 반등 2차";
+            targetStock3 = 70;
+            targetStock4 = 80;
+            targetStock5 = 90;
+          } else if (vixFallingFromStress && priceRecoveryConfirmed) {
+            stageTitle = "4-1단계: 바닥 반등 1차";
+            targetStock3 = 60;
+            targetStock4 = 70;
+            targetStock5 = 80;
+          } else if (vixSMA >= 30 || hySMA >= 5.0 || highYieldRisingFromStress || (priceSignal.deepDrawdown && priceSignal.weakTrend)) {
+            stageTitle = "3단계: 폭락 진행";
+            targetStock3 = 45;
+            targetStock4 = 60;
+            targetStock5 = 70;
+          } else if (vixSMA >= 25 || unemploymentRising || priceWeakWarning) {
+            stageTitle = "2-2단계: 위기 감지 (지표 악화)";
+            targetStock3 = 45;
+            targetStock4 = 60;
+            targetStock5 = 70;
+          } else if (yieldCurveRiskConfirmed) {
+            stageTitle = "2-1단계: 위기 감지 (역전 정상화 대기)";
+            targetStock3 = 60;
+            targetStock4 = 70;
+            targetStock5 = 80;
+          } else {
+            stageTitle = "1단계: 평상시";
+            targetStock3 = 70;
+            targetStock4 = 80;
+            targetStock5 = 90;
+          }
+
+          stageCounts[stageTitle] = (stageCounts[stageTitle] || 0) + 1;
+
+          const targetSafe3 = 100 - targetStock3;
+          const targetSafe4 = 100 - targetStock4;
+          const targetSafe5 = 100 - targetStock5;
+
+          // Day 0: Initial Purchases
+          if (idx === 0) {
+            // Strategy 1
+            s1Shares = (principal * (1 - feeRate)) / qqqPrice;
+            s1Cash = 0;
+
+            // Strategy 2 (70% Stock / 30% Safe)
+            s2QqqShares = (principal * 0.70 * (1 - feeRate)) / qqqPrice;
+            s2TltShares = (principal * 0.30 * (1 - feeRate)) / tltPrice;
+
+            // Strategy 3 (Dynamic 70:30)
+            s3QqqShares = (principal * (targetStock3 / 100) * (1 - feeRate)) / qqqPrice;
+            s3TltShares = (principal * (targetSafe3 / 100) * (1 - feeRate)) / tltPrice;
+            s3LastStage = stageTitle;
+
+            // Strategy 4 (Dynamic 80:20)
+            s4QqqShares = (principal * (targetStock4 / 100) * (1 - feeRate)) / qqqPrice;
+            s4TltShares = (principal * (targetSafe4 / 100) * (1 - feeRate)) / tltPrice;
+            s4LastStage = stageTitle;
+
+            // Strategy 5 (Dynamic 90:10)
+            s5QqqShares = (principal * (targetStock5 / 100) * (1 - feeRate)) / qqqPrice;
+            s5TltShares = (principal * (targetSafe5 / 100) * (1 - feeRate)) / tltPrice;
+            s5LastStage = stageTitle;
+
+            tradeLogs.push({
+              date: dateStr,
+              stage: stageTitle,
+              vix: vixSMA,
+              yieldCurve: yieldCurve.current,
+              hy: hySMA,
+              unrate: unrate.current,
+              qqqPrice,
+              tltPrice,
+              ratio: `S3:${targetStock3}:${targetSafe3} | S4:${targetStock4}:${targetSafe4} | S5:${targetStock5}:${targetSafe5}`,
+              action: `최초 구성 (S3: ${targetStock3}%, S4: ${targetStock4}%, S5: ${targetStock5}%)`
+            });
+          } else {
+            // Check rebalancing triggers
+            const currentQqqDateObj = new Date(dateStr);
+            const nextItem = timeline[idx + 1];
+            const isEndOfMonth = nextItem ? new Date(nextItem.date).getMonth() !== currentQqqDateObj.getMonth() : true;
+            const isEndOfWeek = nextItem ? (new Date(nextItem.date).getDay() < currentQqqDateObj.getDay() || (new Date(nextItem.date) - currentQqqDateObj) > 4 * 86400000) : true;
+
+            // --- STRATEGY 2 REBALANCING (Monthly) ---
+            if (isEndOfMonth) {
+              const s2Val = s2QqqShares * qqqPrice + s2TltShares * tltPrice + s2Cash;
+              const targetQVal = s2Val * 0.7;
+              const targetTVal = s2Val * 0.3;
+              const tradeQ = targetQVal - s2QqqShares * qqqPrice;
+              const tradeT = targetTVal - s2TltShares * tltPrice;
+              
+              const fee = (Math.abs(tradeQ) + Math.abs(tradeT)) * feeRate;
+              const newTotal = s2Val - fee;
+              
+              s2QqqShares = (newTotal * 0.7) / qqqPrice;
+              s2TltShares = (newTotal * 0.3) / tltPrice;
+            }
+
+            // --- STRATEGY 3 REBALANCING (Dynamic 70:30) ---
+            let s3Rebalanced = false;
+            let rebalanceReason3 = '';
+
+            if (freq === 'weekly') {
+              if (isEndOfWeek && stageTitle !== s3LastStage) {
+                s3Rebalanced = true;
+                rebalanceReason3 = `주간 진단: 국면 변경 (${s3LastStage} ➔ ${stageTitle})`;
+              }
+            } else if (freq === 'monthly') {
+              if (isEndOfMonth && stageTitle !== s3LastStage) {
+                s3Rebalanced = true;
+                rebalanceReason3 = `월간 진단: 국면 변경 (${s3LastStage} ➔ ${stageTitle})`;
+              }
+            } else if (freq === 'stage') {
+              if (stageTitle !== s3LastStage) {
+                s3Rebalanced = true;
+                rebalanceReason3 = `시장 국면 변경 (${s3LastStage} ➔ ${stageTitle})`;
+              }
+            } else if (freq === 'stage_monthly') {
+              if (stageTitle !== s3LastStage) {
+                s3Rebalanced = true;
+                rebalanceReason3 = `시장 국면 변경 (${s3LastStage} ➔ ${stageTitle})`;
+              } else if (isEndOfMonth) {
+                s3Rebalanced = true;
+                rebalanceReason3 = `매월 말 정기 리밸런싱 (국면: ${stageTitle})`;
+              }
+            }
+
+            if (s3Rebalanced) {
+              const s3Val = s3QqqShares * qqqPrice + s3TltShares * tltPrice + s3Cash;
+              const targetQVal = s3Val * (targetStock3 / 100);
+              const targetTVal = s3Val * (targetSafe3 / 100);
+              const tradeQ = targetQVal - s3QqqShares * qqqPrice;
+              const tradeT = targetTVal - s3TltShares * tltPrice;
+
+              const fee = (Math.abs(tradeQ) + Math.abs(tradeT)) * feeRate;
+              const newTotal = s3Val - fee;
+
+              s3QqqShares = (newTotal * (targetStock3 / 100)) / qqqPrice;
+              s3TltShares = (newTotal * (targetSafe3 / 100)) / tltPrice;
+              s3LastStage = stageTitle;
+
+              tradeLogs.push({
+                date: dateStr,
+                stage: stageTitle,
+                vix: vixSMA,
+                yieldCurve: yieldCurve.current,
+                hy: hySMA,
+                unrate: unrate.current,
+                qqqPrice,
+                tltPrice,
+                ratio: `${targetStock3}:${targetSafe3}`,
+                action: `[S3 리밸런싱] ${rebalanceReason3}: 주식 ${targetStock3}% / 채권 ${targetSafe3}%`
+              });
+            }
+
+            // --- STRATEGY 4 REBALANCING (Dynamic 80:20) ---
+            let s4Rebalanced = false;
+            let rebalanceReason4 = '';
+
+            if (freq === 'weekly') {
+              if (isEndOfWeek && stageTitle !== s4LastStage) {
+                s4Rebalanced = true;
+                rebalanceReason4 = `주간 진단: 국면 변경 (${s4LastStage} ➔ ${stageTitle})`;
+              }
+            } else if (freq === 'monthly') {
+              if (isEndOfMonth && stageTitle !== s4LastStage) {
+                s4Rebalanced = true;
+                rebalanceReason4 = `월간 진단: 국면 변경 (${s4LastStage} ➔ ${stageTitle})`;
+              }
+            } else if (freq === 'stage') {
+              if (stageTitle !== s4LastStage) {
+                s4Rebalanced = true;
+                rebalanceReason4 = `시장 국면 변경 (${s4LastStage} ➔ ${stageTitle})`;
+              }
+            } else if (freq === 'stage_monthly') {
+              if (stageTitle !== s4LastStage) {
+                s4Rebalanced = true;
+                rebalanceReason4 = `시장 국면 변경 (${s4LastStage} ➔ ${stageTitle})`;
+              } else if (isEndOfMonth) {
+                s4Rebalanced = true;
+                rebalanceReason4 = `매월 말 정기 리밸런싱 (국면: ${stageTitle})`;
+              }
+            }
+
+            if (s4Rebalanced) {
+              const s4Val = s4QqqShares * qqqPrice + s4TltShares * tltPrice + s4Cash;
+              const targetQVal = s4Val * (targetStock4 / 100);
+              const targetTVal = s4Val * (targetSafe4 / 100);
+              const tradeQ = targetQVal - s4QqqShares * qqqPrice;
+              const tradeT = targetTVal - s4TltShares * tltPrice;
+
+              const fee = (Math.abs(tradeQ) + Math.abs(tradeT)) * feeRate;
+              const newTotal = s4Val - fee;
+
+              s4QqqShares = (newTotal * (targetStock4 / 100)) / qqqPrice;
+              s4TltShares = (newTotal * (targetSafe4 / 100)) / tltPrice;
+              s4LastStage = stageTitle;
+
+              tradeLogs.push({
+                date: dateStr,
+                stage: stageTitle,
+                vix: vixSMA,
+                yieldCurve: yieldCurve.current,
+                hy: hySMA,
+                unrate: unrate.current,
+                qqqPrice,
+                tltPrice,
+                ratio: `${targetStock4}:${targetSafe4}`,
+                action: `[S4 리밸런싱] ${rebalanceReason4}: 주식 ${targetStock4}% / 채권 ${targetSafe4}%`
+              });
+            }
+
+            // --- STRATEGY 5 REBALANCING (Dynamic 90:10) ---
+            let s5Rebalanced = false;
+            let rebalanceReason5 = '';
+
+            if (freq === 'weekly') {
+              if (isEndOfWeek && stageTitle !== s5LastStage) {
+                s5Rebalanced = true;
+                rebalanceReason5 = `주간 진단: 국면 변경 (${s5LastStage} ➔ ${stageTitle})`;
+              }
+            } else if (freq === 'monthly') {
+              if (isEndOfMonth && stageTitle !== s5LastStage) {
+                s5Rebalanced = true;
+                rebalanceReason5 = `월간 진단: 국면 변경 (${s5LastStage} ➔ ${stageTitle})`;
+              }
+            } else if (freq === 'stage') {
+              if (stageTitle !== s5LastStage) {
+                s5Rebalanced = true;
+                rebalanceReason5 = `시장 국면 변경 (${s5LastStage} ➔ ${stageTitle})`;
+              }
+            } else if (freq === 'stage_monthly') {
+              if (stageTitle !== s5LastStage) {
+                s5Rebalanced = true;
+                rebalanceReason5 = `시장 국면 변경 (${s5LastStage} ➔ ${stageTitle})`;
+              } else if (isEndOfMonth) {
+                s5Rebalanced = true;
+                rebalanceReason5 = `매월 말 정기 리밸런싱 (국면: ${stageTitle})`;
+              }
+            }
+
+            if (s5Rebalanced) {
+              const s5Val = s5QqqShares * qqqPrice + s5TltShares * tltPrice + s5Cash;
+              const targetQVal = s5Val * (targetStock5 / 100);
+              const targetTVal = s5Val * (targetSafe5 / 100);
+              const tradeQ = targetQVal - s5QqqShares * qqqPrice;
+              const tradeT = targetTVal - s5TltShares * tltPrice;
+
+              const fee = (Math.abs(tradeQ) + Math.abs(tradeT)) * feeRate;
+              const newTotal = s5Val - fee;
+
+              s5QqqShares = (newTotal * (targetStock5 / 100)) / qqqPrice;
+              s5TltShares = (newTotal * (targetSafe5 / 100)) / tltPrice;
+              s5LastStage = stageTitle;
+
+              tradeLogs.push({
+                date: dateStr,
+                stage: stageTitle,
+                vix: vixSMA,
+                yieldCurve: yieldCurve.current,
+                hy: hySMA,
+                unrate: unrate.current,
+                qqqPrice,
+                tltPrice,
+                ratio: `${targetStock5}:${targetSafe5}`,
+                action: `[S5 리밸런싱] ${rebalanceReason5}: 주식 ${targetStock5}% / 채권 ${targetSafe5}%`
+              });
+            }
+          }
+
+          // Record valuations
+          const s1Val = s1Shares * qqqPrice + s1Cash;
+          const s2Val = s2QqqShares * qqqPrice + s2TltShares * tltPrice + s2Cash;
+          const s3Val = s3QqqShares * qqqPrice + s3TltShares * tltPrice + s3Cash;
+          const s4Val = s4QqqShares * qqqPrice + s4TltShares * tltPrice + s4Cash;
+          const s5Val = s5QqqShares * qqqPrice + s5TltShares * tltPrice + s5Cash;
+
+          dates.push(dateStr);
+          s1Values.push(s1Val);
+          s2Values.push(s2Val);
+          s3Values.push(s3Val);
+          s4Values.push(s4Val);
+          s5Values.push(s5Val);
+          stages.push(stageTitle);
+        }
+
+        // Calculate performance metrics
+        const years = timeline.length / 252; // Market days per year
+
+        const calcMetrics = (vals) => {
+          const finalVal = vals[vals.length - 1];
+          const totalReturn = ((finalVal - principal) / principal) * 100;
+          const cagr = (Math.pow(finalVal / principal, 1 / years) - 1) * 100;
+
+          // MDD
+          let peak = -Infinity;
+          let maxD = 0;
+          for (let v of vals) {
+            if (v > peak) peak = v;
+            const draw = (peak - v) / peak;
+            if (draw > maxD) maxD = draw;
+          }
+          const mdd = maxD * 100;
+
+          // Sharpe Ratio (daily returns based, rf=2.0%)
+          const dReturns = [];
+          for (let i = 1; i < vals.length; i++) {
+            dReturns.push((vals[i] - vals[i - 1]) / vals[i - 1]);
+          }
+          const mean = dReturns.reduce((sum, r) => sum + r, 0) / dReturns.length;
+          const variance = dReturns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / (dReturns.length - 1);
+          const std = Math.sqrt(variance);
+          
+          const annReturn = mean * 252;
+          const annVol = std * Math.sqrt(252);
+          const sharpe = annVol > 0 ? (annReturn - 0.02) / annVol : 0;
+
+          return { finalVal, totalReturn, cagr, mdd, sharpe };
+        };
+
+        const m1 = calcMetrics(s1Values);
+        const m2 = calcMetrics(s2Values);
+        const m3 = calcMetrics(s3Values);
+        const m4 = calcMetrics(s4Values);
+        const m5 = calcMetrics(s5Values);
+
+        // Update KPI Cards UI
+        document.getElementById('s1FinalAsset').innerText = formatMoney(m1.finalVal);
+        document.getElementById('s1Return').innerText = m1.totalReturn.toFixed(2) + '%';
+        document.getElementById('s1Cagr').innerText = m1.cagr.toFixed(2) + '%';
+        document.getElementById('s1Mdd').innerText = '-' + m1.mdd.toFixed(2) + '%';
+        document.getElementById('s1Sharpe').innerText = m1.sharpe.toFixed(2);
+
+
+        // Render logs
+        const logBody = document.getElementById('backtestLogBody');
+        logBody.innerHTML = '';
+
+        if (tradeLogs.length === 0) {
+          logBody.innerHTML = `<tr><td colspan="10" style="text-align:center;">거래 내역이 존재하지 않습니다.</td></tr>`;
+        } else {
+          // Sort reverse to see latest at top
+          [...tradeLogs].reverse().forEach(log => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${log.date}</td>
+              <td style="font-weight:600;">${log.stage}</td>
+              <td style="text-align:right;">${log.vix !== null ? log.vix.toFixed(2) : '-'}</td>
+              <td style="text-align:right;">${log.yieldCurve !== null ? log.yieldCurve.toFixed(2) + '%' : '-'}</td>
+              <td style="text-align:right;">${log.hy !== null ? log.hy.toFixed(2) + '%' : '-'}</td>
+              <td style="text-align:right;">${log.unrate !== null ? log.unrate.toFixed(1) + '%' : '-'}</td>
+              <td style="text-align:right; font-family:var(--font-display); font-size:0.85rem;">$${log.qqqPrice.toFixed(2)}</td>
+              <td style="text-align:right; font-family:var(--font-display); font-size:0.85rem;">$${log.tltPrice.toFixed(2)}</td>
+              <td style="text-align:right; font-weight:600;">${log.ratio}</td>
+              <td style="color:var(--success); font-weight:500; font-size:0.8rem;">${log.action}</td>
+            `;
+            logBody.appendChild(tr);
+          });
+        }
+
+        // Render Stage Distribution UI
+        const totalDays = timeline.length;
+        const stageBar = document.getElementById('backtestStageBar');
+        const stageGrid = document.getElementById('backtestStageGrid');
+        
+        stageBar.innerHTML = '';
+        stageGrid.innerHTML = '';
+        
+        const STAGE_COLORS = {
+          "1단계: 평상시": "#10b981",
+          "2-1단계: 위기 감지 (역전 정상화 대기)": "#f59e0b",
+          "2-2단계: 위기 감지 (지표 악화)": "#ef4444",
+          "3단계: 폭락 진행": "#b91c1c",
+          "4-1단계: 바닥 반등 1차": "#06b6d4",
+          "4-2단계: 바닥 반등 2차": "#3b82f6"
+        };
+        
+        const STAGE_BADGES = {
+          "1단계: 평상시": "☀️ 1단계: 평상시",
+          "2-1단계: 위기 감지 (역전 정상화 대기)": "⛅ 2-1단계: 위기 (역전)",
+          "2-2단계: 위기 감지 (지표 악화)": "⛅ 2-2단계: 위기 (지표악화)",
+          "3단계: 폭락 진행": "⛈️ 3단계: 폭락 진행",
+          "4-1단계: 바닥 반등 1차": "🌅 4-1단계: 바닥 1차",
+          "4-2단계: 바닥 반등 2차": "🌅 4-2단계: 바닥 2차"
+        };
+
+        const STAGE_RATIOS = {
+          "1단계: 평상시": "S3: 70% | S4: 80% | S5: 90%",
+          "2-1단계: 위기 감지 (역전 정상화 대기)": "S3: 60% | S4: 70% | S5: 80%",
+          "2-2단계: 위기 감지 (지표 악화)": "S3: 45% | S4: 60% | S5: 70%",
+          "3단계: 폭락 진행": "S3: 45% | S4: 60% | S5: 70%",
+          "4-1단계: 바닥 반등 1차": "S3: 60% | S4: 70% | S5: 80%",
+          "4-2단계: 바닥 반등 2차": "S3: 70% | S4: 80% | S5: 90%"
+        };
+
+        const stagesList = [
+          "1단계: 평상시",
+          "2-1단계: 위기 감지 (역전 정상화 대기)",
+          "2-2단계: 위기 감지 (지표 악화)",
+          "3단계: 폭락 진행",
+          "4-1단계: 바닥 반등 1차",
+          "4-2단계: 바닥 반등 2차"
+        ];
+
+        stagesList.forEach(stg => {
+          const count = stageCounts[stg] || 0;
+          const pct = totalDays > 0 ? (count / totalDays) * 100 : 0;
+          
+          if (count > 0) {
+            const seg = document.createElement('div');
+            seg.style.width = `${pct}%`;
+            seg.style.backgroundColor = STAGE_COLORS[stg];
+            seg.style.height = '100%';
+            seg.style.transition = 'width 0.5s ease';
+            seg.title = `${stg}: ${count}일 (${pct.toFixed(1)}%)`;
+            stageBar.appendChild(seg);
+          }
+          
+          const card = document.createElement('div');
+          card.style.display = 'flex';
+          card.style.alignItems = 'center';
+          card.style.justifyContent = 'space-between';
+          card.style.padding = '0.75rem 1rem';
+          card.style.borderRadius = '10px';
+          card.style.border = '1px solid rgba(255,255,255,0.03)';
+          card.style.backgroundColor = 'rgba(255,255,255,0.01)';
+          card.style.borderLeft = `4px solid ${STAGE_COLORS[stg]}`;
+          
+          card.innerHTML = `
+            <div>
+              <div style="font-weight:600; font-size:0.88rem; color:var(--text-primary);">${STAGE_BADGES[stg]}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">
+                동적 주식 비중: ${STAGE_RATIOS[stg]}
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-weight:700; font-family:var(--font-display); font-size:1.1rem; color:var(--text-primary);">${count}일</div>
+              <div style="font-weight:500; font-size:0.75rem; color:var(--text-secondary);">${pct.toFixed(1)}%</div>
+            </div>
+          `;
+          stageGrid.appendChild(card);
+        });
+
+        // Render Chart
+        renderPerformanceChart(dates, s1Values, s2Values, s3Values, s4Values, s5Values, stages, principal);
+
+        // Display results section
+        progressCard.style.display = 'none';
+        resultsSection.style.display = 'block';
+        showToast('백테스트 시뮬레이션 계산이 정상 완료되었습니다.', 'success');
+
+      } catch (err) {
+        console.error(err);
+        progressCard.style.display = 'none';
+        showToast('시뮬레이션 도중 오류가 발생했습니다: ' + err.message, 'error');
+      }
+    }
+
+    function renderPerformanceChart(dates, s1, s2, s3, s4, s5, stages, principal) {
+      const ctx = document.getElementById('backtestChart').getContext('2d');
+
+      // Convert absolute values to returns (%) - we only draw s1 (QQQ 100% Hold)
+      const s1Returns = s1.map(v => ((v - principal) / principal) * 100);
+
+      // Initialize controls
+      const scrollbar = document.getElementById('chartScrollbar');
+      const zoomSlider = document.getElementById('chartZoomSlider');
+      const zoomValue = document.getElementById('chartZoomValue');
+      const minDateLabel = document.getElementById('chartMinDateLabel');
+      const maxDateLabel = document.getElementById('chartMaxDateLabel');
+
+      const totalPoints = dates.length;
+
+      function updateChartRange(startIndex, visibleCount) {
+        if (!backtestChartInstance) return;
+        const endIndex = Math.min(totalPoints - 1, startIndex + visibleCount - 1);
+        
+        backtestChartInstance.options.scales.x.min = startIndex;
+        backtestChartInstance.options.scales.x.max = endIndex;
+        backtestChartInstance.update('none');
+
+        if (minDateLabel) minDateLabel.textContent = dates[startIndex] || '';
+        if (maxDateLabel) maxDateLabel.textContent = dates[endIndex] || '';
+      }
+
+      function syncSliders(chartObj) {
+        const activeChart = chartObj || backtestChartInstance;
+        if (!activeChart) return;
+        const x = activeChart.scales.x;
+        if (!x) return;
+        
+        const minIdx = Math.max(0, Math.round(x.min));
+        const maxIdx = Math.min(totalPoints - 1, Math.round(x.max));
+        
+        const visibleCount = maxIdx - minIdx + 1;
+        const zoomPercent = Math.max(5, Math.min(100, Math.round((visibleCount / totalPoints) * 100)));
+        
+        if (zoomSlider) zoomSlider.value = zoomPercent;
+        if (zoomValue) zoomValue.textContent = zoomPercent + '%';
+        if (scrollbar) {
+          scrollbar.max = totalPoints - visibleCount;
+          scrollbar.value = minIdx;
+        }
+        if (minDateLabel) minDateLabel.textContent = dates[minIdx] || '';
+        if (maxDateLabel) maxDateLabel.textContent = dates[maxIdx] || '';
+      }
+
+      if (scrollbar && zoomSlider && zoomValue && minDateLabel && maxDateLabel) {
+        zoomSlider.value = 100;
+        zoomValue.textContent = '100%';
+        scrollbar.min = 0;
+        scrollbar.max = 0;
+        scrollbar.value = 0;
+        minDateLabel.textContent = dates[0] || '-----';
+        maxDateLabel.textContent = dates[totalPoints - 1] || '-----';
+
+        zoomSlider.oninput = function() {
+          const zoomPercent = parseInt(zoomSlider.value, 10);
+          zoomValue.textContent = zoomPercent + '%';
+          if (!backtestChartInstance) return;
+          const visibleCount = Math.min(totalPoints, Math.max(5, Math.round((zoomPercent / 100) * totalPoints)));
+          let startIndex = parseInt(scrollbar.value, 10);
+          if (startIndex + visibleCount > totalPoints) {
+            startIndex = totalPoints - visibleCount;
+          }
+          startIndex = Math.max(0, startIndex);
+          scrollbar.max = totalPoints - visibleCount;
+          scrollbar.value = startIndex;
+          updateChartRange(startIndex, visibleCount);
+        };
+
+        scrollbar.oninput = function() {
+          if (!backtestChartInstance) return;
+          const startIndex = parseInt(scrollbar.value, 10);
+          const zoomPercent = parseInt(zoomSlider.value, 10);
+          const visibleCount = Math.min(totalPoints, Math.max(5, Math.round((zoomPercent / 100) * totalPoints)));
+          updateChartRange(startIndex, visibleCount);
+        };
+      }
+
+      if (backtestChartInstance) {
+        backtestChartInstance.destroy();
+      }
+
+      // Chart.js plugin to draw vertical bands behind lines according to stage
+      const stageBackgroundPlugin = {
+        id: 'stageBackgrounds',
+        beforeDraw: (chart) => {
+          const { ctx, chartArea, scales } = chart;
+          const xScale = scales.x;
+          const yScale = scales.y;
+          if (!xScale || !yScale || !chartArea) return;
+
+          const chartStages = chart.config.data.stages;
+          if (!chartStages || chartStages.length === 0) return;
+
+          const STAGE_BG_COLORS = {
+            "1단계: 평상시": "rgba(16, 185, 129, 0.02)",
+            "2-1단계: 위기 감지 (역전 정상화 대기)": "rgba(245, 158, 11, 0.04)",
+            "2-2단계: 위기 감지 (지표 악화)": "rgba(239, 68, 68, 0.05)",
+            "3단계: 폭락 진행": "rgba(185, 28, 28, 0.09)",
+            "4-1단계: 바닥 반등 1차": "rgba(6, 182, 212, 0.04)",
+            "4-2단계: 바닥 반등 2차": "rgba(59, 130, 246, 0.03)"
+          };
+
+          const count = chartStages.length;
+          const meta = chart.getDatasetMeta(0);
+          if (!meta || !meta.data || meta.data.length === 0) return;
+
+          ctx.save();
+          // Clip drawing area to chartArea so background bands don't overflow when zoomed/panned
+          ctx.beginPath();
+          ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+          ctx.clip();
+
+          for (let i = 0; i < count; i++) {
+            if (!meta.data[i]) continue;
+            const currentX = meta.data[i].x;
+            let nextX;
+            if (i < count - 1 && meta.data[i + 1]) {
+              nextX = meta.data[i + 1].x;
+            } else {
+              const prevX = (i > 0 && meta.data[i - 1]) ? meta.data[i - 1].x : currentX;
+              nextX = currentX + (currentX - prevX);
+            }
+
+            const stage = chartStages[i];
+            const color = STAGE_BG_COLORS[stage] || "transparent";
+            
+            ctx.fillStyle = color;
+            ctx.fillRect(
+              currentX,
+              chartArea.top,
+              nextX - currentX + 0.5,
+              chartArea.bottom - chartArea.top
+            );
+          }
+          ctx.restore();
+        }
+      };
+
+      backtestChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates,
+          stages: stages,
+          datasets: [
+            {
+              label: '나스닥 100% 매수보유 (QQQ)',
+              data: s1Returns,
+              borderColor: '#f97316',
+              borderWidth: 2.0,
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        plugins: [stageBackgroundPlugin],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#f9fafb',
+                font: {
+                  family: 'Outfit'
+                }
+              }
+            },
+            tooltip: {
+              backgroundColor: '#111827',
+              borderColor: 'rgba(255,255,255,0.08)',
+              borderWidth: 1,
+              titleColor: '#f9fafb',
+              bodyColor: '#f9fafb',
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + '%';
+                },
+                afterBody: function(context) {
+                  const dataIndex = context[0].dataIndex;
+                  const chartStages = context[0].chart.config.data.stages;
+                  if (!chartStages || !chartStages[dataIndex]) return '';
+                  
+                  const stage = chartStages[dataIndex];
+                  const STAGE_EXPLANATIONS = {
+                    "1단계: 평상시": "☀️ 1단계 (평상시): VIX 및 거시 지표가 안정적인 온전한 성장기",
+                    "2-1단계: 위기 감지 (역전 정상화 대기)": "⛅ 2-1단계 (위기 대기): 1년 내 장단기 금리차 역전 발생으로 잠재 위기 상태",
+                    "2-2단계: 위기 감지 (지표 악화)": "⛅ 2-2단계 (지표 악화): VIX 경고치 진입 또는 실업률이 전월 대비 상승",
+                    "3단계: 폭락 진행": "⛈️ 3단계 (폭락 진행): VIX 30 이상 폭락 진행 또는 회사채 하이일드 스프레드 급등",
+                    "4-1단계: 바닥 반등 1차": "🌅 4-1단계 (바닥 반등): 변동성 극대화(VIX 35 이상) 이후 하락 반전으로 바닥 확인 시점",
+                    "4-2단계: 바닥 반등 2차": "🌅 4-2단계 (바닥 반등): 회사채 신용 위험(하이일드 스프레드)이 안정세로 진입하는 시점"
+                  };
+                  return '\n[시장 국면]\n' + (STAGE_EXPLANATIONS[stage] || stage);
+                }
+              }
+            },
+            zoom: {
+              pan: {
+                enabled: true,
+                mode: 'x',
+                modifierKey: null,
+                onPan: function({chart}) {
+                  syncSliders(chart);
+                }
+              },
+              zoom: {
+                wheel: {
+                  enabled: true,
+                  speed: 0.08
+                },
+                pinch: {
+                  enabled: true
+                },
+                mode: 'x',
+                onZoom: function({chart}) {
+                  syncSliders(chart);
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(255,255,255,0.02)'
+              },
+              ticks: {
+                color: '#9ca3af',
+                maxTicksLimit: 12,
+                font: {
+                  family: 'Outfit'
+                }
+              }
+            },
+            y: {
+              grid: {
+                color: 'rgba(255,255,255,0.05)'
+              },
+              ticks: {
+                color: '#9ca3af',
+                callback: function(value) {
+                  return value.toFixed(0) + '%';
+                },
+                font: {
+                  family: 'Outfit'
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function resetChartZoom() {
+      if (backtestChartInstance) {
+        backtestChartInstance.resetZoom();
+        
+        // Manually update sliders to 100% zoom and start index 0
+        const scrollbar = document.getElementById('chartScrollbar');
+        const zoomSlider = document.getElementById('chartZoomSlider');
+        const zoomValue = document.getElementById('chartZoomValue');
+        const minDateLabel = document.getElementById('chartMinDateLabel');
+        const maxDateLabel = document.getElementById('chartMaxDateLabel');
+        const dates = backtestChartInstance.data.labels;
+        
+        if (scrollbar && zoomSlider && zoomValue && minDateLabel && maxDateLabel && dates) {
+          zoomSlider.value = 100;
+          zoomValue.textContent = '100%';
+          scrollbar.max = 0;
+          scrollbar.value = 0;
+          minDateLabel.textContent = dates[0] || '-----';
+          maxDateLabel.textContent = dates[dates.length - 1] || '-----';
+        }
+      }
+    }
+
   </script>
 </body>
 </html>
