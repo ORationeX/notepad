@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 | Project Management</title>
+    
+    <!-- Theme script to prevent flashing -->
+    <script th:src="@{/js/theme.js}"></script>
+    
+    <!-- Google Fonts: Outfit & Noto Sans KR -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Common CSS -->
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+</head>
+<body class="auth-page">
+
+    <!-- Ambient Glow effects -->
+    <div class="ambient-light-1"></div>
+    <div class="ambient-light-2"></div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="container">
+        <div class="card">
+            <!-- Header -->
+            <div class="header">
+                <div class="logo-area">
+                    <i class="fa-solid fa-users-gear"></i>
+                </div>
+                <h1 class="title">Welcome Back</h1>
+                <p class="subtitle">계정에 로그인하여 프로젝트를 시작하세요</p>
+            </div>
+
+            <!-- Form -->
+            <form id="loginForm" novalidate>
+                
+                <!-- Email -->
+                <div class="form-group" id="emailGroup">
+                    <div class="label-row">
+                        <label for="email">이메일 주소</label>
+                    </div>
+                    <div class="input-wrapper">
+                        <input type="email" id="email" name="email" placeholder="example@domain.com" required>
+                        <i class="fa-regular fa-envelope input-icon"></i>
+                    </div>
+                    <div class="error-message" id="emailError">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span>올바른 이메일 형식을 입력하세요.</span>
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div class="form-group" id="passwordGroup">
+                    <div class="label-row">
+                        <label for="password">비밀번호</label>
+                    </div>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" name="password" placeholder="비밀번호 입력" required>
+                        <i class="fa-solid fa-lock input-icon"></i>
+                    </div>
+                    <div class="error-message" id="passwordError">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span>비밀번호를 입력하세요.</span>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn-submit" id="btnSubmit">
+                    <span>로그인</span>
+                    <div class="spinner" id="btnSpinner"></div>
+                </button>
+            </form>
+
+            <!-- Bottom Redirect -->
+            <div class="footer-text">
+                아직 계정이 없으신가요?
+                <a href="/signup" id="signupLink">회원가입하기</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('loginForm');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const submitBtn = document.getElementById('btnSubmit');
+            const spinner = document.getElementById('btnSpinner');
+
+            // Utilities: Show Toast Notification
+            function showToast(message, type = 'success') {
+                const container = document.getElementById('toastContainer');
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                
+                const icon = type === 'success' 
+                    ? '<i class="fa-solid fa-circle-check"></i>' 
+                    : '<i class="fa-solid fa-triangle-exclamation"></i>';
+                
+                toast.innerHTML = `
+                    ${icon}
+                    <span>${message}</span>
+                `;
+                
+                container.appendChild(toast);
+                
+                // Trigger transition
+                setTimeout(() => toast.classList.add('show'), 10);
+                
+                // Auto remove
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 400);
+                }, 4000);
+            }
+
+            // Utilities: Render input error status
+            function showError(input, errorEl, message) {
+                errorEl.querySelector('span').textContent = message;
+                errorEl.style.display = 'flex';
+                input.style.borderColor = 'var(--error)';
+                input.style.boxShadow = '0 0 0 3px rgba(244, 63, 94, 0.15)';
+            }
+
+            function clearError(input, errorEl) {
+                errorEl.style.display = 'none';
+                input.style.borderColor = '';
+                input.style.boxShadow = '';
+            }
+
+            // Client-side Validation helper
+            function validateEmail(email) {
+                const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                return re.test(String(email).toLowerCase());
+            }
+
+            // Email input check
+            emailInput.addEventListener('input', () => {
+                const err = document.getElementById('emailError');
+                if (emailInput.value === '' || validateEmail(emailInput.value)) {
+                    clearError(emailInput, err);
+                }
+            });
+
+            // Password input check
+            passwordInput.addEventListener('input', () => {
+                const err = document.getElementById('passwordError');
+                if (passwordInput.value !== '') {
+                    clearError(passwordInput, err);
+                }
+            });
+
+            // Handle Login Submit
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const inputs = [
+                    { ref: emailInput, err: document.getElementById('emailError') },
+                    { ref: passwordInput, err: document.getElementById('passwordError') }
+                ];
+
+                // Clean all errors first
+                inputs.forEach(item => clearError(item.ref, item.err));
+
+                // Client-side validations
+                let hasError = false;
+
+                if (!emailInput.value) {
+                    showError(emailInput, inputs[0].err, '이메일은 필수 입력 항목입니다.');
+                    hasError = true;
+                } else if (!validateEmail(emailInput.value)) {
+                    showError(emailInput, inputs[0].err, '올바른 이메일 형식이 아닙니다.');
+                    hasError = true;
+                }
+
+                if (!passwordInput.value) {
+                    showError(passwordInput, inputs[1].err, '비밀번호를 입력해 주세요.');
+                    hasError = true;
+                }
+
+                // Shake erroneous groups
+                if (hasError) {
+                    inputs.forEach(item => {
+                        if (item.err.style.display === 'flex') {
+                            const group = item.ref.closest('.form-group');
+                            group.classList.add('shake');
+                            setTimeout(() => group.classList.remove('shake'), 400);
+                        }
+                    });
+                    showToast('입력값을 다시 확인해 주세요.', 'error');
+                    return;
+                }
+
+                // Block submit buttons & show spinner
+                submitBtn.disabled = true;
+                spinner.style.display = 'block';
+
+                const loginData = {
+                    email: emailInput.value,
+                    password: passwordInput.value
+                };
+
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(loginData)
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        showToast(result.message || '로그인에 성공했습니다!', 'success');
+                        
+                        // Set the JWT token in Cookie (30 minutes expiry)
+                        const token = result.data.accessToken;
+                        document.cookie = `token=${token}; path=/; max-age=1800; SameSite=Strict`;
+                        
+                        // Redirect to home page
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1200);
+                    } else {
+                        submitBtn.disabled = false;
+                        spinner.style.display = 'none';
+                        
+                        // Handle server validation failures or authentication errors
+                        if (response.status === 400 && result.errors && Array.isArray(result.errors)) {
+                            result.errors.forEach(errDetail => {
+                                const matched = inputs.find(i => i.ref.id === errDetail.field);
+                                if (matched) {
+                                    showError(matched.ref, matched.err, errDetail.reason);
+                                }
+                            });
+                            showToast('입력값 검증에 실패했습니다.', 'error');
+                        } else {
+                            showToast(result.message || '로그인 정보가 올바르지 않습니다.', 'error');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Request Error:', error);
+                    submitBtn.disabled = false;
+                    spinner.style.display = 'none';
+                    showToast('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

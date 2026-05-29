@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>백테스트 시뮬레이터 - Smart Asset Rebalancer</title>
+  <!-- Google Fonts: Outfit & Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="backtest.css">
+  
+  <!-- Chart.js for Backtest Visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js Zoom Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo-section">
+        <h1>Smart Asset Rebalancer</h1>
+        <p>역사적 데이터를 통한 자산 배분 백테스트 시뮬레이터</p>
+      </div>
+
+      <!-- Simulator Mode Indicator -->
+      <div class="sync-panel">
+        <span class="status-dot active" style="background-color: var(--accent-color); box-shadow: 0 0 8px var(--accent-glow);"></span>
+        <span>시뮬레이터 모드</span>
+      </div>
+    </header>
+
+    <!-- Main Navigation Tabs -->
+    <div class="main-tabs">
+      <button class="main-tab-btn" onclick="location.href='../index.html'">실시간 자산 관리</button>
+      <button class="main-tab-btn active" onclick="location.href='index.html'">백테스트 시뮬레이터</button>
+      <button class="main-tab-btn" onclick="location.href='../구매시기/index.html'">구매시기 백테스트</button>
+    </div>
+
+    <!-- Backtest Simulator Section -->
+    <div id="backtestContent">
+      <!-- Backtest Controls -->
+      <div class="card">
+        <h2 class="card-title">백테스트 시뮬레이터 설정</h2>
+        <div class="backtest-controls-row" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto;">
+          <div class="input-group">
+            <label for="backtestStartDate">시작일</label>
+            <input type="date" id="backtestStartDate" class="input-control">
+          </div>
+          <div class="input-group">
+            <label for="backtestEndDate">종료일</label>
+            <input type="date" id="backtestEndDate" class="input-control">
+          </div>
+          <div class="input-group">
+            <label for="backtestPrincipal">초기 투자 금액 (원)</label>
+            <input type="number" id="backtestPrincipal" value="10000000" class="input-control" min="100000">
+          </div>
+          <div class="input-group">
+            <label for="backtestFee">거래 수수료 및 슬리피지 (%)</label>
+            <input type="number" id="backtestFee" value="0.1" step="0.01" class="input-control" min="0" max="5">
+          </div>
+          <button class="btn btn-primary" onclick="runHistoricalBacktest()" style="height: 40px; margin-top: auto;">시뮬레이션 실행</button>
+        </div>
+      </div>
+
+      <!-- Loading / Progress -->
+      <div class="card" id="backtestProgressCard" style="display: none;">
+        <h2 class="card-title">데이터 다운로드 및 시뮬레이션 중</h2>
+        <div id="backtestProgressText" style="font-size: 0.9rem; margin-bottom: 0.75rem; color: var(--text-secondary);">데이터 요청 중...</div>
+        <div class="progress-bar-bg" style="width: 100%; height: 12px; background-color: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; margin-bottom: 0.5rem;">
+          <div class="progress-bar-fill" id="backtestProgressBar" style="width: 0%; height: 100%; transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <!-- Results Grid -->
+      <div id="backtestResultsSection" style="display: none;">
+        <!-- KPI Cards Grid -->
+        <div class="kpi-grid" id="backtestKpiGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+          <!-- Dynamic KPI Cards will be injected here -->
+        </div>
+
+        <!-- Market Compass Rules Card -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <h2 class="card-title">🧭 시장 나침반(Market Compass) 국면 판정 기준</h2>
+          <div style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            백테스트 엔진은 다음 매크로 수치(VIX, 장단기금리차, 하이일드 스프레드, 실업률, 주가 추세)를 매 거래일 진단하여 아래와 같이 시장 국면을 판정합니다.
+          </div>
+          
+          <div class="criteria-grid">
+            <!-- Stage 1 -->
+            <div class="criteria-card" style="border-left: 4px solid #10b981;">
+              <div class="criteria-header">
+                <span style="color: #10b981;">☀️ 1단계: 평상시</span>
+                <span class="ratio-badge success" style="font-size: 0.7rem; padding: 0.1rem 0.35rem;">성장기</span>
+              </div>
+              <div class="criteria-rules">
+                • VIX SMA &lt; 24<br>
+                • 10Y-2Y 장단기금리차 역전 우려 없음<br>
+                • 신용 스프레드(Baa) &lt; 2.6% 및 실업률 안정(Sahm Rule 미돌파)
+              </div>
+            </div>
+            
+            <!-- Stage 2-1 -->
+            <div class="criteria-card" style="border-left: 4px solid #f59e0b;">
+              <div class="criteria-header">
+                <span style="color: #f59e0b;">⛅ 2-1단계: 위기 감지 (역전 대기)</span>
+                <span class="ratio-badge" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">경계</span>
+              </div>
+              <div class="criteria-rules">
+                • 최근 1년(252일) 내 장단기금리차 역전 발생<br>
+                • <strong>And</strong> (VIX &gt;= 20 또는 주가 추세 하락/이동평균 하회)
+              </div>
+            </div>
+            
+            <!-- Stage 2-2 -->
+            <div class="criteria-card" style="border-left: 4px solid #ef4444;">
+              <div class="criteria-header">
+                <span style="color: #ef4444;">⛅ 2-2단계: 위기 감지 (지표 악화)</span>
+                <span class="ratio-badge" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">경고</span>
+              </div>
+              <div class="criteria-rules">
+                • VIX SMA &gt;= 24<br>
+                • <strong>Or</strong> 미국 실업률 Sahm Rule 경보 돌파 (&gt;= 0.5%p)<br>
+                • <strong>Or</strong> 주가 심각한 추세 하락/낙폭 발생
+              </div>
+            </div>
+            
+            <!-- Stage 3 -->
+            <div class="criteria-card" style="border-left: 4px solid #b91c1c;">
+              <div class="criteria-header">
+                <span style="color: #f87171;">⛈️ 3단계: 폭락 진행</span>
+                <span class="ratio-badge error" style="font-size: 0.7rem; padding: 0.1rem 0.35rem;">위기</span>
+              </div>
+              <div class="criteria-rules">
+                • VIX SMA &gt;= 30<br>
+                • <strong>Or</strong> 신용 스프레드 &gt;= 3.0% 또는 급상승 (&gt;= 2.8% &amp; 상승)<br>
+                • <strong>Or</strong> 주가 63일 최고점 대비 -10% 이상 폭락 진행
+              </div>
+            </div>
+            
+            <!-- Stage 4-1 -->
+            <div class="criteria-card" style="border-left: 4px solid #06b6d4;">
+              <div class="criteria-header">
+                <span style="color: #06b6d4;">🌅 4-1단계: 바닥 반등 1차</span>
+                <span class="ratio-badge" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.3);">기회</span>
+              </div>
+              <div class="criteria-rules">
+                • 극단적 스트레스(VIX 20일 최고값 &gt;= 28) 발생 후<br>
+                • VIX SMA가 고점 대비 3 이상 하락 + 주가 반등 확인
+              </div>
+            </div>
+            
+            <!-- Stage 4-2 -->
+            <div class="criteria-card" style="border-left: 4px solid #3b82f6;">
+              <div class="criteria-header">
+                <span style="color: #3b82f6;">🌅 4-2단계: 바닥 반등 2차</span>
+                <span class="ratio-badge" style="font-size: 0.7rem; padding: 0.1rem 0.35rem; background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);">회복</span>
+              </div>
+              <div class="criteria-rules">
+                • 신용 스트레스(20일 최고값 &gt;= 2.3%) 발생 후<br>
+                • 신용 스프레드 SMA가 고점 대비 0.1% 이상 하락 + 주가 반등 확인
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market Stage Distribution Card -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <h2 class="card-title">선택 기간 내 시장 국면(Stage) 분포 분석</h2>
+          <div style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+            백테스트 기간 동안 시장 나침반 지표에 의해 분류된 각 단계별 거래일수와 비율입니다.
+          </div>
+          
+          <!-- Segmented Visual Bar -->
+          <div id="backtestStageBar" style="display: flex; width: 100%; height: 26px; border-radius: 13px; overflow: hidden; margin-bottom: 1.5rem; background-color: rgba(255,255,255,0.03); border: 1px solid var(--border-color); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);">
+            <!-- Dynamic segments -->
+          </div>
+
+          <div id="backtestStageGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+            <!-- Dynamic stats elements -->
+          </div>
+        </div>
+
+        <!-- Chart Card -->
+        <div class="card">
+          <h2 class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            나스닥 100% (QQQ) 수익률 및 시장 국면 차트
+            <button class="preset-btn" onclick="resetChartZoom()" style="margin: 0; padding: 0.35rem 0.65rem; font-size: 0.72rem; background: rgba(249, 115, 22, 0.1); border-color: rgba(249, 115, 22, 0.2); color: #f97316; font-weight: 600; cursor: pointer;">
+              🔍 줌 초기화 (Reset)
+            </button>
+          </h2>
+          
+          <!-- Stage Background Color Legend -->
+          <div class="chart-stage-legend">
+            <span class="legend-item" style="background: rgba(16, 185, 129, 0.18); border: 1px solid rgba(16, 185, 129, 0.35); color: #10b981;">☀️ 평상시</span>
+            <span class="legend-item" style="background: rgba(245, 158, 11, 0.25); border: 1px solid rgba(245, 158, 11, 0.40); color: #f59e0b;">⛅ 위기(역전대기)</span>
+            <span class="legend-item" style="background: rgba(239, 68, 68, 0.25); border: 1px solid rgba(239, 68, 68, 0.40); color: #ef4444;">⛅ 위기(지표악화)</span>
+            <span class="legend-item" style="background: rgba(185, 28, 28, 0.38); border: 1px solid rgba(185, 28, 28, 0.50); color: #f87171;">⛈️ 폭락 진행</span>
+            <span class="legend-item" style="background: rgba(6, 182, 212, 0.25); border: 1px solid rgba(6, 182, 212, 0.40); color: #06b6d4;">🌅 바닥 1차 반등</span>
+            <span class="legend-item" style="background: rgba(59, 130, 246, 0.25); border: 1px solid rgba(59, 130, 246, 0.40); color: #3b82f6;">🌅 바닥 2차 반등</span>
+          </div>
+
+          <div class="backtest-chart-container" style="position: relative; height: 400px; width: 100%;">
+            <canvas id="backtestChart"></canvas>
+          </div>
+
+          <!-- Chart Scroll & Zoom Controls -->
+          <div class="chart-controls-panel">
+            <!-- Range Scrollbar -->
+            <div style="display: flex; align-items: center; gap: 1rem; justify-content: space-between;">
+              <span id="chartMinDateLabel" style="font-size: 0.75rem; color: var(--text-secondary); min-width: 80px; font-family: var(--font-display);">-----</span>
+              <div style="position: relative; flex: 1; display: flex; align-items: center;">
+                <input type="range" id="chartScrollbar" min="0" max="0" value="0">
+              </div>
+              <span id="chartMaxDateLabel" style="font-size: 0.75rem; color: var(--text-secondary); min-width: 80px; text-align: right; font-family: var(--font-display);">-----</span>
+            </div>
+            
+            <!-- Zoom Control and Status -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">🔍 확대 비율 (Zoom):</span>
+                <input type="range" id="chartZoomSlider" min="5" max="100" value="100" style="width: 120px;">
+                <span id="chartZoomValue" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); min-width: 35px; font-family: var(--font-display);">100%</span>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">
+                * 슬라이더나 마우스 휠로 차트를 확대하고 가로 스크롤바로 이동하며 세부 시점을 관찰할 수 있습니다.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Strategy Description Box -->
+        <div class="card explanation-box" style="margin-bottom: 1.5rem; background-color: rgba(17, 24, 39, 0.5); width: 100%;">
+          <h3>📝 백테스트 시뮬레이션 설명</h3>
+          <p style="margin-bottom: 0.5rem; color: var(--text-secondary);">• <strong>나스닥 100% 매수보유 (QQQ)</strong>: 시작일에 나스닥 ETF(QQQ)를 전량 매수한 뒤 만기까지 무조건 보유하는 벤치마크 바이앤홀드 전략입니다.</p>
+          <p style="margin-bottom: 0.5rem; color: var(--text-secondary);">• <strong>나침반 신호매매 전략 (Active)</strong>: 시장 나침반 국면에 따른 추천 매매 액션(전량매도 0%, 보유 및 재진입 100%)을 추종하여 QQQ와 현금 비중을 실시간 조절하는 액티브 전략입니다. (현금 보유 시 연 2.0%의 무위험 수익을 합산하며, 거래 수수료 및 슬리피지가 반영됩니다.)</p>
+          <p style="color: var(--text-secondary);">• <strong>시장 국면 진단 (Market Compass)</strong>: 당일 시장의 상태가 어떤 국면이었는지를 차트 배경색과 표의 로그를 통해 시각화합니다.</p>
+        </div>
+
+        <!-- Trade Logs Card -->
+        <div class="card">
+          <h2 class="card-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            시장 나침반 국면 진단 및 역사적 가격 기록
+            <button class="preset-btn" onclick="copyTradeLogsToClipboard()" style="margin: 0; padding: 0.35rem 0.65rem; font-size: 0.72rem; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2); color: #3b82f6; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.25rem;">
+              📋 클립보드 복사 (Copy)
+            </button>
+          </h2>
+          <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>시장 상태 (Stage)</th>
+                  <th>진단 근거 / 임계값</th>
+                  <th style="text-align: right;">VIX</th>
+                  <th style="text-align: right;">금리차</th>
+                  <th style="text-align: right;">신용스프레드(Baa)</th>
+                  <th style="text-align: right;">실업률</th>
+                  <th style="text-align: right;">QQQ 가격</th>
+                  <th style="text-align: center;">추천 액션</th>
+                </tr>
+              </thead>
+              <tbody id="backtestLogBody">
+                <!-- Dynamic Logs -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div> <!-- /container -->
+
+  <!-- Toast Notification System -->
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toastIcon">ℹ️</span>
+    <span id="toastMessage">알림 메시지</span>
+  </div>
+
+  <!-- Backtest Application logic -->
+  <script src="backtest.js"></script>
+</body>
+</html>

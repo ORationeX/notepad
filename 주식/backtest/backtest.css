@@ -1,0 +1,202 @@
+@charset "UTF-8";
+
+/* Backtest controls row */
+.backtest-controls-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+@media (max-width: 768px) {
+  .backtest-controls-row {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+  .backtest-controls-row button {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+}
+
+/* KPI Grid & Cards */
+.kpi-card {
+  transition: transform var(--transition-normal), border-color var(--transition-normal);
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+/* Backtest progress bar style */
+.progress-bar-fill {
+  background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%) !important;
+}
+
+/* Chart Controls Panel & Custom Slider Styles */
+.chart-controls-panel {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+/* Common Custom Range Input */
+.chart-controls-panel input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #1f2937;
+  outline: none;
+  transition: background 0.3s;
+}
+
+.chart-controls-panel input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  background: #1f2937;
+  border-radius: 3px;
+}
+
+.chart-controls-panel input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  cursor: pointer;
+  margin-top: -5px; /* (6px track height - 16px thumb height) / 2 */
+  transition: transform 0.15s, background-color 0.2s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.chart-controls-panel input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  background: #60a5fa;
+}
+
+.chart-controls-panel input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  background: #1f2937;
+  border-radius: 3px;
+}
+
+.chart-controls-panel input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent-color);
+  cursor: pointer;
+  transition: transform 0.15s, background-color 0.2s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.chart-controls-panel input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.25);
+  background: #60a5fa;
+}
+
+/* Orange Theme for Scrollbar Thumb */
+#chartScrollbar::-webkit-slider-thumb {
+  background: #f97316;
+}
+#chartScrollbar::-webkit-slider-thumb:hover {
+  background: #fb923c;
+}
+#chartScrollbar::-moz-range-thumb {
+  background: #f97316;
+}
+#chartScrollbar::-moz-range-thumb:hover {
+  background: #fb923c;
+}
+
+/* Stage Badges in Table */
+.stage-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Stage Legend */
+.chart-stage-legend {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* Criteria Grid Card */
+.criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.criteria-card {
+  background: rgba(17, 24, 39, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 1rem;
+  transition: transform var(--transition-normal);
+}
+
+.criteria-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.criteria-header {
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.criteria-rules {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+}
+
+.criteria-weights {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  border-top: 1px dashed var(--border-color);
+  padding-top: 0.5rem;
+}
+

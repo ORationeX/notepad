@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대시보드 | Project Management</title>
+    
+    <!-- Theme script to prevent flashing -->
+    <script th:src="@{/js/theme.js}"></script>
+    
+    <!-- Google Fonts: Outfit & Noto Sans KR -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Common CSS -->
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+    
+
+</head>
+<body>
+
+    <!-- Ambient Glow effects -->
+    <div class="ambient-light-1"></div>
+    <div class="ambient-light-2"></div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Navigation Bar -->
+    <div th:replace="~{fragments/nav :: navbar(activePage='dashboard')}"></div>
+
+    <div class="dashboard-container">
+        <!-- Dashboard Welcome Title -->
+        <div class="dashboard-header">
+            <h1 class="dashboard-title">대시보드</h1>
+            <p class="dashboard-subtitle">워크스페이스의 핵심 지표 및 회원 상태 정보를 제공합니다.</p>
+        </div>
+
+        <!-- Main Grid Layout -->
+        <div class="dashboard-grid-main">
+            
+            <!-- Left Side: User profile widget -->
+            <div class="card">
+                <div class="profile-card">
+                    <div class="avatar-area">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                    
+                    <h2 class="user-email" id="userEmail">Loading...</h2>
+                    <div class="user-role" id="userRole">USER</div>
+                    
+                    <div class="dashboard-grid">
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="fa-regular fa-envelope"></i>
+                            </div>
+                            <div class="info-content">
+                                <span class="info-label">이메일 계정</span>
+                                <span class="info-value" id="infoEmail">-</span>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="fa-regular fa-clock"></i>
+                            </div>
+                            <div class="info-content">
+                                <span class="info-label">토큰 만료 예정</span>
+                                <span class="info-value" id="infoExpiry">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-logout" id="btnLogout">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        <span>로그아웃</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Side: Statistics & Actions -->
+            <div>
+                <!-- Statistics Card Grid -->
+                <div class="stat-card-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon primary">
+                            <i class="fa-solid fa-diagram-project"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">진행 중 프로젝트</span>
+                            <span class="stat-value">3 개</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon success">
+                            <i class="fa-solid fa-tasks"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">완료 태스크</span>
+                            <span class="stat-value">12 개</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon warning">
+                            <i class="fa-solid fa-hourglass-half"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">보류 및 검토</span>
+                            <span class="stat-value">2 개</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Welcome details card -->
+                <div class="card welcome-card">
+                    <h2 class="title welcome-title">
+                        워크스페이스에 오신 것을 환영합니다! 🚀
+                    </h2>
+                    <p class="welcome-desc">
+                        LineSoft Project Management 시스템을 통해 업무를 더욱 스마트하게 관리하세요. 상단의 <strong>프로젝트 관리</strong> 메뉴를 이용하시면, 진행 중인 프로젝트를 점검하고, 진행률 상태를 실시간으로 모니터링할 수 있습니다.
+                    </p>
+                    
+                    <a href="/projects" class="btn-primary">
+                        <i class="fa-solid fa-folder-tree"></i>
+                        <span>프로젝트 관리 바로가기</span>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Shared dashboard JS -->
+    <script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

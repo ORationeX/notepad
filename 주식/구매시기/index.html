@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>구매 시기 백테스트 - Smart Asset Rebalancer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="purchase-timing.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-section">
+        <h1>Smart Asset Rebalancer</h1>
+        <p>정기 매수 vs 신호 매수 타이밍 백테스트</p>
+      </div>
+      <div class="sync-panel">
+        <span class="status-dot active" style="background-color: var(--accent-color); box-shadow: 0 0 8px var(--accent-glow);"></span>
+        <span>구매시기 시뮬레이터</span>
+      </div>
+    </header>
+
+    <div class="main-tabs">
+      <button class="main-tab-btn" onclick="location.href='../index.html'">실시간 자산 관리</button>
+      <button class="main-tab-btn" onclick="location.href='../backtest/index.html'">백테스트 시뮬레이터</button>
+      <button class="main-tab-btn active" onclick="location.href='index.html'">구매시기 백테스트</button>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">시뮬레이션 설정</h2>
+      <div class="controls-grid">
+        <div class="input-group">
+          <label for="tickerInput">티커 (예: QQQ, SPY, TSLA)</label>
+          <input id="tickerInput" class="input-control" value="QQQ" />
+        </div>
+        <div class="input-group">
+          <label for="startDateInput">시작일</label>
+          <input id="startDateInput" class="input-control" type="date" />
+        </div>
+        <div class="input-group">
+          <label for="endDateInput">종료일</label>
+          <input id="endDateInput" class="input-control" type="date" />
+        </div>
+        <div class="input-group">
+          <label for="initialCapitalInput">초기 자금 (원)</label>
+          <input id="initialCapitalInput" class="input-control" type="number" min="0" step="100000" value="10000000" />
+        </div>
+        <div class="input-group">
+          <label for="monthlyContributionInput">매월 추가 자금 (원)</label>
+          <input id="monthlyContributionInput" class="input-control" type="number" min="0" step="10000" value="500000" />
+        </div>
+        <div class="input-group">
+          <label for="feeInput">거래 수수료 (%)</label>
+          <input id="feeInput" class="input-control" type="number" min="0" max="5" step="0.01" value="0.1" />
+        </div>
+      </div>
+
+      <div class="controls-grid secondary">
+        <div class="input-group">
+          <label for="maPeriodInput">신호 이동평균 기간 (일)</label>
+          <input id="maPeriodInput" class="input-control" type="number" min="20" max="300" step="1" value="200" />
+        </div>
+        <div class="input-group">
+          <label for="drawdownThresholdInput">추가 매수 낙폭 기준 (%)</label>
+          <input id="drawdownThresholdInput" class="input-control" type="number" min="5" max="50" step="1" value="15" />
+        </div>
+        <div class="option-group">
+          <label for="drawdownBuyToggle">낙폭 기반 추가 매수 사용</label>
+          <input id="drawdownBuyToggle" type="checkbox" checked />
+        </div>
+        <button class="btn btn-primary run-btn" onclick="runPurchaseTimingBacktest()">시뮬레이션 실행</button>
+      </div>
+    </div>
+
+    <div class="card" id="progressCard" style="display: none;">
+      <h2 class="card-title">데이터 로딩 중</h2>
+      <div id="progressText" class="subtext">시세 데이터를 불러오는 중입니다...</div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+    </div>
+
+    <div id="resultsSection" style="display: none;">
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <div class="card">
+        <h2 class="card-title">전략 수익률 비교 차트</h2>
+        <div class="chart-box">
+          <canvas id="timingChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">매수 이벤트 로그</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>전략</th>
+                <th>이벤트</th>
+                <th style="text-align:right;">가격($)</th>
+                <th style="text-align:right;">수량</th>
+                <th style="text-align:right;">거래금액($)</th>
+              </tr>
+            </thead>
+            <tbody id="logTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toastIcon">ℹ️</span>
+    <span id="toastMessage">알림</span>
+  </div>
+
+  <script src="purchase-timing.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <nav class="navbar" th:fragment="navbar(activePage)">
+        <div class="nav-container">
+            <!-- Brand Logo -->
+            <a href="/" class="nav-brand">
+                <i class="fa-solid fa-square-poll-horizontal"></i>
+                <span>Project Management</span>
+            </a>
+            
+            <!-- Menu Links -->
+            <ul class="nav-menu" id="navMenu">
+                <li class="nav-item">
+                    <a href="/" th:classappend="${activePage == 'dashboard'} ? 'active' : ''">
+                        <i class="fa-solid fa-chart-line"></i> 대시보드
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/projects" th:classappend="${activePage == 'projects'} ? 'active' : ''">
+                        <i class="fa-solid fa-folder-open"></i> 프로젝트 관리
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/schedule" th:classappend="${activePage == 'schedule'} ? 'active' : ''">
+                        <i class="fa-solid fa-calendar-days"></i> 일정 관리
+                    </a>
+                </li>
+            </ul>
+            
+            <!-- User Profiles & Actions -->
+            <div class="nav-actions">
+                <div class="user-profile-nav">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span id="navUserEmail">Loading...</span>
+                </div>
+                <button class="btn-logout-nav">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <span>로그아웃</span>
+                </button>
+                <button class="mobile-toggle" id="mobileMenuToggle">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+</body>
+</html>
