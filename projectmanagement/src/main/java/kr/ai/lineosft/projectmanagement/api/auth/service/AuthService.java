@@ -1,6 +1,9 @@
 package kr.ai.lineosft.projectmanagement.api.auth.service;
 
+import kr.ai.lineosft.projectmanagement.api.auth.dto.FindEmailRequest;
+import kr.ai.lineosft.projectmanagement.api.auth.dto.FindEmailResponse;
 import kr.ai.lineosft.projectmanagement.api.auth.dto.LoginRequest;
+import kr.ai.lineosft.projectmanagement.api.auth.dto.ResetPasswordRequest;
 import kr.ai.lineosft.projectmanagement.api.auth.dto.SignUpRequest;
 import kr.ai.lineosft.projectmanagement.api.auth.dto.SignUpResponse;
 import kr.ai.lineosft.projectmanagement.api.auth.dto.TokenResponse;
@@ -56,5 +59,22 @@ public class AuthService {
         String token = jwtTokenProvider.generateToken(authentication);
 
         return TokenResponse.of("Bearer", token);
+    }
+
+    @Transactional(readOnly = true)
+    public FindEmailResponse findEmail(FindEmailRequest request) {
+        Member member = memberRepository.findByNicknameAndPhoneNumber(request.getNickname(), request.getPhoneNumber())
+                .orElseThrow(() -> new IllegalArgumentException("일치하는 회원 정보가 없습니다."));
+        return new FindEmailResponse(member.getEmail());
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        Member member = memberRepository.findByEmailAndNicknameAndPhoneNumber(
+                request.getEmail(), request.getNickname(), request.getPhoneNumber()
+        ).orElseThrow(() -> new IllegalArgumentException("일치하는 회원 정보가 없습니다."));
+
+        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+        member.updatePassword(encodedPassword);
     }
 }

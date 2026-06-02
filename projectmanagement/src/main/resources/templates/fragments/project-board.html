@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head></head>
+<body>
+
+<!-- Project Board Panes Fragment -->
+<div th:fragment="board-markup">
+    <!-- 1. KANBAN / AGILE BOARD WORKSPACE -->
+    <div class="workspace-content-pane" id="kanbanAgilePane" style="display: none;">
+        <div class="kanban-board">
+            <div class="kanban-column" data-status="TODO">
+                <div class="column-header">
+                    <span class="column-title"><i class="fa-regular fa-circle-play"></i> 할 일</span>
+                    <span class="column-badge" id="todoCount">0</span>
+                </div>
+                <div class="kanban-cards" id="todoCards" ondragover="allowDrop(event)" ondrop="dropTask(event, 'TODO')">
+                    <!-- Task Cards -->
+                </div>
+            </div>
+            <div class="kanban-column" data-status="IN_PROGRESS">
+                <div class="column-header">
+                    <span class="column-title"><i class="fa-solid fa-spinner"></i> 진행 중</span>
+                    <span class="column-badge" id="inProgressCount">0</span>
+                </div>
+                <div class="kanban-cards" id="inProgressCards" ondragover="allowDrop(event)" ondrop="dropTask(event, 'IN_PROGRESS')">
+                    <!-- Task Cards -->
+                </div>
+            </div>
+            <div class="kanban-column" data-status="DONE">
+                <div class="column-header">
+                    <span class="column-title"><i class="fa-regular fa-circle-check"></i> 완료됨</span>
+                    <span class="column-badge" id="doneCount">0</span>
+                </div>
+                <div class="kanban-cards" id="doneCards" ondragover="allowDrop(event)" ondrop="dropTask(event, 'DONE')">
+                    <!-- Task Cards -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. SCRUM WORKSPACE -->
+    <div class="workspace-content-pane" id="scrumPane" style="display: none;">
+        <div class="scrum-layout">
+            <!-- Scrum Sidebar (Sprints & Backlog) -->
+            <div class="scrum-sidebar">
+                <div class="sprint-list-header">
+                    <h3 style="margin: 0; font-size: 1rem;"><i class="fa-solid fa-arrows-spin"></i> 스프린트</h3>
+                    <button class="btn-primary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openSprintModal()"><i class="fa-solid fa-plus"></i> 생성</button>
+                </div>
+                <div class="sprints-container" id="sprintsList">
+                    <!-- 스프린트 리스트 로드됨 -->
+                </div>
+
+                <div class="scrum-backlog-section">
+                    <div class="backlog-header">
+                        <span><i class="fa-solid fa-box-archive"></i> 제품 백로그</span>
+                    </div>
+                    <div class="backlog-list" id="backlogTasks">
+                        <!-- 백로그 태스크 로드됨 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrum Main: Sprint Board (Kanban style for selected sprint) -->
+            <div class="detail-card-list">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
+                    <h3 style="margin:0; font-size: 1.1rem;" id="selectedSprintName">스프린트를 선택해 주세요.</h3>
+                    <div id="selectedSprintActions">
+                        <!-- 스프린트 활성화/완료 등의 액션 버튼 -->
+                    </div>
+                </div>
+                
+                <div class="kanban-board" id="sprintKanbanBoard" style="min-height: 400px; display: none;">
+                    <div class="kanban-column" data-status="TODO">
+                        <div class="column-header">
+                            <span class="column-title">할 일</span>
+                            <span class="column-badge" id="sprintTodoCount">0</span>
+                        </div>
+                        <div class="kanban-cards" id="sprintTodoCards" ondragover="allowDrop(event)" ondrop="dropTask(event, 'TODO')"></div>
+                    </div>
+                    <div class="kanban-column" data-status="IN_PROGRESS">
+                        <div class="column-header">
+                            <span class="column-title">진행 중</span>
+                            <span class="column-badge" id="sprintInProgressCount">0</span>
+                        </div>
+                        <div class="kanban-cards" id="sprintInProgressCards" ondragover="allowDrop(event)" ondrop="dropTask(event, 'IN_PROGRESS')"></div>
+                    </div>
+                    <div class="kanban-column" data-status="DONE">
+                        <div class="column-header">
+                            <span class="column-title">완료됨</span>
+                            <span class="column-badge" id="sprintDoneCount">0</span>
+                        </div>
+                        <div class="kanban-cards" id="sprintDoneCards" ondragover="allowDrop(event)" ondrop="dropTask(event, 'DONE')"></div>
+                    </div>
+                </div>
+                <div class="no-data-msg" id="sprintBoardPlaceholder">
+                    스프린트를 선택하거나 활성 상태의 스프린트 보드를 조회하세요.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. WATERFALL WORKSPACE -->
+    <div class="workspace-content-pane" id="waterfallPane" style="display: none;">
+        <div class="waterfall-layout">
+            <!-- Phases Timeline Sidebar -->
+            <div class="phases-sidebar">
+                <div class="sprint-list-header">
+                    <h3 style="margin: 0; font-size: 1rem;"><i class="fa-solid fa-route"></i> 프로젝트 단계</h3>
+                    <button class="btn-primary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openPhaseModal()"><i class="fa-solid fa-plus"></i> 단계 추가</button>
+                </div>
+                <div class="phase-timeline-list" id="phasesList">
+                    <!-- 단계 타임라인 데이터 로드 -->
+                </div>
+            </div>
+
+            <!-- Phase Detail Tasks -->
+            <div class="detail-card-list">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
+                    <h3 style="margin:0; font-size: 1.1rem;" id="selectedPhaseName">단계를 선택해 주세요.</h3>
+                    <div id="selectedPhaseActions"></div>
+                </div>
+                <div class="backlog-list" id="phaseTasks" style="max-height: none;">
+                    <!-- 단계별 태스크 리스트 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. HYBRID WORKSPACE -->
+    <div class="workspace-content-pane" id="hybridPane" style="display: none;">
+        <!-- Phase Bar -->
+        <div class="hybrid-phase-bar" id="hybridPhasesBar">
+            <!-- 단계 단계바 렌더링 -->
+        </div>
+        <!-- Task Kanban for selected phase -->
+        <div class="detail-card-list">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin:0; font-size: 1.1rem;" id="hybridSelectedPhaseName">단계를 선택해 주세요.</h3>
+                <button class="btn-primary" id="btnHybridAddTask" style="display: none;"><i class="fa-solid fa-plus"></i> 이 단계에 작업 추가</button>
+            </div>
+            
+            <div class="kanban-board" id="hybridKanbanBoard" style="min-height: 400px; display: none;">
+                <div class="kanban-column" data-status="TODO">
+                    <div class="column-header">
+                        <span class="column-title">할 일</span>
+                        <span class="column-badge" id="hybridTodoCount">0</span>
+                    </div>
+                    <div class="kanban-cards" id="hybridTodoCards" ondragover="allowDrop(event)" ondrop="dropTask(event, 'TODO')"></div>
+                </div>
+                <div class="kanban-column" data-status="IN_PROGRESS">
+                    <div class="column-header">
+                        <span class="column-title">진행 중</span>
+                        <span class="column-badge" id="hybridInProgressCount">0</span>
+                    </div>
+                    <div class="kanban-cards" id="hybridInProgressCards" ondragover="allowDrop(event)" ondrop="dropTask(event, 'IN_PROGRESS')"></div>
+                </div>
+                <div class="kanban-column" data-status="DONE">
+                    <div class="column-header">
+                        <span class="column-title">완료됨</span>
+                        <span class="column-badge" id="hybridDoneCount">0</span>
+                    </div>
+                    <div class="kanban-cards" id="hybridDoneCards" ondragover="allowDrop(event)" ondrop="dropTask(event, 'DONE')"></div>
+                </div>
+            </div>
+            <div class="no-data-msg" id="hybridBoardPlaceholder">
+                상단 단계바에서 단계를 등록하고 선택하면 칸반 보드가 활성화됩니다.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Project Board Modals Fragment -->
+<div th:fragment="board-modals">
+    <!-- 1. Task Modal -->
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="taskModalTitleText">새 작업 등록</h2>
+                <button class="modal-close" onclick="closeTaskModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="taskForm">
+                <input type="hidden" id="modalTaskId">
+                <div class="form-group-modal">
+                    <label for="taskTitle">작업명</label>
+                    <input type="text" id="taskTitle" required placeholder="작업명을 입력하세요">
+                </div>
+                <div class="form-group-modal">
+                    <label for="taskDesc">상세 설명</label>
+                    <input type="hidden" id="taskDesc">
+                    <div id="taskDescEditor" style="height: 200px;"></div>
+                </div>
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label for="taskStatus">상태</label>
+                        <select id="taskStatus" class="modal-select">
+                            <option value="BACKLOG">Backlog (백로그)</option>
+                            <option value="TODO">To Do (할 일)</option>
+                            <option value="IN_PROGRESS">In Progress (진행 중)</option>
+                            <option value="DONE">Done (완료)</option>
+                        </select>
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="taskPriority">우선순위</label>
+                        <select id="taskPriority" class="modal-select">
+                            <option value="LOW">낮음</option>
+                            <option value="MEDIUM" selected>보통</option>
+                            <option value="HIGH">높음</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label for="taskStartDate">시작일</label>
+                        <input type="date" id="taskStartDate">
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="taskEndDate">종료일</label>
+                        <input type="date" id="taskEndDate">
+                    </div>
+                </div>
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label for="taskProgress">진행률 (%)</label>
+                        <input type="number" id="taskProgress" min="0" max="100" value="0">
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="taskAssignee">담당자</label>
+                        <select id="taskAssignee" class="modal-select">
+                            <option value="">배정 없음</option>
+                            <!-- 멤버 목록 렌더링 -->
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group-modal">
+                    <label for="taskRequirement">요구사항 명세</label>
+                    <select id="taskRequirement" class="modal-select">
+                        <option value="">연결 없음</option>
+                        <!-- 요구사항 목록 렌더링 -->
+                    </select>
+                </div>
+                <!-- 숨겨진 필드로 Scrum Sprint 또는 Waterfall Phase 매핑 정보 수용 -->
+                <input type="hidden" id="taskSprintId">
+                <input type="hidden" id="taskPhaseId">
+
+                <div class="form-group-modal" id="taskHistoryGroup" style="display: none; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px;">
+                    <label><i class="fa-solid fa-clock-rotate-left"></i> 작업 상태 변경 이력</label>
+                    <div class="task-history-timeline" id="taskHistoryTimeline" style="max-height: 180px; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+                        <!-- 이력이 비동기식으로 추가됨 -->
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeTaskModal()">취소</button>
+                    <button type="submit" class="btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Sprint Modal -->
+    <div class="modal-overlay" id="sprintModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="sprintModalTitleText">스프린트 등록</h2>
+                <button class="modal-close" onclick="closeSprintModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="sprintForm">
+                <input type="hidden" id="modalSprintId">
+                <div class="form-group-modal">
+                    <label for="sprintName">스프린트 명</label>
+                    <input type="text" id="sprintName" required placeholder="예: Sprint 1">
+                </div>
+                <div class="form-group-modal">
+                    <label for="sprintGoal">스프린트 목표</label>
+                    <textarea id="sprintGoal" placeholder="목표를 입력하세요" rows="2"></textarea>
+                </div>
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label for="sprintStartDate">시작일</label>
+                        <input type="date" id="sprintStartDate">
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="sprintEndDate">종료일</label>
+                        <input type="date" id="sprintEndDate">
+                    </div>
+                </div>
+                <div class="form-group-modal">
+                    <label for="sprintStatus">상태</label>
+                    <select id="sprintStatus" class="modal-select">
+                        <option value="PLANNED">계획됨</option>
+                        <option value="ACTIVE">진행 중 (Active)</option>
+                        <option value="COMPLETED">완료됨</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeSprintModal()">취소</button>
+                    <button type="submit" class="btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. Phase Modal -->
+    <div class="modal-overlay" id="phaseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="phaseModalTitleText">단계 등록</h2>
+                <button class="modal-close" onclick="closePhaseModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="phaseForm">
+                <input type="hidden" id="modalPhaseId">
+                <div class="form-group-modal">
+                    <label for="phaseName">단계명</label>
+                    <input type="text" id="phaseName" required placeholder="예: 요구사항 분석">
+                </div>
+                <div class="form-group-modal">
+                    <label for="phaseDesc">단계 설명</label>
+                    <textarea id="phaseDesc" placeholder="설명을 입력하세요" rows="2"></textarea>
+                </div>
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label for="phaseStartDate">시작일</label>
+                        <input type="date" id="phaseStartDate">
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="phaseEndDate">종료일</label>
+                        <input type="date" id="phaseEndDate">
+                    </div>
+                </div>
+                <div class="form-group-modal">
+                    <label for="phaseProgress">단계 진행률 (%)</label>
+                    <input type="number" id="phaseProgress" min="0" max="100" value="0">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closePhaseModal()">취소</button>
+                    <button type="submit" class="btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Project Board Scripts Fragment -->
+<th:block th:fragment="board-scripts">
+    <script>
+        let taskQuillEditor = null;
+
+        function initTaskQuill() {
+            if (!taskQuillEditor && document.getElementById('taskDescEditor')) {
+                taskQuillEditor = new Quill('#taskDescEditor', {
+                    theme: 'snow',
+                    placeholder: '작업 상세 내용을 입력하세요 (글자색 변경, 이미지 추가, 표 추가 가능)',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'color': [] }, { 'background': [] }],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            ['link', 'image', 'table'],
+                            ['clean']
+                        ]
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set up Task Form submission
+            document.getElementById('taskForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('modalTaskId').value;
+                const title = document.getElementById('taskTitle').value.trim();
+                const description = (taskQuillEditor && taskQuillEditor.root.innerHTML !== '<p><br></p>') ? taskQuillEditor.root.innerHTML : '';
+                const status = document.getElementById('taskStatus').value;
+                const priority = document.getElementById('taskPriority').value;
+                const startDate = document.getElementById('taskStartDate').value || null;
+                const endDate = document.getElementById('taskEndDate').value || null;
+                const progress = parseInt(document.getElementById('taskProgress').value, 10) || 0;
+                const assigneeId = document.getElementById('taskAssignee').value ? parseInt(document.getElementById('taskAssignee').value, 10) : null;
+                const sprintId = document.getElementById('taskSprintId').value ? parseInt(document.getElementById('taskSprintId').value, 10) : null;
+                const phaseId = document.getElementById('taskPhaseId').value ? parseInt(document.getElementById('taskPhaseId').value, 10) : null;
+                const requirementId = document.getElementById('taskRequirement').value ? parseInt(document.getElementById('taskRequirement').value, 10) : null;
+
+                const payload = { title, description, status, priority, startDate, endDate, progress, assigneeId, sprintId, phaseId, requirementId };
+
+                try {
+                    let res;
+                    if (id) {
+                        res = await fetch(`/api/tasks/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    } else {
+                        res = await fetch(`/api/projects/${projectId}/tasks`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    }
+                    if (!res.ok) throw new Error('작업 저장 실패');
+                    displayToast('작업이 저장되었습니다.', 'success');
+                    closeTaskModal();
+                    await reloadWorkspaceData();
+                } catch (err) {
+                    console.error(err);
+                    displayToast('작업 저장 중 오류가 발생했습니다.', 'error');
+                }
+            });
+
+            // Set up Sprint Form submission
+            document.getElementById('sprintForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('modalSprintId').value;
+                const name = document.getElementById('sprintName').value.trim();
+                const goal = document.getElementById('sprintGoal').value.trim();
+                const startDate = document.getElementById('sprintStartDate').value || null;
+                const endDate = document.getElementById('sprintEndDate').value || null;
+                const status = document.getElementById('sprintStatus').value;
+
+                const payload = { name, goal, startDate, endDate, status };
+
+                try {
+                    let res;
+                    if (id) {
+                        res = await fetch(`/api/sprints/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    } else {
+                        res = await fetch(`/api/projects/${projectId}/sprints`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    }
+                    if (!res.ok) throw new Error('스프린트 저장 실패');
+                    displayToast('스프린트 정보가 저장되었습니다.', 'success');
+                    closeSprintModal();
+                    await reloadWorkspaceData();
+                } catch (err) {
+                    console.error(err);
+                    displayToast('스프린트 저장에 실패했습니다.', 'error');
+                }
+            });
+
+            // Set up Phase Form submission
+            document.getElementById('phaseForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('modalPhaseId').value;
+                const name = document.getElementById('phaseName').value.trim();
+                const description = document.getElementById('phaseDesc').value.trim();
+                const startDate = document.getElementById('phaseStartDate').value || null;
+                const endDate = document.getElementById('phaseEndDate').value || null;
+                const progress = parseInt(document.getElementById('phaseProgress').value, 10) || 0;
+
+                const payload = { name, description, startDate, endDate, progress };
+
+                try {
+                    let res;
+                    if (id) {
+                        res = await fetch(`/api/phases/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    } else {
+                        res = await fetch(`/api/projects/${projectId}/phases`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    }
+                    if (!res.ok) throw new Error('단계 저장 실패');
+                    displayToast('단계가 성공적으로 저장되었습니다.', 'success');
+                    closePhaseModal();
+                    await reloadWorkspaceData();
+                } catch (err) {
+                    console.error(err);
+                    displayToast('단계 저장에 실패했습니다.', 'error');
+                }
+            });
+        });
+
+        function renderWorkspace() {
+            // Hide all panes first
+            document.getElementById('kanbanAgilePane').style.display = 'none';
+            document.getElementById('scrumPane').style.display = 'none';
+            document.getElementById('waterfallPane').style.display = 'none';
+            document.getElementById('hybridPane').style.display = 'none';
+
+            const actionsDiv = document.getElementById('workspaceActions');
+            actionsDiv.innerHTML = '';
+
+            const method = currentProject.methodology;
+
+            if (method === 'KANBAN' || method === 'AGILE') {
+                document.getElementById('kanbanAgilePane').style.display = 'block';
+                actionsDiv.innerHTML = `<button class="btn-primary" onclick="openTaskModal()"><i class="fa-solid fa-plus"></i> 작업 추가</button>`;
+                document.getElementById('workspaceTitle').innerHTML = `<i class="fa-solid fa-chalkboard-user"></i> <span>${method === 'KANBAN' ? '칸반 보드' : '애자일 업무 보드'}</span>`;
+                renderKanbanAgileBoard();
+            } 
+            else if (method === 'SCRUM') {
+                document.getElementById('scrumPane').style.display = 'block';
+                document.getElementById('workspaceTitle').innerHTML = `<i class="fa-solid fa-arrows-spin"></i> <span>스크럼 워크스페이스</span>`;
+                actionsDiv.innerHTML = `<button class="btn-secondary" onclick="openTaskModal(null, null)"><i class="fa-solid fa-plus"></i> 백로그 등록</button>`;
+                renderScrumBoard();
+            } 
+            else if (method === 'WATERFALL') {
+                document.getElementById('waterfallPane').style.display = 'block';
+                document.getElementById('workspaceTitle').innerHTML = `<i class="fa-solid fa-route"></i> <span>폭포수 단계 관리</span>`;
+                renderWaterfallBoard();
+            } 
+            else if (method === 'HYBRID') {
+                document.getElementById('hybridPane').style.display = 'block';
+                document.getElementById('workspaceTitle').innerHTML = `<i class="fa-solid fa-cubes"></i> <span>하이브리드 대시보드</span>`;
+                actionsDiv.innerHTML = `<button class="btn-secondary" onclick="openPhaseModal()"><i class="fa-solid fa-plus"></i> 단계 등록</button>`;
+                renderHybridBoard();
+            }
+        }
+
+        /* 1. KANBAN / AGILE BOARD RENDER */
+        function renderKanbanAgileBoard() {
+            const todoList = document.getElementById('todoCards');
+            const inProgressList = document.getElementById('inProgressCards');
+            const doneList = document.getElementById('doneCards');
+
+            todoList.innerHTML = '';
+            inProgressList.innerHTML = '';
+            doneList.innerHTML = '';
+
+            // Filter out backlog tasks (only show TODO, IN_PROGRESS, DONE)
+            const activeTasks = projectTasks.filter(t => t.status !== 'BACKLOG');
+
+            activeTasks.forEach(task => {
+                const card = createTaskCardHtml(task);
+                if (task.status === 'TODO') todoList.appendChild(card);
+                else if (task.status === 'IN_PROGRESS') inProgressList.appendChild(card);
+                else if (task.status === 'DONE') doneList.appendChild(card);
+            });
+
+            document.getElementById('todoCount').textContent = todoList.childElementCount;
+            document.getElementById('inProgressCount').textContent = inProgressList.childElementCount;
+            document.getElementById('doneCount').textContent = doneList.childElementCount;
+        }
+
+        /* 2. SCRUM BOARD RENDER */
+        function renderScrumBoard() {
+            // Sprints rendering
+            const sprintsList = document.getElementById('sprintsList');
+            sprintsList.innerHTML = '';
+
+            if (projectSprints.length === 0) {
+                sprintsList.innerHTML = '<div class="text-muted" style="text-align:center; padding: 20px 0;">등록된 스프린트가 없습니다.</div>';
+            }
+
+            projectSprints.forEach(sprint => {
+                const item = document.createElement('div');
+                item.className = `sprint-item ${selectedSprintId === sprint.id ? 'active' : ''}`;
+                
+                let statusBadgeClass = 'sprint-planned-badge';
+                let statusText = '계획됨';
+                if (sprint.status === 'ACTIVE') { statusBadgeClass = 'sprint-active-badge'; statusText = '진행 중'; }
+                else if (sprint.status === 'COMPLETED') { statusBadgeClass = 'sprint-completed-badge'; statusText = '완료됨'; }
+
+                const start = sprint.startDate ? sprint.startDate.replace(/-/g, '.') : '-';
+                const end = sprint.endDate ? sprint.endDate.replace(/-/g, '.') : '-';
+
+                item.innerHTML = `
+                    <div class="sprint-item-header">
+                        <span class="sprint-name">${escapeHtml(sprint.name)}</span>
+                        <span class="sprint-status-badge ${statusBadgeClass}">${statusText}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="sprint-dates">${start} ~ ${end}</span>
+                        <div style="display:flex; gap: 4px;">
+                            <button class="btn-task-action" onclick="event.stopPropagation(); editSprint(${sprint.id})"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn-task-action" onclick="event.stopPropagation(); deleteSprint(${sprint.id})"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+
+                item.addEventListener('click', () => {
+                    selectedSprintId = sprint.id;
+                    renderScrumBoard();
+                });
+                sprintsList.appendChild(item);
+            });
+
+            // Backlog rendering (Tasks where sprint is null)
+            const backlogTasks = document.getElementById('backlogTasks');
+            backlogTasks.innerHTML = '';
+            
+            const backlogs = projectTasks.filter(t => t.sprint === null);
+            if (backlogs.length === 0) {
+                backlogTasks.innerHTML = '<div class="text-muted" style="text-align:center; font-size: 0.85rem; padding: 10px 0;">백로그가 비어 있습니다.</div>';
+            }
+
+            backlogs.forEach(task => {
+                const item = document.createElement('div');
+                item.className = 'backlog-item';
+                
+                // Dropdown of sprints to allocate task
+                let optionsHtml = '<option value="" disabled selected>스프린트 할당</option>';
+                projectSprints.forEach(s => {
+                    optionsHtml += `<option value="${s.id}">${s.name}</option>`;
+                });
+
+                item.innerHTML = `
+                    <div class="backlog-info" onclick="editTask(${task.id})">
+                        <span class="backlog-title">${escapeHtml(task.title)}</span>
+                        <span class="backlog-meta"><i class="fa-solid fa-user"></i> ${task.assignee ? escapeHtml(task.assignee.nickname) : '담당자 없음'}</span>
+                    </div>
+                    <div style="display:flex; gap: 8px; align-items:center;">
+                        <select class="filter-select" style="font-size:0.75rem; padding: 2px 6px; width: 110px;" onchange="allocateTaskToSprint(${task.id}, this.value)">
+                            ${optionsHtml}
+                        </select>
+                        <button class="btn-task-action" onclick="deleteTask(${task.id})"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+                backlogTasks.appendChild(item);
+            });
+
+            // Sprint Main Board Rendering
+            const sprintBoard = document.getElementById('sprintKanbanBoard');
+            const placeholder = document.getElementById('sprintBoardPlaceholder');
+            const selectedSprintActions = document.getElementById('selectedSprintActions');
+
+            if (selectedSprintId) {
+                const currentSprint = projectSprints.find(s => s.id === selectedSprintId);
+                if (currentSprint) {
+                    placeholder.style.display = 'none';
+                    sprintBoard.style.display = 'grid';
+                    document.getElementById('selectedSprintName').textContent = `${escapeHtml(currentSprint.name)} : ${escapeHtml(currentSprint.goal || '목표 없음')}`;
+                    
+                    // Render Sprint board controls (Sprint activation/completion)
+                    selectedSprintActions.innerHTML = `
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size:0.8rem; margin-right:6px;" onclick="openTaskModal(null, ${currentSprint.id})"><i class="fa-solid fa-plus"></i> 작업 추가</button>
+                    `;
+                    if (currentSprint.status === 'PLANNED') {
+                        selectedSprintActions.innerHTML += `<button class="btn-primary" style="padding: 4px 8px; font-size:0.8rem; background:var(--warning); color:black;" onclick="changeSprintStatus(${currentSprint.id}, 'ACTIVE')">스프린트 시작</button>`;
+                    } else if (currentSprint.status === 'ACTIVE') {
+                        selectedSprintActions.innerHTML += `<button class="btn-primary" style="padding: 4px 8px; font-size:0.8rem; background:var(--success);" onclick="changeSprintStatus(${currentSprint.id}, 'COMPLETED')">스프린트 완료</button>`;
+                    }
+
+                    // Render Cards in Sprint Kanban
+                    const todoList = document.getElementById('sprintTodoCards');
+                    const inProgressList = document.getElementById('sprintInProgressCards');
+                    const doneList = document.getElementById('sprintDoneCards');
+
+                    todoList.innerHTML = '';
+                    inProgressList.innerHTML = '';
+                    doneList.innerHTML = '';
+
+                    const sprintTasks = projectTasks.filter(t => t.sprint && t.sprint.id === selectedSprintId);
+
+                    sprintTasks.forEach(task => {
+                        const card = createTaskCardHtml(task);
+                        if (task.status === 'TODO' || task.status === 'BACKLOG') todoList.appendChild(card);
+                        else if (task.status === 'IN_PROGRESS') inProgressList.appendChild(card);
+                        else if (task.status === 'DONE') doneList.appendChild(card);
+                    });
+
+                    document.getElementById('sprintTodoCount').textContent = todoList.childElementCount;
+                    document.getElementById('sprintInProgressCount').textContent = inProgressList.childElementCount;
+                    document.getElementById('sprintDoneCount').textContent = doneList.childElementCount;
+                }
+            } else {
+                sprintBoard.style.display = 'none';
+                placeholder.style.display = 'block';
+                document.getElementById('selectedSprintName').textContent = '스프린트를 선택해 주세요.';
+                selectedSprintActions.innerHTML = '';
+            }
+        }
+
+        /* 3. WATERFALL BOARD RENDER */
+        function renderWaterfallBoard() {
+            const phasesList = document.getElementById('phasesList');
+            phasesList.innerHTML = '';
+
+            if (projectPhases.length === 0) {
+                phasesList.innerHTML = '<div class="text-muted" style="text-align:center; padding: 20px 0;">등록된 프로젝트 단계가 없습니다.</div>';
+            }
+
+            projectPhases.forEach((phase, index) => {
+                const item = document.createElement('div');
+                item.className = `phase-timeline-item ${selectedPhaseId === phase.id ? 'active' : ''}`;
+                
+                const start = phase.startDate ? phase.startDate.replace(/-/g, '.') : '-';
+                const end = phase.endDate ? phase.endDate.replace(/-/g, '.') : '-';
+
+                item.innerHTML = `
+                    <div class="phase-node">${index + 1}</div>
+                    <div class="phase-timeline-content">
+                        <div class="phase-name">
+                            <span>${escapeHtml(phase.name)}</span>
+                            <span class="phase-progress">${phase.progress}%</span>
+                        </div>
+                        <p class="phase-desc">${escapeHtml(phase.description || '')}</p>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="phase-dates">${start} ~ ${end}</span>
+                            <div style="display:flex; gap: 4px;">
+                                <button class="btn-task-action" onclick="event.stopPropagation(); editPhase(${phase.id})"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn-task-action" onclick="event.stopPropagation(); deletePhase(${phase.id})"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                item.addEventListener('click', () => {
+                    selectedPhaseId = phase.id;
+                    renderWaterfallBoard();
+                });
+                phasesList.appendChild(item);
+            });
+
+            // Selected Phase Tasks Rendering
+            const phaseTasksList = document.getElementById('phaseTasks');
+            const selectedPhaseActions = document.getElementById('selectedPhaseActions');
+
+            if (selectedPhaseId) {
+                const currentPhase = projectPhases.find(p => p.id === selectedPhaseId);
+                if (currentPhase) {
+                    document.getElementById('selectedPhaseName').textContent = `${escapeHtml(currentPhase.name)} 상세 작업`;
+                    selectedPhaseActions.innerHTML = `<button class="btn-primary" style="padding: 4px 8px; font-size:0.8rem;" onclick="openTaskModal(null, null, ${currentPhase.id})"><i class="fa-solid fa-plus"></i> 작업 추가</button>`;
+
+                    phaseTasksList.innerHTML = '';
+                    const tasks = projectTasks.filter(t => t.phase && t.phase.id === selectedPhaseId);
+                    
+                    if (tasks.length === 0) {
+                        phaseTasksList.innerHTML = '<div class="text-muted" style="text-align:center; padding: 30px 0;">이 단계에 등록된 작업이 없습니다.</div>';
+                    }
+
+                    tasks.forEach(task => {
+                        const item = document.createElement('div');
+                        item.className = 'backlog-item';
+                        
+                        let statusText = 'Backlog';
+                        if (task.status === 'TODO') statusText = '할 일';
+                        else if (task.status === 'IN_PROGRESS') statusText = '진행 중';
+                        else if (task.status === 'DONE') statusText = '완료됨';
+
+                        item.innerHTML = `
+                            <div class="backlog-info" onclick="editTask(${task.id})">
+                                <span class="backlog-title">${escapeHtml(task.title)}</span>
+                                <span class="backlog-meta">
+                                    <i class="fa-regular fa-clock"></i> ${task.startDate || '-'} ~ ${task.endDate || '-'} | 
+                                    <i class="fa-solid fa-user"></i> ${task.assignee ? escapeHtml(task.assignee.nickname) : '담당자 없음'}
+                                </span>
+                            </div>
+                            <div style="display:flex; gap: 8px; align-items:center;">
+                                <span class="project-status ${task.status === 'DONE' ? 'status-completed' : task.status === 'IN_PROGRESS' ? 'status-active' : 'status-pending'}" style="font-size:0.75rem; padding: 2px 6px;">${statusText} (${task.progress}%)</span>
+                                <button class="btn-task-action" onclick="deleteTask(${task.id})"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        `;
+                        phaseTasksList.appendChild(item);
+                    });
+                }
+            } else {
+                document.getElementById('selectedPhaseName').textContent = '단계를 선택해 주세요.';
+                selectedPhaseActions.innerHTML = '';
+                phaseTasksList.innerHTML = '<div class="no-data-msg">단계를 선택하면 단계별로 지정된 순차 작업 목록을 관리할 수 있습니다.</div>';
+            }
+        }
+
+        /* 4. HYBRID BOARD RENDER */
+        function renderHybridBoard() {
+            const hybridPhasesBar = document.getElementById('hybridPhasesBar');
+            hybridPhasesBar.innerHTML = '';
+
+            if (projectPhases.length === 0) {
+                hybridPhasesBar.innerHTML = '<div class="text-muted" style="flex-grow:1; text-align:center; padding: 10px 0;">등록된 단계가 없습니다. 좌측 상단이나 행동 창에서 단계를 먼저 추가해 주세요.</div>';
+            }
+
+            projectPhases.forEach((phase) => {
+                const step = document.createElement('div');
+                step.className = `hybrid-phase-step ${selectedPhaseId === phase.id ? 'active' : ''}`;
+                step.innerHTML = `
+                    <span class="hybrid-phase-name">${escapeHtml(phase.name)}</span>
+                    <span class="hybrid-phase-progress">${phase.progress}% 완료</span>
+                `;
+                step.addEventListener('click', () => {
+                    selectedPhaseId = phase.id;
+                    renderHybridBoard();
+                });
+                hybridPhasesBar.appendChild(step);
+            });
+
+            const kanbanBoard = document.getElementById('hybridKanbanBoard');
+            const placeholder = document.getElementById('hybridBoardPlaceholder');
+            const btnHybridAddTask = document.getElementById('btnHybridAddTask');
+
+            if (selectedPhaseId) {
+                const currentPhase = projectPhases.find(p => p.id === selectedPhaseId);
+                if (currentPhase) {
+                    placeholder.style.display = 'none';
+                    kanbanBoard.style.display = 'grid';
+                    btnHybridAddTask.style.display = 'block';
+                    btnHybridAddTask.onclick = () => openTaskModal(null, null, selectedPhaseId);
+                    document.getElementById('hybridSelectedPhaseName').textContent = `[${escapeHtml(currentPhase.name)}] 단계 보드`;
+
+                    const todoList = document.getElementById('hybridTodoCards');
+                    const inProgressList = document.getElementById('hybridInProgressCards');
+                    const doneList = document.getElementById('hybridDoneCards');
+
+                    todoList.innerHTML = '';
+                    inProgressList.innerHTML = '';
+                    doneList.innerHTML = '';
+
+                    const phaseTasks = projectTasks.filter(t => t.phase && t.phase.id === selectedPhaseId);
+
+                    phaseTasks.forEach(task => {
+                        const card = createTaskCardHtml(task);
+                        if (task.status === 'TODO' || task.status === 'BACKLOG') todoList.appendChild(card);
+                        else if (task.status === 'IN_PROGRESS') inProgressList.appendChild(card);
+                        else if (task.status === 'DONE') doneList.appendChild(card);
+                    });
+
+                    document.getElementById('hybridTodoCount').textContent = todoList.childElementCount;
+                    document.getElementById('hybridInProgressCount').textContent = inProgressList.childElementCount;
+                    document.getElementById('hybridDoneCount').textContent = doneList.childElementCount;
+                }
+            } else {
+                kanbanBoard.style.display = 'none';
+                placeholder.style.display = 'block';
+                btnHybridAddTask.style.display = 'none';
+                document.getElementById('hybridSelectedPhaseName').textContent = '단계를 선택해 주세요.';
+            }
+        }
+
+        /* --- Task HTML Card Builder --- */
+        function createTaskCardHtml(task) {
+            const card = document.createElement('div');
+            card.className = 'task-card';
+            card.setAttribute('draggable', 'true');
+            card.setAttribute('data-task-id', task.id);
+            card.addEventListener('dragstart', dragTaskStart);
+            card.addEventListener('dragend', dragTaskEnd);
+
+            let priorityClass = 'priority-low';
+            let priorityText = '낮음';
+            if (task.priority === 'HIGH') { priorityClass = 'priority-high'; priorityText = '높음'; }
+            else if (task.priority === 'MEDIUM') { priorityClass = 'priority-medium'; priorityText = '보통'; }
+
+            const assigneeInitial = task.assignee ? getInitials(task.assignee.nickname) : '?';
+            const assigneeName = task.assignee ? task.assignee.nickname : '배정 없음';
+            const assigneeAvatarClass = task.assignee ? getAvatarClass(task.assignee.nickname) : 't1';
+
+            // Schedule formatting
+            const created = task.createdAt ? new Date(task.createdAt).toISOString().split('T')[0] : '-';
+            const end = task.endDate || '기한 없음';
+
+            let isOverdue = false;
+            if (task.endDate && task.status !== 'DONE') {
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const dueDate = new Date(task.endDate);
+                dueDate.setHours(0,0,0,0);
+                if (dueDate < today) {
+                    isOverdue = true;
+                }
+            }
+            const overdueStyle = isOverdue ? 'color: var(--error); font-weight: 600;' : '';
+
+            card.innerHTML = `
+                <div class="task-card-header">
+                    <span class="task-priority-badge ${priorityClass}">${priorityText}</span>
+                    <div class="task-card-actions">
+                        <button class="btn-task-action" onclick="editTask(${task.id})"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn-task-action" onclick="deleteTask(${task.id})"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <h4 class="task-card-title">${escapeHtml(task.title)}</h4>
+                <p class="task-card-desc">${(() => {
+                    const plainText = (task.description || '').replace(/<[^>]*>/g, '');
+                    return escapeHtml(plainText.length > 80 ? plainText.substring(0, 80) + '...' : plainText);
+                })()}</p>
+                
+                <div style="font-size:0.75rem; color:var(--text-muted); display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+                    <span><i class="fa-regular fa-calendar-plus" style="margin-right:4px;"></i>생성일: ${created}</span>
+                    <span style="${overdueStyle}"><i class="fa-regular fa-calendar-minus" style="margin-right:4px;"></i>종료일: ${end} ${isOverdue ? '(기한 지남)' : ''}</span>
+                </div>
+
+                <div class="task-card-footer">
+                    <div class="member-chip" title="담당자: ${assigneeName}" style="margin: 0; padding: 2px 8px; font-size: 0.75rem;">
+                        <div class="member-chip-avatar ${assigneeAvatarClass}" style="width:18px; height:18px; font-size:0.6rem;">${escapeHtml(assigneeInitial)}</div>
+                        <span class="member-chip-name">${escapeHtml(assigneeName)}</span>
+                    </div>
+                    <span>${task.progress}%</span>
+                </div>
+            `;
+            return card;
+        }
+
+        /* --- Drag & Drop Operations --- */
+        let draggedCard = null;
+
+        function dragTaskStart(e) {
+            draggedCard = this;
+            this.classList.add('dragging');
+        }
+
+        function dragTaskEnd(e) {
+            this.classList.remove('dragging');
+            draggedCard = null;
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+        }
+
+        async function dropTask(e, targetStatus) {
+            e.preventDefault();
+            if (!draggedCard) return;
+
+            const taskId = draggedCard.getAttribute('data-task-id');
+            try {
+                const res = await fetch(`/api/tasks/${taskId}/status?status=${targetStatus}`, {
+                    method: 'PATCH'
+                });
+                if (!res.ok) throw new Error();
+                displayToast('상태가 변경되었습니다.', 'success');
+                await reloadWorkspaceData();
+            } catch (err) {
+                console.error(err);
+                displayToast('상태 업데이트에 실패했습니다.', 'error');
+            }
+        }
+
+        /* --- Allocation Functions --- */
+        async function allocateTaskToSprint(taskId, sprintId) {
+            const task = projectTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            // Prepare payload
+            const payload = {
+                title: task.title,
+                description: task.description,
+                status: 'TODO', // Sprint allocation moves backlog to TODO by default
+                priority: task.priority,
+                startDate: task.startDate,
+                endDate: task.endDate,
+                progress: task.progress,
+                assigneeId: task.assignee ? task.assignee.id : null,
+                sprintId: parseInt(sprintId, 10),
+                phaseId: task.phase ? task.phase.id : null
+            };
+
+            try {
+                const res = await fetch(`/api/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error();
+                displayToast('스프린트에 할당되었습니다.', 'success');
+                await reloadWorkspaceData();
+            } catch (e) {
+                console.error(e);
+                displayToast('스프린트 할당에 실패했습니다.', 'error');
+            }
+        }
+
+        async function changeSprintStatus(sprintId, targetStatus) {
+            const sprint = projectSprints.find(s => s.id === sprintId);
+            if (!sprint) return;
+
+            try {
+                const res = await fetch(`/api/sprints/${sprintId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: sprint.name,
+                        goal: sprint.goal,
+                        startDate: sprint.startDate,
+                        endDate: sprint.endDate,
+                        status: targetStatus
+                    })
+                });
+                if (!res.ok) throw new Error();
+                displayToast(`스프린트가 ${targetStatus === 'ACTIVE' ? '시작' : '완료'}되었습니다.`, 'success');
+                await reloadWorkspaceData();
+            } catch (e) {
+                console.error(e);
+                displayToast('스프린트 상태 변경 실패', 'error');
+            }
+        }
+
+        /* --- Task Modal Actions --- */
+        async function openTaskModal(taskId = null, sprintId = null, phaseId = null) {
+            initTaskQuill();
+            const modal = document.getElementById('taskModal');
+            document.getElementById('taskForm').reset();
+            document.getElementById('modalTaskId').value = '';
+            document.getElementById('taskSprintId').value = sprintId || '';
+            document.getElementById('taskPhaseId').value = phaseId || '';
+
+            // Populate Requirements list
+            const taskRequirement = document.getElementById('taskRequirement');
+            taskRequirement.innerHTML = '<option value="">연결 없음</option>';
+            projectRequirements.forEach(r => {
+                taskRequirement.innerHTML += `<option value="${r.id}">[${r.requirementCode}] ${r.title}</option>`;
+            });
+
+            const historyGroup = document.getElementById('taskHistoryGroup');
+            const timeline = document.getElementById('taskHistoryTimeline');
+
+            if (taskId) {
+                document.getElementById('taskModalTitleText').textContent = '작업 정보 수정';
+                const task = projectTasks.find(t => t.id === taskId);
+                if (task) {
+                    document.getElementById('modalTaskId').value = task.id;
+                    document.getElementById('taskTitle').value = task.title;
+                    document.getElementById('taskDesc').value = task.description || '';
+                    if (taskQuillEditor) {
+                        taskQuillEditor.root.innerHTML = task.description || '';
+                    }
+                    document.getElementById('taskStatus').value = task.status;
+                    document.getElementById('taskPriority').value = task.priority;
+                    document.getElementById('taskStartDate').value = task.startDate || '';
+                    document.getElementById('taskEndDate').value = task.endDate || '';
+                    document.getElementById('taskProgress').value = task.progress;
+                    document.getElementById('taskAssignee').value = task.assignee ? task.assignee.id : '';
+                    if (task.requirement) {
+                        taskRequirement.value = task.requirement.id;
+                    }
+                    if (task.sprint) {
+                        document.getElementById('taskSprintId').value = task.sprint.id;
+                    }
+                    if (task.phase) {
+                        document.getElementById('taskPhaseId').value = task.phase.id;
+                    }
+                }
+
+                // Load Histories
+                historyGroup.style.display = 'block';
+                timeline.innerHTML = '<div class="text-muted" style="font-size:0.8rem;">이력을 불러오는 중...</div>';
+                try {
+                    const res = await fetch(`/api/tasks/${taskId}/histories`);
+                    if (res.ok) {
+                        const histories = await res.json();
+                        timeline.innerHTML = '';
+                        if (histories.length === 0) {
+                            timeline.innerHTML = '<div class="text-muted" style="font-size:0.8rem; padding: 5px 0;">등록된 변경 이력이 없습니다.</div>';
+                        } else {
+                            histories.forEach(h => {
+                                const item = document.createElement('div');
+                                item.className = 'history-timeline-item';
+                                item.style = 'font-size:0.8rem; display:flex; flex-direction:column; gap:2px; border-left:2px solid var(--border-color); padding-left:10px; margin-left:5px; margin-bottom:8px;';
+                                
+                                const fromText = h.fromStatus ? h.fromStatus : '등록';
+                                const toText = h.toStatus;
+                                const formattedDate = new Date(h.modifiedAt).toLocaleString('ko-KR');
+
+                                item.innerHTML = `
+                                    <div>
+                                        <strong>${escapeHtml(h.modifierNickname)}</strong>님이 
+                                        <span class="badge" style="display:inline-block; padding:1px 4px; font-size:0.75rem; background:var(--secondary); border:1px solid var(--border-color); color:var(--text-main); margin:0 2px;">${fromText}</span> → 
+                                        <span class="badge" style="display:inline-block; padding:1px 4px; font-size:0.75rem; background:var(--primary); border:1px solid var(--border-color); color:var(--primary-text); margin:0 2px;">${toText}</span> 로 변경
+                                    </div>
+                                    <div style="color:var(--text-muted); font-size:0.75rem;">
+                                        ${formattedDate} | ${escapeHtml(h.comment || '')}
+                                `;
+                                timeline.appendChild(item);
+                            });
+                        }
+                    }
+                } catch (err) {
+                    timeline.innerHTML = '<div class="text-error" style="font-size:0.8rem;">이력을 불러오지 못했습니다.</div>';
+                }
+            } else {
+                document.getElementById('taskModalTitleText').textContent = '새 작업 등록';
+                historyGroup.style.display = 'none';
+                if (taskQuillEditor) {
+                    taskQuillEditor.root.innerHTML = '';
+                }
+                // Default status config based on Methodology
+                if (currentProject.methodology === 'KANBAN' || currentProject.methodology === 'AGILE') {
+                    document.getElementById('taskStatus').value = 'TODO';
+                } else if (currentProject.methodology === 'SCRUM') {
+                    document.getElementById('taskStatus').value = sprintId ? 'TODO' : 'BACKLOG';
+                }
+            }
+
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+
+        function closeTaskModal() {
+            const modal = document.getElementById('taskModal');
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 250);
+        }
+
+        function editTask(taskId) {
+            openTaskModal(taskId);
+        }
+
+        async function deleteTask(taskId) {
+            if (confirm('정말로 이 작업을 삭제하시겠습니까?')) {
+                try {
+                    const res = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error();
+                    displayToast('작업이 삭제되었습니다.', 'success');
+                    await reloadWorkspaceData();
+                } catch (e) {
+                    displayToast('작업 삭제 실패', 'error');
+                }
+            }
+        }
+
+        /* --- Sprint Modal Actions --- */
+        function openSprintModal(sprintId = null) {
+            const modal = document.getElementById('sprintModal');
+            document.getElementById('sprintForm').reset();
+            document.getElementById('modalSprintId').value = '';
+            document.getElementById('sprintStatus').value = 'PLANNED';
+
+            if (sprintId) {
+                document.getElementById('sprintModalTitleText').textContent = '스프린트 수정';
+                const sprint = projectSprints.find(s => s.id === sprintId);
+                if (sprint) {
+                    document.getElementById('modalSprintId').value = sprint.id;
+                    document.getElementById('sprintName').value = sprint.name;
+                    document.getElementById('sprintGoal').value = sprint.goal || '';
+                    document.getElementById('sprintStartDate').value = sprint.startDate || '';
+                    document.getElementById('sprintEndDate').value = sprint.endDate || '';
+                    document.getElementById('sprintStatus').value = sprint.status;
+                }
+            } else {
+                document.getElementById('sprintModalTitleText').textContent = '스프린트 등록';
+            }
+
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+
+        function closeSprintModal() {
+            const modal = document.getElementById('sprintModal');
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 250);
+        }
+
+        function editSprint(sprintId) {
+            openSprintModal(sprintId);
+        }
+
+        async function deleteSprint(sprintId) {
+            if (confirm('스프린트를 삭제하시겠습니까? (스프린트 내부의 작업들은 제품 백로그로 환원됩니다)')) {
+                try {
+                    const res = await fetch(`/api/sprints/${sprintId}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error();
+                    displayToast('스프린트가 삭제되었습니다.', 'success');
+                    if (selectedSprintId === sprintId) selectedSprintId = null;
+                    await reloadWorkspaceData();
+                } catch (e) {
+                    displayToast('스프린트 삭제 실패', 'error');
+                }
+            }
+        }
+
+        /* --- Phase Modal Actions --- */
+        function openPhaseModal(phaseId = null) {
+            const modal = document.getElementById('phaseModal');
+            document.getElementById('phaseForm').reset();
+            document.getElementById('modalPhaseId').value = '';
+
+            if (phaseId) {
+                document.getElementById('phaseModalTitleText').textContent = '단계 정보 수정';
+                const phase = projectPhases.find(p => p.id === phaseId);
+                if (phase) {
+                    document.getElementById('modalPhaseId').value = phase.id;
+                    document.getElementById('phaseName').value = phase.name;
+                    document.getElementById('phaseDesc').value = phase.description || '';
+                    document.getElementById('phaseStartDate').value = phase.startDate || '';
+                    document.getElementById('phaseEndDate').value = phase.endDate || '';
+                    document.getElementById('phaseProgress').value = phase.progress;
+                }
+            } else {
+                document.getElementById('phaseModalTitleText').textContent = '새 단계 등록';
+            }
+
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+
+        function closePhaseModal() {
+            const modal = document.getElementById('phaseModal');
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 250);
+        }
+
+        function editPhase(phaseId) {
+            openPhaseModal(phaseId);
+        }
+
+        async function deletePhase(phaseId) {
+            if (confirm('이 단계를 삭제하시겠습니까?')) {
+                try {
+                    const res = await fetch(`/api/phases/${phaseId}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error();
+                    displayToast('단계가 삭제되었습니다.', 'success');
+                    if (selectedPhaseId === phaseId) selectedPhaseId = null;
+                    await reloadWorkspaceData();
+                } catch (e) {
+                    displayToast('단계 삭제 실패', 'error');
+                }
+            }
+        }
+    </script>
+</th:block>
+
+</body>
+</html>

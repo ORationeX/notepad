@@ -25,6 +25,8 @@ public class TaskService {
     private final SprintRepository sprintRepository;
     private final PhaseRepository phaseRepository;
     private final TaskHistoryRepository taskHistoryRepository;
+    private final RequirementRepository requirementRepository;
+    private final RequirementHistoryRepository requirementHistoryRepository;
 
     public List<TaskResponse> getTasks(Long projectId) {
         return taskRepository.findByProjectIdWithRelations(projectId).stream()
@@ -61,6 +63,12 @@ public class TaskService {
                     .orElseThrow(() -> new IllegalArgumentException("단계를 찾을 수 없습니다."));
         }
 
+        Requirement requirement = null;
+        if (request.getRequirementId() != null) {
+            requirement = requirementRepository.findById(request.getRequirementId())
+                    .orElseThrow(() -> new IllegalArgumentException("요구사항을 찾을 수 없습니다."));
+        }
+
         Task task = Task.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -73,6 +81,7 @@ public class TaskService {
                 .assignee(assignee)
                 .sprint(sprint)
                 .phase(phase)
+                .requirement(requirement)
                 .build();
 
         Task savedTask = taskRepository.save(task);
@@ -87,6 +96,11 @@ public class TaskService {
                 .build();
         taskHistoryRepository.save(history);
 
+        // 요구사항 상태 자동 전환 트리거
+        if (requirement != null) {
+            syncRequirementStatus(requirement, modifier);
+        }
+
         return new TaskResponse(savedTask);
     }
 
@@ -96,6 +110,7 @@ public class TaskService {
                 .orElseThrow(() -> new IllegalArgumentException("태스크를 찾을 수 없습니다."));
 
         TaskStatus oldStatus = task.getStatus();
+        Requirement oldRequirement = task.getRequirement();
 
         Member assignee = null;
         if (request.getAssigneeId() != null) {
@@ -115,6 +130,12 @@ public class TaskService {
                     .orElseThrow(() -> new IllegalArgumentException("단계를 찾을 수 없습니다."));
         }
 
+        Requirement requirement = null;
+        if (request.getRequirementId() != null) {
+            requirement = requirementRepository.findById(request.getRequirementId())
+                    .orElseThrow(() -> new IllegalArgumentException("요구사항을 찾을 수 없습니다."));
+        }
+
         task.update(
                 request.getTitle(),
                 request.getDescription(),
@@ -125,7 +146,8 @@ public class TaskService {
                 request.getProgress(),
                 assignee,
                 sprint,
-                phase
+                phase,
+                requirement
         );
 
         if (oldStatus != task.getStatus()) {
@@ -137,6 +159,14 @@ public class TaskService {
                     .comment("상태 변경됨 (수정 모달)")
                     .build();
             taskHistoryRepository.save(history);
+        }
+
+        // 요구사항 상태 자동 전환 트리거
+        if (oldRequirement != null) {
+            syncRequirementStatus(oldRequirement, modifier);
+        }
+        if (requirement != null && !requirement.equals(oldRequirement)) {
+            syncRequirementStatus(requirement, modifier);
         }
 
         return new TaskResponse(task);
@@ -157,6 +187,11 @@ public class TaskService {
                     .comment("상태 변경됨 (드래그 앤 드롭)")
                     .build();
             taskHistoryRepository.save(history);
+
+            // 요구사항 상태 자동 전환 트리거
+            if (task.getRequirement() != null) {
+                syncRequirementStatus(task.getRequirement(), modifier);
+            }
         }
         return new TaskResponse(task);
     }
@@ -165,12 +200,65 @@ public class TaskService {
     public void deleteTask(Long taskId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("태스크를 찾을 수 없습니다."));
+        Requirement requirement = task.getRequirement();
         taskRepository.delete(task);
+
+        // 요구사항 상태 자동 전환 트리거
+        if (requirement != null) {
+            syncRequirementStatus(requirement, null);
+        }
     }
 
     public List<TaskResponse> getAllTasks() {
         return taskRepository.findAllWithRelations().stream()
                 .map(TaskResponse::new)
                 .collect(Collectors.toList());
+    }
+
+    private void syncRequirementStatus(Requirement requirement, Member modifier) {
+        if (requirement == null) return;
+        List<Task> tasks = taskRepository.findByRequirementId(requirement.getId());
+        if (tasks.isEmpty()) return;
+
+        boolean anyInProgress = false;
+        boolean allDone = true;
+
+        for (Task t : tasks) {
+            if (t.getStatus() == TaskStatus.IN_PROGRESS) {
+                anyInProgress = true;
+            }
+            if (t.getStatus() != TaskStatus.DONE) {
+                allDone = false;
+            }
+        }
+
+        RequirementStatus oldStatus = requirement.getStatus();
+        RequirementStatus newStatus = null;
+
+        if (allDone) {
+            newStatus = RequirementStatus.COMPLETED;
+        } else if (anyInProgress) {
+            newStatus = RequirementStatus.DEVELOPING;
+        }
+
+        if (newStatus != null && oldStatus != newStatus) {
+            requirement.updateStatus(newStatus);
+            requirementRepository.save(requirement);
+
+            RequirementHistory history = RequirementHistory.builder()
+                    .requirement(requirement)
+                    .title(requirement.getTitle())
+                    .description(requirement.getDescription())
+                    .category(requirement.getCategory())
+                    .priority(requirement.getPriority())
+                    .status(requirement.getStatus())
+                    .progress(requirement.getProgress())
+                    .requestedBy(requirement.getRequestedBy())
+                    .domainName(requirement.getDomainName())
+                    .modifier(modifier)
+                    .comment("태스크 상태 변경에 의한 상태 자동 전환 (" + oldStatus.getDescription() + " -> " + newStatus.getDescription() + ")")
+                    .build();
+            requirementHistoryRepository.save(history);
+        }
     }
 }

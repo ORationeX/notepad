@@ -80,9 +80,14 @@
             </form>
 
             <!-- Bottom Redirect -->
-            <div class="footer-text">
-                아직 계정이 없으신가요?
-                <a href="/signup" id="signupLink">회원가입하기</a>
+            <div class="footer-text" style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                <div>
+                    아직 계정이 없으신가요?
+                    <a href="/signup" id="signupLink">회원가입하기</a>
+                </div>
+                <div style="font-size: 13px;">
+                    <a href="/find-account" id="findAccountLink" style="color: var(--text-muted); text-decoration: none; font-weight: 500; transition: var(--transition);" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">아이디/비밀번호 찾기</a>
+                </div>
             </div>
         </div>
     </div>

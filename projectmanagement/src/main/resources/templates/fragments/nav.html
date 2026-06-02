@@ -30,10 +30,10 @@
             
             <!-- User Profiles & Actions -->
             <div class="nav-actions">
-                <div class="user-profile-nav">
-                    <i class="fa-solid fa-user-shield"></i>
+                <a href="/profile" class="user-profile-nav" style="text-decoration: none; transition: var(--transition);" onmouseover="this.style.background='var(--secondary-hover)'" onmouseout="this.style.background='var(--secondary)'" title="프로필 수정">
+                    <i class="fa-solid fa-user-gear"></i>
                     <span id="navUserEmail">Loading...</span>
-                </div>
+                </a>
                 <button class="btn-logout-nav">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
                     <span>로그아웃</span>

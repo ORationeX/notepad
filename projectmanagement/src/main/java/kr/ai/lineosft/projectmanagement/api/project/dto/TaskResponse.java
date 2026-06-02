@@ -24,6 +24,7 @@ public class TaskResponse {
     private final AssigneeDto assignee;
     private final SprintDto sprint;
     private final PhaseDto phase;
+    private final RequirementDto requirement;
     private final LocalDateTime createdAt;
 
     public TaskResponse(Task task) {
@@ -40,6 +41,7 @@ public class TaskResponse {
         this.assignee = task.getAssignee() != null ? new AssigneeDto(task.getAssignee()) : null;
         this.sprint = task.getSprint() != null ? new SprintDto(task.getSprint()) : null;
         this.phase = task.getPhase() != null ? new PhaseDto(task.getPhase()) : null;
+        this.requirement = task.getRequirement() != null ? new RequirementDto(task.getRequirement()) : null;
         this.createdAt = task.getCreatedAt();
     }
 
@@ -75,6 +77,19 @@ public class TaskResponse {
         public PhaseDto(kr.ai.lineosft.projectmanagement.domain.project.entity.Phase phase) {
             this.id = phase.getId();
             this.name = phase.getName();
+        }
+    }
+
+    @Getter
+    public static class RequirementDto {
+        private final Long id;
+        private final String requirementCode;
+        private final String title;
+
+        public RequirementDto(kr.ai.lineosft.projectmanagement.domain.project.entity.Requirement requirement) {
+            this.id = requirement.getId();
+            this.requirementCode = requirement.getRequirementCode();
+            this.title = requirement.getTitle();
         }
     }
 }

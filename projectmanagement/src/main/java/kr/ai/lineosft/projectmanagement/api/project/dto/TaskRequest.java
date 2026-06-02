@@ -37,4 +37,6 @@ public class TaskRequest {
     private Long sprintId;
 
     private Long phaseId;
+
+    private Long requirementId;
 }

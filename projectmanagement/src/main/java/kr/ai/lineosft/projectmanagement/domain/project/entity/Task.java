@@ -23,7 +23,7 @@ public class Task extends BaseTimeEntity {
     @Column(nullable = false)
     private String title;
 
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Enumerated(EnumType.STRING)
@@ -57,8 +57,12 @@ public class Task extends BaseTimeEntity {
     @JoinColumn(name = "phase_id")
     private Phase phase;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requirement_id")
+    private Requirement requirement;
+
     @Builder
-    private Task(String title, String description, TaskStatus status, TaskPriority priority, LocalDate startDate, LocalDate endDate, Integer progress, Project project, Member assignee, Sprint sprint, Phase phase) {
+    private Task(String title, String description, TaskStatus status, TaskPriority priority, LocalDate startDate, LocalDate endDate, Integer progress, Project project, Member assignee, Sprint sprint, Phase phase, Requirement requirement) {
         this.title = title;
         this.description = description;
         this.status = status != null ? status : TaskStatus.BACKLOG;
@@ -70,9 +74,10 @@ public class Task extends BaseTimeEntity {
         this.assignee = assignee;
         this.sprint = sprint;
         this.phase = phase;
+        this.requirement = requirement;
     }
 
-    public void update(String title, String description, TaskStatus status, TaskPriority priority, LocalDate startDate, LocalDate endDate, Integer progress, Member assignee, Sprint sprint, Phase phase) {
+    public void update(String title, String description, TaskStatus status, TaskPriority priority, LocalDate startDate, LocalDate endDate, Integer progress, Member assignee, Sprint sprint, Phase phase, Requirement requirement) {
         this.title = title;
         this.description = description;
         if (status != null) {
@@ -89,6 +94,11 @@ public class Task extends BaseTimeEntity {
         this.assignee = assignee;
         this.sprint = sprint;
         this.phase = phase;
+        this.requirement = requirement;
+    }
+
+    public void linkRequirement(Requirement requirement) {
+        this.requirement = requirement;
     }
 
     public void updateStatus(TaskStatus status) {

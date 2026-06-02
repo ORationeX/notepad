@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head></head>
+<body>
+
+<!-- Requirements Workspace Fragment -->
+<div th:fragment="req-markup">
+    <!-- 5. REQUIREMENTS WORKSPACE -->
+    <div class="workspace-content-pane" id="requirementsPane" style="display: none;">
+        <div class="detail-card-list">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
+                <h3 style="margin:0; font-size: 1.1rem;"><i class="fa-solid fa-clipboard-list"></i> 요구사항 명세 목록</h3>
+                <button class="btn-primary" onclick="openRequirementModal()"><i class="fa-solid fa-plus"></i> 요구사항 추가</button>
+            </div>
+            
+            <!-- Filters -->
+            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                <select id="reqFilterCategory" class="filter-select" onchange="filterRequirements()" style="width: 150px;">
+                    <option value="">모든 분류</option>
+                </select>
+                <select id="reqFilterDomain" class="filter-select" onchange="filterRequirements()" style="width: 150px;">
+                    <option value="">모든 도메인</option>
+                </select>
+                <select id="reqFilterPriority" class="filter-select" onchange="filterRequirements()" style="width: 150px;">
+                    <option value="">모든 우선순위</option>
+                    <option value="HIGH">높음</option>
+                    <option value="MEDIUM">보통</option>
+                    <option value="LOW">낮음</option>
+                </select>
+                <select id="reqFilterStatus" class="filter-select" onchange="filterRequirements()" style="width: 150px;">
+                    <option value="">모든 상태</option>
+                    <option value="DRAFT">초안</option>
+                    <option value="REVIEWING">검토중</option>
+                    <option value="APPROVED">승인됨</option>
+                    <option value="DEVELOPING">개발중</option>
+                    <option value="TESTING">테스트중</option>
+                    <option value="COMPLETED">완료됨</option>
+                    <option value="DEFERRED">보류</option>
+                </select>
+            </div>
+
+            <!-- Table Header for Requirements -->
+            <div id="requirementsTableHeader" class="req-table-header" style="display: none;">
+                <div class="req-info">
+                    <span style="width: 16px; flex-shrink: 0;"></span> <!-- Spacer for chevron -->
+                    <span class="header-col code-col">코드</span>
+                    <span class="header-col title-col">요구사항명</span>
+                </div>
+                <div class="req-meta">
+                    <span class="header-col badge-col">분류</span>
+                    <span class="header-col priority-col">우선순위</span>
+                    <span class="header-col status-col">상태</span>
+                    <span class="header-col progress-col">진행률</span>
+                    <span class="header-col actions-col">관리</span>
+                </div>
+            </div>
+
+            <!-- Requirements List -->
+            <div id="requirementsListContainer" class="req-table-container">
+                <!-- Requirements list will be rendered dynamically here -->
+            </div>
+            <div class="no-data-msg" id="requirementsPlaceholder" style="display: none;">
+                등록된 요구사항이 없습니다. 새로운 요구사항을 등록해 보세요.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Requirement Modals Fragment -->
+<div th:fragment="req-modals">
+    <!-- 4. Requirement Modal -->
+    <div class="modal-overlay" id="requirementModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="reqModalTitleText">요구사항 등록</h2>
+                <button class="modal-close" onclick="closeRequirementModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="requirementForm">
+                <input type="hidden" id="modalReqId">
+                <div class="form-group-modal">
+                    <label for="reqTitle">요구사항 제목</label>
+                    <input type="text" id="reqTitle" required placeholder="요구사항 제목을 입력하세요">
+                </div>
+                <div class="form-group-modal">
+                    <label for="reqDesc">상세 설명</label>
+                    <input type="hidden" id="reqDesc">
+                    <div id="reqDescEditor" style="height: 200px;"></div>
+                </div>
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label for="reqCategory">분류</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="reqCategory" class="modal-select" style="flex-grow: 1;" required>
+                                <!-- Dynamic options loaded by JS -->
+                            </select>
+                            <button type="button" class="btn-secondary" onclick="toggleAddCategoryForm()" style="padding: 8px 12px; font-size: 0.85rem;"><i class="fa-solid fa-plus"></i> 추가</button>
+                        </div>
+                        <div id="addCategoryFormGroup" style="display: none; margin-top: 8px; display: flex; gap: 8px;">
+                            <input type="text" id="newCategoryName" class="modal-input" placeholder="새 분류명 입력" style="flex-grow: 1; padding: 6px 12px; font-size: 0.9rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-primary);">
+                            <button type="button" class="btn-primary" onclick="submitNewCategory()" style="padding: 6px 12px; font-size: 0.85rem;">확인</button>
+                        </div>
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="reqPriority">우선순위</label>
+                        <select id="reqPriority" class="modal-select">
+                            <option value="LOW">낮음</option>
+                            <option value="MEDIUM" selected>보통</option>
+                            <option value="HIGH">높음</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label for="reqStatus">상태</label>
+                        <select id="reqStatus" class="modal-select">
+                            <option value="DRAFT" selected>초안</option>
+                            <option value="REVIEWING">검토중</option>
+                            <option value="APPROVED">승인됨</option>
+                            <option value="DEVELOPING">개발중</option>
+                            <option value="TESTING">테스트중</option>
+                            <option value="COMPLETED">완료됨</option>
+                            <option value="DEFERRED">보류</option>
+                        </select>
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="reqProgress">진행률 (%)</label>
+                        <input type="number" id="reqProgress" min="0" max="100" value="0">
+                    </div>
+                </div>
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label for="reqRequestedBy">고객사 요청자</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="reqRequestedBy" class="modal-select" style="flex-grow: 1;">
+                                <!-- Options loaded dynamically by JS -->
+                            </select>
+                            <button type="button" class="btn-secondary" onclick="toggleAddRequesterForm()" style="padding: 8px 12px; font-size: 0.85rem;"><i class="fa-solid fa-plus"></i> 추가</button>
+                        </div>
+                        <div id="addRequesterFormGroup" style="display: none; margin-top: 8px; display: flex; gap: 8px;">
+                            <input type="text" id="newRequesterName" class="modal-input" placeholder="새 요청자 입력" style="flex-grow: 1; padding: 6px 12px; font-size: 0.9rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-primary);">
+                            <button type="button" class="btn-primary" onclick="submitNewRequester()" style="padding: 6px 12px; font-size: 0.85rem;">확인</button>
+                        </div>
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="reqDomainName">도메인 분류</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="reqDomainName" class="modal-select" style="flex-grow: 1;">
+                                <!-- Options loaded dynamically by JS -->
+                            </select>
+                            <button type="button" class="btn-secondary" onclick="toggleAddDomainForm()" style="padding: 8px 12px; font-size: 0.85rem;"><i class="fa-solid fa-plus"></i> 추가</button>
+                        </div>
+                        <div id="addDomainFormGroup" style="display: none; margin-top: 8px; display: flex; gap: 8px;">
+                            <input type="text" id="newDomainName" class="modal-input" placeholder="새 도메인 입력" style="flex-grow: 1; padding: 6px 12px; font-size: 0.9rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-primary);">
+                            <button type="button" class="btn-primary" onclick="submitNewDomain()" style="padding: 6px 12px; font-size: 0.85rem;">확인</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group-modal">
+                    <label for="reqAssignee">담당자</label>
+                    <select id="reqAssignee" class="modal-select">
+                        <option value="">배정 없음</option>
+                        <!-- 멤버 목록 렌더링 -->
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeRequirementModal()">취소</button>
+                    <button type="submit" class="btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 5. Requirement History Snapshot Modal -->
+    <div class="modal-overlay" id="reqSnapshotModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>요구사항 과거 버전 스냅샷</h2>
+                <button class="modal-close" onclick="closeReqSnapshotModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label>상태</label>
+                        <span id="snapshotStatus" class="project-status status-active" style="padding: 4px 8px; border-radius: 4px; display: inline-block;">-</span>
+                    </div>
+                    <div class="form-group-modal">
+                        <label>진행률</label>
+                        <span id="snapshotProgress" style="font-weight: 600;">0%</span>
+                    </div>
+                </div>
+                <div class="form-group-modal">
+                    <label>제목</label>
+                    <input type="text" id="snapshotTitle" readonly style="background: rgba(255, 255, 255, 0.05); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="form-group-modal">
+                    <label>상세 설명</label>
+                    <div id="snapshotDesc" style="background: rgba(255, 255, 255, 0.05); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; min-height: 100px; width: 100%; box-sizing: border-box; overflow-y: auto; white-space: normal;"></div>
+                </div>
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label>분류</label>
+                        <span id="snapshotCategory" class="req-badge" style="display: inline-block; padding: 4px 8px; border-radius: 4px;">-</span>
+                    </div>
+                    <div class="form-group-modal">
+                        <label>우선순위</label>
+                        <span id="snapshotPriority" class="task-priority-badge priority-medium" style="display: inline-block; padding: 4px 8px; border-radius: 4px;">-</span>
+                    </div>
+                </div>
+                <div class="form-group-modal-row">
+                    <div class="form-group-modal">
+                        <label>고객사 요청자</label>
+                        <span id="snapshotRequestedBy" style="font-weight: 500; color: var(--text-primary);">-</span>
+                    </div>
+                    <div class="form-group-modal">
+                        <label>도메인</label>
+                        <span id="snapshotDomainName" style="font-weight: 500; color: var(--text-primary);">-</span>
+                    </div>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: space-between;">
+                    <span id="snapshotModifier">-</span>
+                    <span id="snapshotModifiedAt">-</span>
+                </div>
+                <div class="form-group-modal">
+                    <label>변경 사유 / 코멘트</label>
+                    <p id="snapshotComment" style="font-style: italic; color: var(--text-muted); margin: 0; background: rgba(0, 0, 0, 0.1); padding: 8px; border-radius: 4px;"></p>
+                </div>
+                <div class="modal-actions" style="margin-top: 12px;">
+                    <button type="button" class="btn-primary" onclick="closeReqSnapshotModal()">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Requirement Scripts Fragment -->
+<th:block th:fragment="req-scripts">
+    <script>
+        let reqQuillEditor = null;
+
+        function initReqQuill() {
+            if (!reqQuillEditor && document.getElementById('reqDescEditor')) {
+                reqQuillEditor = new Quill('#reqDescEditor', {
+                    theme: 'snow',
+                    placeholder: '요구사항 상세 설명을 입력하세요 (글자색 변경, 이미지 추가, 표 추가 가능)',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'color': [] }, { 'background': [] }],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            ['link', 'image', 'table'],
+                            ['clean']
+                        ]
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set up Requirement Form submission
+            document.getElementById('requirementForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('modalReqId').value;
+                const title = document.getElementById('reqTitle').value.trim();
+                const description = (reqQuillEditor && reqQuillEditor.root.innerHTML !== '<p><br></p>') ? reqQuillEditor.root.innerHTML : '';
+                const categoryId = document.getElementById('reqCategory').value ? parseInt(document.getElementById('reqCategory').value, 10) : null;
+                const priority = document.getElementById('reqPriority').value;
+                const status = document.getElementById('reqStatus').value;
+                const progress = parseInt(document.getElementById('reqProgress').value, 10) || 0;
+                const assigneeId = document.getElementById('reqAssignee').value ? parseInt(document.getElementById('reqAssignee').value, 10) : null;
+                const requestedBy = document.getElementById('reqRequestedBy').value.trim();
+                const domainName = document.getElementById('reqDomainName').value.trim();
+
+                const payload = { title, description, categoryId, priority, status, progress, assigneeId, requestedBy, domainName };
+
+                try {
+                    let res;
+                    if (id) {
+                        res = await fetch(`/api/requirements/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    } else {
+                        res = await fetch(`/api/projects/${projectId}/requirements`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    }
+                    if (!res.ok) {
+                        const errText = await res.text();
+                        let errMsg = '요구사항 저장에 실패했습니다.';
+                        try {
+                            const errJson = JSON.parse(errText);
+                            if (errJson.message) {
+                                errMsg = errJson.message;
+                            }
+                            if (errJson.errors && errJson.errors.length > 0) {
+                                errMsg = errJson.errors.map(e => e.reason).join('\n');
+                            }
+                        } catch (e) {
+                            if (errText) errMsg = errText;
+                        }
+                        throw new Error(errMsg);
+                    }
+                    displayToast('요구사항이 저장되었습니다.', 'success');
+                    closeRequirementModal();
+                    await reloadWorkspaceData();
+                } catch (err) {
+                    console.error(err);
+                    displayToast(err.message || '요구사항 저장에 실패했습니다.', 'error');
+                }
+            });
+        });
+
+        /* --- Requirements Tab Logic & Actions --- */
+        function switchTab(tab) {
+            activeTab = tab;
+            const header = document.querySelector('.workspace-header');
+            
+            // Hide all tab panes
+            document.getElementById('requirementsPane').style.display = 'none';
+            if (document.getElementById('diagramsPane')) {
+                document.getElementById('diagramsPane').style.display = 'none';
+            }
+            
+            // Hide all board panes
+            if (document.getElementById('kanbanAgilePane')) document.getElementById('kanbanAgilePane').style.display = 'none';
+            if (document.getElementById('scrumPane')) document.getElementById('scrumPane').style.display = 'none';
+            if (document.getElementById('waterfallPane')) document.getElementById('waterfallPane').style.display = 'none';
+            if (document.getElementById('hybridPane')) document.getElementById('hybridPane').style.display = 'none';
+
+            // Remove active classes
+            document.getElementById('tabBoardBtn').classList.remove('active');
+            document.getElementById('tabRequirementsBtn').classList.remove('active');
+            if (document.getElementById('tabDiagramsBtn')) document.getElementById('tabDiagramsBtn').classList.remove('active');
+
+            if (tab === 'board') {
+                document.getElementById('tabBoardBtn').classList.add('active');
+                header.style.display = 'flex';
+                renderWorkspace();
+            } else if (tab === 'requirements') {
+                document.getElementById('tabRequirementsBtn').classList.add('active');
+                header.style.display = 'none';
+                document.getElementById('requirementsPane').style.display = 'block';
+                renderRequirements();
+            } else if (tab === 'diagrams') {
+                if (document.getElementById('tabDiagramsBtn')) document.getElementById('tabDiagramsBtn').classList.add('active');
+                header.style.display = 'none';
+                if (document.getElementById('diagramsPane')) {
+                    document.getElementById('diagramsPane').style.display = 'block';
+                }
+                if (typeof renderDiagrams === 'function') {
+                    renderDiagrams();
+                }
+            }
+        }
+
+        function renderRequirements() {
+            // Populate filter dropdown options
+            populateRequirementFilters();
+
+            const container = document.getElementById('requirementsListContainer');
+            const placeholder = document.getElementById('requirementsPlaceholder');
+            const tableHeader = document.getElementById('requirementsTableHeader');
+            container.innerHTML = '';
+            
+            const filtered = filterRequirementsList();
+            
+            if (filtered.length === 0) {
+                placeholder.style.display = 'block';
+                if (tableHeader) tableHeader.style.display = 'none';
+                return;
+            }
+            placeholder.style.display = 'none';
+            if (tableHeader) tableHeader.style.display = 'flex';
+            
+            filtered.forEach(req => {
+                const card = createRequirementCard(req);
+                container.appendChild(card);
+            });
+        }
+
+        function populateRequirementFilters() {
+            const categoryFilter = document.getElementById('reqFilterCategory');
+            const domainFilter = document.getElementById('reqFilterDomain');
+            
+            const selectedCategory = categoryFilter.value;
+            const selectedDomain = domainFilter.value;
+            
+            categoryFilter.innerHTML = '<option value="">모든 분류</option>' + 
+                projectCategories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+            
+            const uniqueDomains = [...new Set(projectRequirements.map(r => r.domainName).filter(d => d))];
+            domainFilter.innerHTML = '<option value="">모든 도메인</option>' + 
+                uniqueDomains.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+            
+            // Restore selection if valid
+            if (projectCategories.some(c => c.id == selectedCategory)) {
+                categoryFilter.value = selectedCategory;
+            } else {
+                categoryFilter.value = '';
+            }
+            if (uniqueDomains.includes(selectedDomain)) {
+                domainFilter.value = selectedDomain;
+            } else {
+                domainFilter.value = '';
+            }
+        }
+
+        function filterRequirementsList() {
+            const categoryId = document.getElementById('reqFilterCategory').value;
+            const domain = document.getElementById('reqFilterDomain').value;
+            const priority = document.getElementById('reqFilterPriority').value;
+            const status = document.getElementById('reqFilterStatus').value;
+            
+            return projectRequirements.filter(req => {
+                if (categoryId && req.categoryId != categoryId) return false;
+                if (domain && req.domainName !== domain) return false;
+                if (priority && req.priority !== priority) return false;
+                if (status && req.status !== status) return false;
+                return true;
+            });
+        }
+
+        function filterRequirements() {
+            renderRequirements();
+        }
+
+        function createRequirementCard(req) {
+            const card = document.createElement('div');
+            card.className = 'req-card';
+            card.setAttribute('data-req-id', req.id);
+            
+            const linkedTasks = projectTasks.filter(t => t.requirement && t.requirement.id === req.id);
+            
+            let priorityBadgeClass = 'priority-medium';
+            let priorityText = '보통';
+            if (req.priority === 'HIGH') { priorityBadgeClass = 'priority-high'; priorityText = '높음'; }
+            else if (req.priority === 'LOW') { priorityBadgeClass = 'priority-low'; priorityText = '낮음'; }
+            
+            let statusClass = 'status-pending';
+            if (req.status === 'COMPLETED') statusClass = 'status-completed';
+            else if (req.status === 'DEVELOPING' || req.status === 'TESTING' || req.status === 'APPROVED') statusClass = 'status-active';
+            
+            let catClass = 'category-default';
+            const name = req.categoryName || '';
+            if (name === '기능' || name.toLowerCase().includes('functional')) catClass = 'category-functional';
+            else if (name === '비기능' || name.toLowerCase().includes('non-functional') || name.toLowerCase().includes('nonfunctional')) catClass = 'category-non-functional';
+            else if (name === 'UI/UX' || name.toLowerCase() === 'ui' || name.toLowerCase() === 'ux') catClass = 'category-ui';
+            else if (name === '보안' || name.toLowerCase().includes('security')) catClass = 'category-security';
+            else if (name === '인터페이스' || name.toLowerCase().includes('interface')) catClass = 'category-interface';
+            
+            const assigneeName = req.assignee ? req.assignee.nickname : '배정 없음';
+            
+            card.innerHTML = `
+                <div class="req-card-header" onclick="toggleReqDetails(${req.id})">
+                    <div class="req-info">
+                        <i class="fa-solid fa-chevron-right toggle-icon" id="reqToggleIcon-${req.id}" style="transition: transform 0.2s;"></i>
+                        <span class="req-code">${escapeHtml(req.requirementCode)}</span>
+                        <h4 class="req-title" title="${escapeHtml(req.title)}">${escapeHtml(req.title)}</h4>
+                    </div>
+                    <div class="req-meta" onclick="event.stopPropagation();">
+                        <span class="req-badge ${catClass}" title="${escapeHtml(req.categoryName)}">${escapeHtml(req.categoryName)}</span>
+                        <span class="task-priority-badge ${priorityBadgeClass}">${priorityText}</span>
+                        <span class="project-status ${statusClass}">${escapeHtml(req.statusDescription)}</span>
+                        
+                        <div class="req-progress-col" style="display: flex; align-items: center; gap: 8px; width: 120px;">
+                            <div class="progress-bar-bg" style="flex-grow: 1; height: 6px; margin: 0;">
+                                <div class="progress-bar-fill" style="width: ${req.progress}%; background: ${req.status === 'COMPLETED' ? 'var(--success)' : ''};"></div>
+                            </div>
+                            <span style="font-size: 0.8rem; min-width: 32px; text-align: right;">${req.progress}%</span>
+                        </div>
+                        
+                        <div class="req-actions-col" style="display: flex; gap: 6px; margin-left: 8px;">
+                            <button class="btn-task-action" onclick="editRequirement(${req.id})"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn-task-action" onclick="deleteRequirement(${req.id})"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="req-details" id="reqDetails-${req.id}">
+                    <div>
+                        <strong style="font-size: 0.9rem; color: var(--text-primary); display: block; margin-bottom: 6px;">상세 설명</strong>
+                        <p class="req-desc">${DOMPurify.sanitize(req.description || '설명이 없습니다.')}</p>
+                    </div>
+                    
+                    <div style="font-size: 0.85rem; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                        <span><i class="fa-regular fa-user" style="margin-right: 6px;"></i>작성자: ${escapeHtml(req.author ? req.author.nickname : '알 수 없음')}</span>
+                        <span><i class="fa-solid fa-user-gear" style="margin-right: 6px;"></i>담당자: ${escapeHtml(assigneeName)}</span>
+                        <span><i class="fa-regular fa-face-smile" style="margin-right: 6px;"></i>고객 요청자: ${escapeHtml(req.requestedBy || '미지정')}</span>
+                        <span><i class="fa-solid fa-network-wired" style="margin-right: 6px;"></i>도메인 분류: ${escapeHtml(req.domainName || '미지정')}</span>
+                    </div>
+                    
+                    <div class="req-tasks-section">
+                        <div class="req-tasks-header">
+                            <span><i class="fa-solid fa-tasks"></i> 구현 작업 목록 (${linkedTasks.length})</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-primary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="createTaskForReq(${req.id})"><i class="fa-solid fa-plus"></i> 작업 생성</button>
+                                <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="syncReqProgress(${req.id})"><i class="fa-solid fa-arrows-rotate"></i> 진행률 계산</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                            ${linkedTasks.map(task => {
+                                let tStatus = '대기';
+                                if (task.status === 'TODO') tStatus = '할 일';
+                                else if (task.status === 'IN_PROGRESS') tStatus = '진행 중';
+                                else if (task.status === 'DONE') tStatus = '완료';
+                                
+                                return `
+                                    <div class="req-task-item" onclick="editTask(${task.id})">
+                                        <span style="font-weight: 500;">${escapeHtml(task.title)}</span>
+                                        <div style="display: flex; align-items: center; gap: 12px; color: var(--text-muted);">
+                                            <span><i class="fa-regular fa-user"></i> ${task.assignee ? escapeHtml(task.assignee.nickname) : '미지정'}</span>
+                                            <span class="project-status ${task.status === 'DONE' ? 'status-completed' : task.status === 'IN_PROGRESS' ? 'status-active' : 'status-pending'}" style="font-size: 0.75rem; padding: 2px 6px;">
+                                                ${tStatus} (${task.progress}%)
+                                            </span>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                            ${linkedTasks.length === 0 ? '<div class="text-muted" style="text-align: center; padding: 8px; font-size: 0.8rem;">연결된 태스크가 없습니다.</div>' : ''}
+                        </div>
+                    </div>
+
+                    <div class="req-history-section" style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                        <strong style="font-size: 0.9rem; color: var(--text-primary); display: block; margin-bottom: 8px;"><i class="fa-solid fa-history" style="margin-right: 6px;"></i>요구사항 변경 이력 스냅샷</strong>
+                        <div class="req-history-timeline" id="reqHistoryTimeline-${req.id}" style="display: flex; flex-direction: column; gap: 8px;">
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">로딩 중...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        function toggleReqDetails(id) {
+            const details = document.getElementById(`reqDetails-${id}`);
+            const icon = document.getElementById(`reqToggleIcon-${id}`);
+            if (details.classList.contains('show')) {
+                details.classList.remove('show');
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                details.classList.add('show');
+                icon.style.transform = 'rotate(90deg)';
+                loadRequirementHistory(id);
+            }
+        }
+
+        async function loadRequirementHistory(reqId) {
+            const timeline = document.getElementById(`reqHistoryTimeline-${reqId}`);
+            if (!timeline) return;
+            try {
+                const res = await fetch(`/api/requirements/${reqId}/histories`);
+                if (!res.ok) throw new Error();
+                const histories = await res.json();
+                loadedHistories[reqId] = histories;
+                
+                if (histories.length === 0) {
+                    timeline.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-muted); padding: 4px;">변경 이력이 없습니다.</div>';
+                    return;
+                }
+                
+                timeline.innerHTML = histories.map((h, index) => {
+                    const date = new Date(h.modifiedAt);
+                    const formattedDate = date.toLocaleString('ko-KR', { hour12: false });
+                    const versionStr = `v${histories.length - index}`;
+                    return `
+                        <div class="req-history-item" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; transition: background 0.2s;" onclick="openSnapshotViewer(${reqId}, ${h.id})">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="badge" style="background: var(--secondary); color: var(--text-primary); padding: 2px 6px; font-size: 0.75rem; border-radius: 4px;">${versionStr}</span>
+                                <span style="font-size: 0.85rem; color: var(--text-primary); font-weight: 500;">${escapeHtml(h.title)}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-muted);">
+                                <span>수정자: ${escapeHtml(h.modifierNickname)}</span>
+                                <span>${formattedDate}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error(err);
+                timeline.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-error); padding: 4px;">이력을 불러오지 못했습니다.</div>';
+            }
+        }
+
+        function openSnapshotViewer(reqId, historyId) {
+            const list = loadedHistories[reqId] || [];
+            const h = list.find(x => x.id === historyId);
+            if (!h) return;
+            
+            const modal = document.getElementById('reqSnapshotModal');
+            
+            document.getElementById('snapshotTitle').value = h.title;
+            document.getElementById('snapshotDesc').innerHTML = DOMPurify.sanitize(h.description || '설명이 없습니다.');
+            document.getElementById('snapshotProgress').textContent = `${h.progress}%`;
+            document.getElementById('snapshotRequestedBy').textContent = h.requestedBy || '미지정';
+            document.getElementById('snapshotDomainName').textContent = h.domainName || '미지정';
+            document.getElementById('snapshotModifier').textContent = `수정자: ${h.modifierNickname}`;
+            
+            const date = new Date(h.modifiedAt);
+            document.getElementById('snapshotModifiedAt').textContent = `수정일시: ${date.toLocaleString('ko-KR', { hour12: false })}`;
+            document.getElementById('snapshotComment').textContent = h.comment || '변경 사유가 기재되지 않았습니다.';
+            
+            // Badges
+            const statusSpan = document.getElementById('snapshotStatus');
+            statusSpan.textContent = h.statusDescription;
+            statusSpan.className = 'project-status ' + (h.status === 'COMPLETED' ? 'status-completed' : (h.status === 'DRAFT' || h.status === 'DEFERRED' ? 'status-pending' : 'status-active'));
+            
+            const catSpan = document.getElementById('snapshotCategory');
+            catSpan.textContent = h.categoryName;
+            
+            let catClass = 'category-default';
+            const name = h.categoryName || '';
+            if (name === '기능' || name.toLowerCase().includes('functional')) catClass = 'category-functional';
+            else if (name === '비기능' || name.toLowerCase().includes('non-functional') || name.toLowerCase().includes('nonfunctional')) catClass = 'category-non-functional';
+            else if (name === 'UI/UX' || name.toLowerCase() === 'ui' || name.toLowerCase() === 'ux') catClass = 'category-ui';
+            else if (name === '보안' || name.toLowerCase().includes('security')) catClass = 'category-security';
+            else if (name === '인터페이스' || name.toLowerCase().includes('interface')) catClass = 'category-interface';
+            
+            catSpan.className = `req-badge ${catClass}`;
+            
+            const prioritySpan = document.getElementById('snapshotPriority');
+            let priorityText = '보통';
+            let priorityClass = 'priority-medium';
+            if (h.priority === 'HIGH') { priorityText = '높음'; priorityClass = 'priority-high'; }
+            else if (h.priority === 'LOW') { priorityText = '낮음'; priorityClass = 'priority-low'; }
+            prioritySpan.textContent = priorityText;
+            prioritySpan.className = `task-priority-badge ${priorityClass}`;
+            
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+
+        function closeReqSnapshotModal() {
+            const modal = document.getElementById('reqSnapshotModal');
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 250);
+        }
+
+        function toggleAddCategoryForm() {
+            const formGroup = document.getElementById('addCategoryFormGroup');
+            const input = document.getElementById('newCategoryName');
+            if (formGroup.style.display === 'none' || formGroup.style.display === '') {
+                formGroup.style.display = 'flex';
+                input.value = '';
+                input.focus();
+            } else {
+                formGroup.style.display = 'none';
+            }
+        }
+
+        async function submitNewCategory() {
+            const nameInput = document.getElementById('newCategoryName');
+            const name = nameInput.value.trim();
+            if (!name) {
+                displayToast('카테고리 이름을 입력하세요.', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/projects/${projectId}/requirement-categories?name=${encodeURIComponent(name)}`, {
+                    method: 'POST'
+                });
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(errText || '카테고리 추가 실패');
+                }
+                const newCat = await res.json();
+                
+                displayToast('카테고리가 추가되었습니다.', 'success');
+                document.getElementById('addCategoryFormGroup').style.display = 'none';
+                nameInput.value = '';
+                
+                // Fetch updated categories
+                const categoriesRes = await fetch(`/api/projects/${projectId}/requirement-categories`);
+                if (categoriesRes.ok) {
+                    projectCategories = await categoriesRes.json();
+                }
+                
+                populateRequirementFilters();
+                
+                const reqCategory = document.getElementById('reqCategory');
+                reqCategory.innerHTML = '<option value="">선택하세요</option>' + 
+                    projectCategories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+                reqCategory.value = newCat.id;
+            } catch (err) {
+                console.error(err);
+                displayToast(err.message || '카테고리 추가에 실패했습니다.', 'error');
+            }
+        }
+
+        function toggleAddRequesterForm() {
+            const formGroup = document.getElementById('addRequesterFormGroup');
+            const input = document.getElementById('newRequesterName');
+            if (formGroup.style.display === 'none' || formGroup.style.display === '') {
+                formGroup.style.display = 'flex';
+                input.value = '';
+                input.focus();
+            } else {
+                formGroup.style.display = 'none';
+            }
+        }
+
+        function submitNewRequester() {
+            const nameInput = document.getElementById('newRequesterName');
+            const name = nameInput.value.trim();
+            if (!name) {
+                displayToast('요청자 이름을 입력하세요.', 'error');
+                return;
+            }
+            
+            const select = document.getElementById('reqRequestedBy');
+            let exists = false;
+            for (let option of select.options) {
+                if (option.value === name) {
+                    exists = true;
+                    break;
+                }
+            }
+            
+            if (!exists) {
+                const newOption = document.createElement('option');
+                newOption.value = name;
+                newOption.textContent = name;
+                select.appendChild(newOption);
+            }
+            
+            select.value = name;
+            document.getElementById('addRequesterFormGroup').style.display = 'none';
+            nameInput.value = '';
+            displayToast('새 요청자가 선택 목록에 추가되었습니다.', 'success');
+        }
+
+        function toggleAddDomainForm() {
+            const formGroup = document.getElementById('addDomainFormGroup');
+            const input = document.getElementById('newDomainName');
+            if (formGroup.style.display === 'none' || formGroup.style.display === '') {
+                formGroup.style.display = 'flex';
+                input.value = '';
+                input.focus();
+            } else {
+                formGroup.style.display = 'none';
+            }
+        }
+
+        function submitNewDomain() {
+            const nameInput = document.getElementById('newDomainName');
+            const name = nameInput.value.trim();
+            if (!name) {
+                displayToast('도메인 이름을 입력하세요.', 'error');
+                return;
+            }
+            
+            const select = document.getElementById('reqDomainName');
+            let exists = false;
+            for (let option of select.options) {
+                if (option.value === name) {
+                    exists = true;
+                    break;
+                }
+            }
+            
+            if (!exists) {
+                const newOption = document.createElement('option');
+                newOption.value = name;
+                newOption.textContent = name;
+                select.appendChild(newOption);
+            }
+            
+            select.value = name;
+            document.getElementById('addDomainFormGroup').style.display = 'none';
+            nameInput.value = '';
+            displayToast('새 도메인이 선택 목록에 추가되었습니다.', 'success');
+        }
+
+        function openRequirementModal(reqId = null) {
+            initReqQuill();
+            const modal = document.getElementById('requirementModal');
+            document.getElementById('requirementForm').reset();
+            document.getElementById('modalReqId').value = '';
+            
+            // Hide add forms
+            document.getElementById('addCategoryFormGroup').style.display = 'none';
+            document.getElementById('addRequesterFormGroup').style.display = 'none';
+            document.getElementById('addDomainFormGroup').style.display = 'none';
+            
+            // Populate category select list
+            const reqCategory = document.getElementById('reqCategory');
+            reqCategory.innerHTML = '<option value="">선택하세요</option>' + 
+                projectCategories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+            
+            // Populate requester select list
+            const uniqueRequesters = [...new Set(projectRequirements.map(r => r.requestedBy).filter(r => r))];
+            const reqRequestedBy = document.getElementById('reqRequestedBy');
+            reqRequestedBy.innerHTML = '<option value="">선택하세요</option>' + 
+                uniqueRequesters.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+            
+            // Populate domain select list
+            const uniqueDomains = [...new Set(projectRequirements.map(r => r.domainName).filter(d => d))];
+            const reqDomainName = document.getElementById('reqDomainName');
+            reqDomainName.innerHTML = '<option value="">선택하세요</option>' + 
+                uniqueDomains.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+
+            const reqAssignee = document.getElementById('reqAssignee');
+            reqAssignee.innerHTML = '<option value="">배정 없음</option>';
+            if (currentProject && currentProject.members) {
+                currentProject.members.forEach(m => {
+                    reqAssignee.innerHTML += `<option value="${m.id}">${m.nickname}</option>`;
+                });
+            }
+            
+            // Reset requestedBy and domainName
+            reqRequestedBy.value = '';
+            reqDomainName.value = '';
+            
+            if (reqId) {
+                document.getElementById('reqModalTitleText').textContent = '요구사항 정보 수정';
+                const req = projectRequirements.find(r => r.id === reqId);
+                if (req) {
+                    document.getElementById('modalReqId').value = req.id;
+                    document.getElementById('reqTitle').value = req.title;
+                    document.getElementById('reqDesc').value = req.description || '';
+                    if (reqQuillEditor) {
+                        reqQuillEditor.root.innerHTML = req.description || '';
+                    }
+                    document.getElementById('reqCategory').value = req.categoryId || '';
+                    document.getElementById('reqPriority').value = req.priority;
+                    document.getElementById('reqStatus').value = req.status;
+                    document.getElementById('reqProgress').value = req.progress;
+                    document.getElementById('reqAssignee').value = req.assignee ? req.assignee.id : '';
+                    
+                    if (req.requestedBy && !uniqueRequesters.includes(req.requestedBy)) {
+                        reqRequestedBy.innerHTML += `<option value="${escapeHtml(req.requestedBy)}">${escapeHtml(req.requestedBy)}</option>`;
+                    }
+                    reqRequestedBy.value = req.requestedBy || '';
+                    
+                    if (req.domainName && !uniqueDomains.includes(req.domainName)) {
+                        reqDomainName.innerHTML += `<option value="${escapeHtml(req.domainName)}">${escapeHtml(req.domainName)}</option>`;
+                    }
+                    reqDomainName.value = req.domainName || '';
+                }
+            } else {
+                document.getElementById('reqModalTitleText').textContent = '새 요구사항 등록';
+                if (reqQuillEditor) {
+                    reqQuillEditor.root.innerHTML = '';
+                }
+            }
+            
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+
+        function closeRequirementModal() {
+            const modal = document.getElementById('requirementModal');
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 250);
+        }
+
+        function editRequirement(id) {
+            openRequirementModal(id);
+        }
+
+        async function deleteRequirement(id) {
+            if (confirm('정말로 이 요구사항을 삭제하시겠습니까? (연결된 작업들의 요구사항 링크가 해제됩니다)')) {
+                try {
+                    const res = await fetch(`/api/requirements/${id}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error();
+                    displayToast('요구사항이 삭제되었습니다.', 'success');
+                    await reloadWorkspaceData();
+                } catch (e) {
+                    console.error(e);
+                    displayToast('요구사항 삭제에 실패했습니다.', 'error');
+                }
+            }
+        }
+
+        function createTaskForReq(reqId) {
+            openTaskModal(null, null, null);
+            document.getElementById('taskRequirement').value = reqId;
+        }
+
+        async function syncReqProgress(reqId) {
+            try {
+                const res = await fetch(`/api/requirements/${reqId}/sync-progress`, { method: 'POST' });
+                if (!res.ok) throw new Error();
+                displayToast('진행률이 평균 작업 진행률로 동기화되었습니다.', 'success');
+                await reloadWorkspaceData();
+            } catch (e) {
+                console.error(e);
+                displayToast('진행률 동기화 실패', 'error');
+            }
+        }
+    </script>
+</th:block>
+
+</body>
+</html>

@@ -91,7 +91,7 @@
                         </div>
                         <div class="stat-info">
                             <span class="stat-label">진행 중 프로젝트</span>
-                            <span class="stat-value">3 개</span>
+                            <span class="stat-value" th:text="${activeProjectCount} + ' 개'">0 개</span>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -100,7 +100,7 @@
                         </div>
                         <div class="stat-info">
                             <span class="stat-label">완료 태스크</span>
-                            <span class="stat-value">12 개</span>
+                            <span class="stat-value" th:text="${completedTaskCount} + ' 개'">0 개</span>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -109,7 +109,7 @@
                         </div>
                         <div class="stat-info">
                             <span class="stat-label">보류 및 검토</span>
-                            <span class="stat-value">2 개</span>
+                            <span class="stat-value" th:text="${pendingAndReviewCount} + ' 개'">0 개</span>
                         </div>
                     </div>
                 </div>
@@ -117,7 +117,7 @@
                 <!-- Welcome details card -->
                 <div class="card welcome-card">
                     <h2 class="title welcome-title">
-                        워크스페이스에 오신 것을 환영합니다! 🚀
+                        워크스페이스에 오신 것을 환영합니다! 
                     </h2>
                     <p class="welcome-desc">
                         LineSoft Project Management 시스템을 통해 업무를 더욱 스마트하게 관리하세요. 상단의 <strong>프로젝트 관리</strong> 메뉴를 이용하시면, 진행 중인 프로젝트를 점검하고, 진행률 상태를 실시간으로 모니터링할 수 있습니다.
