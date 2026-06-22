@@ -63,13 +63,19 @@ public class ProjectDiagramService {
         ProjectDiagram diagram = projectDiagramRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("다이어그램을 찾을 수 없습니다. ID: " + id));
 
+        Requirement requirement = diagram.getRequirement();
+        if (request.getRequirementId() != null) {
+            requirement = requirementRepository.findById(request.getRequirementId())
+                    .orElseThrow(() -> new IllegalArgumentException("요구사항을 찾을 수 없습니다. ID: " + request.getRequirementId()));
+        }
+
         Task task = null;
         if (request.getLastModifiedByTaskId() != null) {
             task = taskRepository.findById(request.getLastModifiedByTaskId())
                     .orElseThrow(() -> new IllegalArgumentException("태스크를 찾을 수 없습니다. ID: " + request.getLastModifiedByTaskId()));
         }
 
-        diagram.update(request.getTitle(), request.getMermaidCode(), task);
+        diagram.update(request.getTitle(), request.getMermaidCode(), requirement, task);
         return new ProjectDiagramResponse(diagram);
     }
 

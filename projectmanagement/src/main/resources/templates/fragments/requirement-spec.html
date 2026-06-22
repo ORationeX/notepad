@@ -5,6 +5,23 @@
 
 <!-- Requirements Workspace Fragment -->
 <div th:fragment="req-markup">
+    <style>
+        .req-diagram-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .req-diagram-item:hover {
+            border-color: var(--text-primary);
+        }
+    </style>
     <!-- 5. REQUIREMENTS WORKSPACE -->
     <div class="workspace-content-pane" id="requirementsPane" style="display: none;">
         <div class="detail-card-list">
@@ -524,6 +541,16 @@
                         </div>
                     </div>
 
+                    <div class="req-diagrams-section" style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                        <div class="req-diagrams-header" style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span><i class="fa-solid fa-diagram-project"></i> 연관 다이어그램 산출물</span>
+                            <button class="btn-primary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="createDiagramForReq(${req.id})"><i class="fa-solid fa-plus"></i> 다이어그램 추가</button>
+                        </div>
+                        <div id="reqDiagramsList-${req.id}" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">로딩 중...</span>
+                        </div>
+                    </div>
+
                     <div class="req-history-section" style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px;">
                         <strong style="font-size: 0.9rem; color: var(--text-primary); display: block; margin-bottom: 8px;"><i class="fa-solid fa-history" style="margin-right: 6px;"></i>요구사항 변경 이력 스냅샷</strong>
                         <div class="req-history-timeline" id="reqHistoryTimeline-${req.id}" style="display: flex; flex-direction: column; gap: 8px;">
@@ -545,6 +572,7 @@
                 details.classList.add('show');
                 icon.style.transform = 'rotate(90deg)';
                 loadRequirementHistory(id);
+                loadRequirementDiagrams(id);
             }
         }
 
@@ -583,6 +611,93 @@
                 console.error(err);
                 timeline.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-error); padding: 4px;">이력을 불러오지 못했습니다.</div>';
             }
+        }
+
+        async function loadRequirementDiagrams(reqId) {
+            const listContainer = document.getElementById(`reqDiagramsList-${reqId}`);
+            if (!listContainer) return;
+            try {
+                const res = await fetch(`/api/requirements/${reqId}/diagrams`);
+                if (!res.ok) throw new Error();
+                const diagrams = await res.json();
+                
+                if (diagrams.length === 0) {
+                    listContainer.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-muted); padding: 8px; text-align: center; background: rgba(0, 0, 0, 0.05); border: 1px dashed var(--border-color); border-radius: 6px;">연결된 다이어그램이 없습니다.</div>';
+                    return;
+                }
+                
+                listContainer.innerHTML = diagrams.map(d => {
+                    const date = new Date(d.updatedAt);
+                    const formattedDate = date.toLocaleString('ko-KR', { hour12: false });
+                    return `
+                        <div class="req-diagram-item" onclick="showDiagramInWorkspace(${d.id}, ${reqId})">
+                            <span style="font-weight: 500;"><i class="fa-solid fa-diagram-project" style="color: var(--primary); margin-right: 6px;"></i>${escapeHtml(d.title)}</span>
+                            <div style="display: flex; align-items: center; gap: 12px; color: var(--text-muted);">
+                                <span>${formattedDate}</span>
+                                <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem;"></i>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error(err);
+                listContainer.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-error); padding: 8px; text-align: center;">다이어그램 목록을 불러오지 못했습니다.</div>';
+            }
+        }
+
+        function createDiagramForReq(reqId) {
+            if (typeof openDiagramModal === 'function') {
+                openDiagramModal(null, reqId);
+            } else {
+                displayToast('다이어그램 모달을 열 수 없습니다.', 'error');
+            }
+        }
+
+        async function showDiagramInWorkspace(diagramId, requirementId) {
+            if (typeof switchTab !== 'function') return;
+            
+            // Switch to diagrams tab
+            switchTab('diagrams');
+            
+            // Set the filters
+            const reqFilter = document.getElementById('diagramFilterRequirement');
+            if (reqFilter) {
+                reqFilter.value = requirementId || '';
+            }
+            
+            const searchInput = document.getElementById('diagramSearchInput');
+            if (searchInput) searchInput.value = '';
+            
+            const taskFilter = document.getElementById('diagramFilterTask');
+            if (taskFilter) taskFilter.value = '';
+            
+            // Render the list
+            if (typeof filterAndRenderDiagrams === 'function') {
+                filterAndRenderDiagrams();
+            }
+            
+            // Expand the target diagram
+            if (typeof toggleDiagramDetails === 'function') {
+                const details = document.getElementById(`diagramDetails-${diagramId}`);
+                if (details && details.style.display !== 'block') {
+                    await toggleDiagramDetails(diagramId);
+                }
+            }
+            
+            // Scroll & Highlight
+            setTimeout(() => {
+                const card = document.querySelector(`.diagram-card [id="diagramToggleIcon-${diagramId}"]`)?.closest('.diagram-card');
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.style.transition = 'border-color 0.3s, box-shadow 0.3s';
+                    card.style.borderColor = 'var(--text-primary)';
+                    card.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.1)';
+                    setTimeout(() => {
+                        card.style.borderColor = '';
+                        card.style.boxShadow = '';
+                    }, 1500);
+                }
+            }, 100);
         }
 
         function openSnapshotViewer(reqId, historyId) {

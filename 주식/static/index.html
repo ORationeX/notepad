@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETF 구성종목 수량 & 비중 분석기</title>
+    <!-- Google Fonts: Outfit, Inter, Noto Sans KR -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Apache ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="glass-bg"></div>
+    
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-logo">
+                <i class="fa-solid fa-chart-line-up logo-icon"></i>
+                <div>
+                    <h1>ETF Analyzer</h1>
+                    <p>수량 및 비중 변화 모니터링 시스템</p>
+                </div>
+            </div>
+            
+            <div class="etf-selector">
+                <button class="etf-tab active" data-idx="6">
+                    <span class="etf-code">456600</span>
+                    <span class="etf-name">글로벌AI인공지능액티브</span>
+                </button>
+                <button class="etf-tab" data-idx="2">
+                    <span class="etf-code">426030</span>
+                    <span class="etf-name">미국나스닥100액티브</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Notification Banner for Updates / Progress -->
+        <div id="update-banner" class="banner hidden">
+            <div class="banner-content">
+                <i class="fa-solid fa-triangle-exclamation banner-icon"></i>
+                <span id="banner-text">대기 중인 데이터 업데이트가 있습니다.</span>
+            </div>
+            <div class="banner-actions">
+                <button id="btn-confirm-update" class="btn btn-success btn-sm"><i class="fa-solid fa-check"></i> 승인 및 백업 저장</button>
+                <button id="btn-cancel-update" class="btn btn-danger btn-sm"><i class="fa-solid fa-xmark"></i> 취소</button>
+            </div>
+        </div>
+
+        <div id="crawl-progress-banner" class="banner progress-banner hidden">
+            <div class="banner-content-progress">
+                <div class="progress-info">
+                    <i class="fa-solid fa-spinner fa-spin banner-icon"></i>
+                    <span id="progress-text">과거 데이터 수집 중...</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Grid -->
+        <main class="dashboard-grid">
+            
+            <!-- Left Side: Control & Calendar -->
+            <section class="grid-left card">
+                <div class="card-header">
+                    <h2><i class="fa-regular fa-calendar-days"></i> 이벤트 달력</h2>
+                    <div class="calendar-controls">
+                        <button id="cal-prev-month" class="btn-icon"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span id="calendar-month-year">2026년 06월</span>
+                        <button id="cal-next-month" class="btn-icon"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                
+                <!-- Calendar Component -->
+                <div class="calendar-wrapper">
+                    <div class="calendar-weekdays">
+                        <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+                    </div>
+                    <div id="calendar-days" class="calendar-days">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="legend">
+                    <span class="legend-item"><span class="badge badge-new">신규</span> 신규 종목</span>
+                    <span class="legend-item"><span class="badge badge-del">삭제</span> 종목 삭제</span>
+                    <span class="legend-item"><span class="badge badge-up">증가</span> 수량 증가</span>
+                    <span class="legend-item"><span class="badge badge-down">감소</span> 수량 감소</span>
+                </div>
+
+                <!-- Database Maintenance -->
+                <div class="maintenance-box">
+                    <h3><i class="fa-solid fa-database"></i> 과거 데이터 수집 도구</h3>
+                    <p class="helper-text">ETF 상장일부터 현재까지의 구성종목 데이터를 수집하여 캐싱합니다.</p>
+                    <div class="crawl-form">
+                        <div class="input-group">
+                            <label>시작일</label>
+                            <input type="date" id="crawl-start-date">
+                        </div>
+                        <div class="input-group">
+                            <label>종료일</label>
+                            <input type="date" id="crawl-end-date">
+                        </div>
+                        <button id="btn-start-crawl" class="btn btn-primary"><i class="fa-solid fa-cloud-arrow-down"></i> 데이터 수집 시작</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Side: Details for Selected Date -->
+            <section class="grid-right card">
+                <div class="card-header flex-header">
+                    <div>
+                        <h2 id="selected-date-title">2026-06-19 구성 세부 내역</h2>
+                        <p id="live-badge" class="badge-live hidden"><i class="fa-solid fa-signal-stream"></i> 실시간 당일 데이터</p>
+                    </div>
+                    <div class="etf-summary-stats">
+                        <div class="stat-pill"><span class="stat-label">종목 수</span> <strong id="stat-total-count">0</strong>개</div>
+                    </div>
+                </div>
+
+                <!-- Detail Tabs -->
+                <div class="tab-container">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="all">전체 목록</button>
+                        <button class="tab-btn" data-tab="new">신규 <span class="tab-count count-new" id="tab-count-new">0</span></button>
+                        <button class="tab-btn" data-tab="deleted">삭제 <span class="tab-count count-del" id="tab-count-deleted">0</span></button>
+                        <button class="tab-btn" data-tab="increased">증가 <span class="tab-count count-up" id="tab-count-increased">0</span></button>
+                        <button class="tab-btn" data-tab="decreased">감소 <span class="tab-count count-down" id="tab-count-decreased">0</span></button>
+                    </div>
+
+                    <!-- Tab Contents -->
+                    <div class="tab-contents">
+                        <!-- 1. All Constituents -->
+                        <div id="tab-content-all" class="tab-pane active">
+                            <div class="table-container">
+                                <table class="table-styled" id="table-all">
+                                    <thead>
+                                        <tr>
+                                            <th>종목명</th>
+                                            <th>종목코드</th>
+                                            <th>수량</th>
+                                            <th>평가금액(원)</th>
+                                            <th>비중(%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 2. New Stocks -->
+                        <div id="tab-content-new" class="tab-pane">
+                            <div class="table-container">
+                                <table class="table-styled" id="table-new">
+                                    <thead>
+                                        <tr>
+                                            <th>종목명</th>
+                                            <th>종목코드</th>
+                                            <th>수량</th>
+                                            <th>비중(%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 3. Deleted Stocks -->
+                        <div id="tab-content-deleted" class="tab-pane">
+                            <div class="table-container">
+                                <table class="table-styled" id="table-deleted">
+                                    <thead>
+                                        <tr>
+                                            <th>종목명</th>
+                                            <th>종목코드</th>
+                                            <th>직전 수량</th>
+                                            <th>직전 비중(%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 4. Increased Quantity -->
+                        <div id="tab-content-increased" class="tab-pane">
+                            <div class="table-container">
+                                <table class="table-styled" id="table-increased">
+                                    <thead>
+                                        <tr>
+                                            <th>종목명</th>
+                                            <th>종목코드</th>
+                                            <th>이전 수량</th>
+                                            <th>현재 수량</th>
+                                            <th>수량 증감 (+%)</th>
+                                            <th>이전 비중</th>
+                                            <th>현재 비중</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 5. Decreased Quantity -->
+                        <div id="tab-content-decreased" class="tab-pane">
+                            <div class="table-container">
+                                <table class="table-styled" id="table-decreased">
+                                    <thead>
+                                        <tr>
+                                            <th>종목명</th>
+                                            <th>종목코드</th>
+                                            <th>이전 수량</th>
+                                            <th>현재 수량</th>
+                                            <th>수량 증감 (-%)</th>
+                                            <th>이전 비중</th>
+                                            <th>현재 비중</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Section: Single Stock Trend Chart -->
+        <section class="card chart-section">
+            <div class="card-header search-header">
+                <h2><i class="fa-solid fa-chart-line"></i> 개별 종목 역사적 수량 및 비중 분석</h2>
+                <div class="search-form">
+                    <input type="text" id="stock-search-input" placeholder="종목명 또는 종목코드 입력 (예: NVIDIA, MU)">
+                    <button id="btn-search-stock" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> 분석 실행</button>
+                </div>
+            </div>
+
+            <div class="chart-dashboard-grid">
+                <!-- Chart Area -->
+                <div class="chart-outer">
+                    <div id="stock-trend-chart" style="width: 100%; height: 400px;"></div>
+                    <div id="chart-placeholder" class="chart-placeholder">
+                        <i class="fa-solid fa-chart-area placeholder-icon"></i>
+                        <p>상세 분석을 시작하려면 위의 테이블에서 종목을 클릭하거나 직접 검색해 주세요.</p>
+                    </div>
+                </div>
+
+                <!-- Historical Table Area -->
+                <div class="stock-history-table-outer">
+                    <h3><i class="fa-solid fa-list-timeline"></i> 종목 히스토리 내역</h3>
+                    <div class="table-container stock-history-table-container">
+                        <table class="table-styled" id="table-stock-history">
+                            <thead>
+                                <tr>
+                                    <th>일자</th>
+                                    <th>수량</th>
+                                    <th>직전 대비 증감율</th>
+                                    <th>비중(%)</th>
+                                    <th>평가금액(원)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center">데이터가 없습니다.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Alert Toast -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-message">메시지</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

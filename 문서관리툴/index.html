@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>무한 캔버스 다이어그램 에디터</title>
+  <meta name="description" content="서버리스 싱글 HTML로 구동되는 고성능 무한 캔버스 다이어그램 에디터 (Figma 클론)">
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Fabric.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+  <!-- Lucide Icons for premium styling -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Hidden File Input for Loading JSON -->
+  <input type="file" id="file-input" accept=".json">
+
+  <!-- Interactive Canvas Wrapper -->
+  <div id="canvas-container">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <!-- In-place floating textarea for editing text -->
+  <textarea id="text-editor"></textarea>
+
+  <!-- App Header Panel -->
+  <div id="app-header" class="glass-panel">
+    <div class="logo-area">
+      <div class="logo-icon"></div>
+      <span>Antigravity Canvas</span>
+    </div>
+    <div class="logo-area" style="border: none; padding-right: 0; font-weight: 500; font-size: 13px; color: var(--text-secondary);">
+      <span>MES & Diagram Tool</span>
+    </div>
+  </div>
+
+  <!-- Central Floating Toolbar -->
+  <div id="toolbar" class="glass-panel">
+    <button class="tool-btn active" data-mode="select" data-tooltip="선택 도구 (V)" id="btn-select">
+      <i data-lucide="mouse-pointer"></i>
+    </button>
+    <div class="divider"></div>
+    <button class="tool-btn" data-mode="rect" data-tooltip="프로세스 박스 (사각형) 추가 (R)" id="btn-rect">
+      <i data-lucide="square"></i>
+    </button>
+    <button class="tool-btn" data-mode="diamond" data-tooltip="의사결정 게이트웨이 (마름모) 추가 (D)" id="btn-diamond">
+      <i data-lucide="diamond"></i>
+    </button>
+    <button class="tool-btn" data-mode="frame" data-tooltip="그룹 영역 (프레임) 추가 (F)" id="btn-frame">
+      <i data-lucide="frame"></i>
+    </button>
+    <button class="tool-btn" data-mode="connect" data-tooltip="화살표 연결선 추가 (C)" id="btn-connect">
+      <i data-lucide="arrow-right"></i>
+    </button>
+  </div>
+
+  <!-- Actions Panel (Save, Load, Reset) -->
+  <div id="actions-panel" class="glass-panel">
+    <button class="action-btn" id="btn-load">
+      <i data-lucide="upload" style="width: 16px; height: 16px;"></i>
+      <span>불러오기</span>
+    </button>
+    <button class="action-btn accent" id="btn-save">
+      <i data-lucide="download" style="width: 16px; height: 16px;"></i>
+      <span>저장하기</span>
+    </button>
+    <div class="divider"></div>
+    <button class="tool-btn" data-tooltip="캔버스 초기화" id="btn-clear" style="color: var(--danger-color);">
+      <i data-lucide="trash-2"></i>
+    </button>
+  </div>
+
+  <!-- Zoom Indicator Panel -->
+  <div id="zoom-panel" class="glass-panel">
+    <button class="zoom-btn" id="btn-zoom-out" data-tooltip="축소">
+      <i data-lucide="minus" style="width: 14px; height: 14px;"></i>
+    </button>
+    <span class="zoom-text" id="zoom-value">100%</span>
+    <button class="zoom-btn" id="btn-zoom-in" data-tooltip="확대">
+      <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+    </button>
+    <div class="divider" style="height: 16px;"></div>
+    <button class="zoom-btn" id="btn-zoom-fit" data-tooltip="화면에 맞춤">
+      <i data-lucide="maximize" style="width: 14px; height: 14px;"></i>
+    </button>
+  </div>
+
+  <!-- Keyboard Shortcuts & Controls help -->
+  <div id="help-panel" class="glass-panel">
+    <div class="help-row">
+      <span>이동 (Panning)</span>
+      <span><span class="help-key">우클릭 드래그</span> 또는 <span class="help-key">Space + 드래그</span></span>
+    </div>
+    <div class="help-row">
+      <span>확대/축소 (Zoom)</span>
+      <span><span class="help-key">휠 스크롤</span></span>
+    </div>
+    <div class="help-row">
+      <span>텍스트 편집</span>
+      <span><span class="help-key">요소 더블클릭</span></span>
+    </div>
+    <div class="help-row">
+      <span>요소 삭제</span>
+      <span><span class="help-key">Delete</span> / <span class="help-key">Backspace</span></span>
+    </div>
+    <div class="help-row">
+      <span>연결 그리기</span>
+      <span>연결 모드에서 <span class="help-key">노드 드래그</span></span>
+    </div>
+    <div class="help-row">
+      <span>그룹 영역 (프레임) 추가</span>
+      <span><span class="help-key">F</span></span>
+    </div>
+  </div>
+
+  <!-- Properties Sidebar Panel -->
+  <div id="properties-sidebar" class="glass-panel">
+    <div class="sidebar-title">
+      <i data-lucide="sliders" style="width: 18px; height: 18px; color: var(--accent-color);"></i>
+      <span>속성 설정</span>
+    </div>
+
+    <!-- Properties details for Nodes -->
+    <div id="prop-node-section" style="display: none;">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <!-- Text edit -->
+        <div class="prop-group">
+          <label class="prop-label">텍스트 내용</label>
+          <textarea class="prop-input" id="prop-text" rows="3" placeholder="내용을 입력하세요..." style="resize: vertical;"></textarea>
+        </div>
+
+        <!-- Font size -->
+        <div class="prop-group">
+          <label class="prop-label">글꼴 크기</label>
+          <div class="range-container">
+            <input type="range" id="prop-font-size" class="prop-range" min="10" max="36" value="14">
+            <span class="range-val" id="prop-font-size-val">14px</span>
+          </div>
+        </div>
+
+        <!-- Fill Color -->
+        <div class="prop-group">
+          <label class="prop-label">채우기 색상</label>
+          <div class="color-presets" id="fill-presets">
+            <div class="color-circle" style="background: rgba(99, 102, 241, 0.2);" data-color="rgba(99,102,241,0.2)" onclick="setNodeFill('rgba(99, 102, 241, 0.2)')"></div>
+            <div class="color-circle" style="background: rgba(236, 72, 153, 0.2);" data-color="rgba(236,72,153,0.2)" onclick="setNodeFill('rgba(236, 72, 153, 0.2)')"></div>
+            <div class="color-circle" style="background: rgba(16, 185, 129, 0.2);" data-color="rgba(16,185,129,0.2)" onclick="setNodeFill('rgba(16, 185, 129, 0.2)')"></div>
+            <div class="color-circle" style="background: rgba(245, 158, 11, 0.2);" data-color="rgba(245,158,11,0.2)" onclick="setNodeFill('rgba(245, 158, 11, 0.2)')"></div>
+            <div class="color-circle" style="background: rgba(139, 92, 246, 0.2);" data-color="rgba(139,92,246,0.2)" onclick="setNodeFill('rgba(139, 92, 246, 0.2)')"></div>
+            <div class="color-circle" style="background: rgba(63, 63, 70, 0.4);" data-color="rgba(63,63,70,0.4)" onclick="setNodeFill('rgba(63, 63, 70, 0.4)')"></div>
+          </div>
+        </div>
+
+        <!-- Stroke Color -->
+        <div class="prop-group">
+          <label class="prop-label">테두리 색상</label>
+          <div class="color-presets" id="stroke-presets">
+            <div class="color-circle" style="background: #6366f1;" data-color="#6366f1" onclick="setNodeStroke('#6366f1')"></div>
+            <div class="color-circle" style="background: #ec4899;" data-color="#ec4899" onclick="setNodeStroke('#ec4899')"></div>
+            <div class="color-circle" style="background: #10b981;" data-color="#10b981" onclick="setNodeStroke('#10b981')"></div>
+            <div class="color-circle" style="background: #f59e0b;" data-color="#f59e0b" onclick="setNodeStroke('#f59e0b')"></div>
+            <div class="color-circle" style="background: #8b5cf6;" data-color="#8b5cf6" onclick="setNodeStroke('#8b5cf6')"></div>
+            <div class="color-circle" style="background: #a1a1aa;" data-color="#a1a1aa" onclick="setNodeStroke('#a1a1aa')"></div>
+          </div>
+        </div>
+
+        <!-- Stroke width -->
+        <div class="prop-group">
+          <label class="prop-label">테두리 두께</label>
+          <div class="range-container">
+            <input type="range" id="prop-border-width" class="prop-range" min="1" max="8" value="2">
+            <span class="range-val" id="prop-border-width-val">2px</span>
+          </div>
+        </div>
+
+        <!-- Border Style Segment -->
+        <div class="prop-group">
+          <label class="prop-label">테두리 스타일</label>
+          <div class="segment-control">
+            <button class="segment-btn active" id="btn-border-solid" onclick="setNodeBorderStyle('solid')">실선</button>
+            <button class="segment-btn" id="btn-border-dashed" onclick="setNodeBorderStyle('dashed')">점선</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Properties details for Connectors -->
+    <div id="prop-conn-section" style="display: none;">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <!-- Connector Text Content -->
+        <div class="prop-group">
+          <label class="prop-label">선 텍스트 내용</label>
+          <input type="text" class="prop-input" id="prop-conn-text" placeholder="선 라벨을 입력하세요...">
+        </div>
+
+        <!-- Line Color -->
+        <div class="prop-group">
+          <label class="prop-label">선 색상</label>
+          <div class="color-presets" id="conn-color-presets">
+            <div class="color-circle" style="background: #818cf8;" data-color="#818cf8" onclick="setConnColor('#818cf8')"></div>
+            <div class="color-circle" style="background: #f472b6;" data-color="#f472b6" onclick="setConnColor('#f472b6')"></div>
+            <div class="color-circle" style="background: #34d399;" data-color="#34d399" onclick="setConnColor('#34d399')"></div>
+            <div class="color-circle" style="background: #fbbf24;" data-color="#fbbf24" onclick="setConnColor('#fbbf24')"></div>
+            <div class="color-circle" style="background: #a78bfa;" data-color="#a78bfa" onclick="setConnColor('#a78bfa')"></div>
+            <div class="color-circle" style="background: #cbd5e1;" data-color="#cbd5e1" onclick="setConnColor('#cbd5e1')"></div>
+          </div>
+        </div>
+
+        <!-- Line thickness -->
+        <div class="prop-group">
+          <label class="prop-label">선 두께</label>
+          <div class="range-container">
+            <input type="range" id="prop-conn-width" class="prop-range" min="1" max="8" value="2">
+            <span class="range-val" id="prop-conn-width-val">2px</span>
+          </div>
+        </div>
+
+        <!-- Connector Arrow Head Toggle -->
+        <div class="prop-group">
+          <label class="prop-label">화살표 여부</label>
+          <div class="segment-control">
+            <button class="segment-btn active" id="btn-conn-arrow-yes" onclick="setConnArrow(true)">있음</button>
+            <button class="segment-btn" id="btn-conn-arrow-no" onclick="setConnArrow(false)">없음</button>
+          </div>
+        </div>
+
+        <!-- Connector Line Style Toggle -->
+        <div class="prop-group">
+          <label class="prop-label">선 스타일</label>
+          <div class="segment-control">
+            <button class="segment-btn active" id="btn-conn-style-solid" onclick="setConnLineStyle('solid')">실선</button>
+            <button class="segment-btn" id="btn-conn-style-dashed" onclick="setConnLineStyle('dashed')">점선</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Node Button (Works for both) -->
+    <button class="delete-btn" id="btn-delete-selected">
+      <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
+      <span>선택 삭제</span>
+    </button>
+  </div>
+
+  <!-- Toast alerts container -->
+  <div id="toast-container"></div>
+
+  <!-- Interactive logic scripts -->
+  <script>
+    // Lucide Icons initialization
+    lucide.createIcons();
+
+    // 1. Initial State Variables
+    let canvas;
+    let currentMode = 'select'; // 'select' | 'rect' | 'diamond' | 'connect'
+    let connectors = []; // List of connection metadata: { id, sourceId, targetId, color, strokeWidth, pathObj }
+    
+    // Pan & Zoom Status
+    let isPanning = false;
+    let isSpacePressed = false;
+    let lastX = 0;
+    let lastY = 0;
+    
+    // Connector Drawing State
+    let tempLine = null;
+    let connectorSource = null;
+    let isDragDrawing = false;
+    let mouseDownPointer = null;
+    let currentHoveredNode = null;
+    
+    // Frame Dragging State
+    let frameChildNodes = [];
+    
+    // Text Editor State
+    let activeEditingNode = null;
+
+    // Initialize Canvas Grid Pattern
+    function createGridPattern() {
+      const gridCanvas = document.createElement('canvas');
+      gridCanvas.width = 32;
+      gridCanvas.height = 32;
+      const ctx = gridCanvas.getContext('2d');
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)'; // soft grey-white dot grid
+      ctx.beginPath();
+      ctx.arc(1.5, 1.5, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      return new fabric.Pattern({
+        source: gridCanvas,
+        repeat: 'repeat'
+      });
+    }
+
+    // 2. Initialize Fabric.js Canvas
+    window.addEventListener('DOMContentLoaded', () => {
+      const containerEl = document.getElementById('canvas-container');
+      const canvasEl = document.getElementById('canvas');
+      
+      // Prevent Context Menu on canvas for Right Click Panning
+      canvasEl.addEventListener('contextmenu', e => e.preventDefault());
+      
+      // Setup dynamic canvas dimensions
+      canvas = new fabric.Canvas('canvas', {
+        width: containerEl.clientWidth,
+        height: containerEl.clientHeight,
+        selection: true,
+        backgroundColor: '#0a0a0c',
+        stopContextMenu: true,
+        fireRightClick: true
+      });
+      
+      // Grid Background
+      canvas.setBackgroundColor(createGridPattern(), canvas.renderAll.bind(canvas));
+      
+      // Bind Resize Handler
+      window.addEventListener('resize', handleResize);
+      
+      // Init Interactive Events
+      initEventHandlers();
+      initUIListeners();
+      
+      // Seed initial mock nodes to showcase visually premium features
+      createMockDiagram();
+    });
+
+    function handleResize() {
+      const containerEl = document.getElementById('canvas-container');
+      canvas.setWidth(containerEl.clientWidth);
+      canvas.setHeight(containerEl.clientHeight);
+      canvas.requestRenderAll();
+    }
+
+    // 3. Main Event Handlers Setup
+    function initEventHandlers() {
+      // Space pressed checker for Panning
+      document.addEventListener('keydown', e => {
+        if (e.code === 'Space' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+          isSpacePressed = true;
+          canvas.defaultCursor = 'grab';
+          e.preventDefault();
+        }
+        
+        // Escape to cancel actions or reset tool to select mode
+        if (e.key === 'Escape') {
+          cancelConnectionDrawing();
+          closeTextEditor();
+          setMode('select');
+        }
+
+        // Toolbar hotkeys
+        if (document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+          if (e.code === 'KeyV') { setMode('select'); e.preventDefault(); }
+          if (e.code === 'KeyR') { setMode('rect'); e.preventDefault(); }
+          if (e.code === 'KeyD') { setMode('diamond'); e.preventDefault(); }
+          if (e.code === 'KeyF') { setMode('frame'); e.preventDefault(); }
+          if (e.code === 'KeyC') { setMode('connect'); e.preventDefault(); }
+        }
+        
+        // Delete selected element
+        const activeObj = canvas.getActiveObject();
+        if ((e.key === 'Delete' || e.key === 'Backspace') && activeObj && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+          deleteSelected();
+        }
+      });
+
+      document.addEventListener('keyup', e => {
+        if (e.code === 'Space') {
+          isSpacePressed = false;
+          canvas.defaultCursor = currentMode === 'connect' ? 'crosshair' : 'default';
+        }
+      });
+
+      // Zoom via Mouse Wheel
+      canvas.on('mouse:wheel', function(opt) {
+        const delta = opt.e.deltaY;
+        let zoom = canvas.getZoom();
+        zoom *= 0.9995 ** delta; // smooth exponential scaling
+        if (zoom > 20) zoom = 20;
+        if (zoom < 0.08) zoom = 0.08;
+        
+        canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+        updateZoomIndicator();
+        opt.e.preventDefault();
+        opt.e.stopPropagation();
+      });
+
+      // Mouse Down
+      canvas.on('mouse:down', function(opt) {
+        const evt = opt.e;
+        
+        // A. Right Click Panning OR Space Key Panning
+        if (evt.button === 2 || isSpacePressed) {
+          isPanning = true;
+          canvas.selection = false;
+          lastX = evt.clientX;
+          lastY = evt.clientY;
+          canvas.defaultCursor = 'grabbing';
+          return;
+        }
+
+        // B. Drawing Connectors (Supports Drag-and-Drop AND Click-to-Click)
+        if (currentMode === 'connect') {
+          const clickedNode = opt.target;
+          if (clickedNode && clickedNode.type === 'group' && clickedNode.id) {
+            const pointer = canvas.getPointer(evt);
+            mouseDownPointer = { x: pointer.x, y: pointer.y };
+            
+            if (!connectorSource) {
+              // Start connection drawing
+              connectorSource = clickedNode;
+              isDragDrawing = true; // Assume drag-and-drop initially
+              
+              tempLine = new fabric.Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+                stroke: '#818cf8',
+                strokeWidth: 2,
+                strokeDashArray: [6, 4],
+                selectable: false,
+                evented: false
+              });
+              canvas.add(tempLine);
+              showNotification('연결선 드래그 또는 대상 노드를 클릭하세요.', 'info');
+            } else {
+              // Click-to-click target click
+              if (clickedNode.id !== connectorSource.id) {
+                createConnection(connectorSource, clickedNode);
+              } else {
+                cancelConnectionDrawing();
+              }
+            }
+          } else {
+            // Clicked empty space, cancel
+            if (connectorSource) {
+              cancelConnectionDrawing();
+            }
+          }
+        }
+        
+        // C. Adding shapes directly via click if clicked empty space while tool is selected
+        if (!opt.target && (currentMode === 'rect' || currentMode === 'diamond')) {
+          const pointer = canvas.getPointer(evt);
+          createNode(currentMode, pointer.x, pointer.y);
+          setMode('select'); // revert back to select tool
+        }
+
+        // D. Adding a frame directly via click if clicked empty space while frame tool is selected
+        if (!opt.target && currentMode === 'frame') {
+          const pointer = canvas.getPointer(evt);
+          createFrameNode(pointer.x, pointer.y);
+          setMode('select'); // revert back to select tool
+        }
+      });
+
+      // Mouse Move
+      canvas.on('mouse:move', function(opt) {
+        const evt = opt.e;
+        
+        // A. Panning Screen
+        if (isPanning) {
+          const vpt = canvas.viewportTransform;
+          vpt[4] += evt.clientX - lastX;
+          vpt[5] += evt.clientY - lastY;
+          canvas.requestRenderAll();
+          lastX = evt.clientX;
+          lastY = evt.clientY;
+          return;
+        }
+
+        // B. Connector Dragging Line update with target node highlights
+        if (currentMode === 'connect' && tempLine && connectorSource) {
+          const pointer = canvas.getPointer(evt);
+          tempLine.set({ x2: pointer.x, y2: pointer.y });
+          
+          // Detect hover target
+          let targetNode = null;
+          canvas.forEachObject(function(obj) {
+            if (obj !== tempLine && obj.type === 'group' && obj.id && obj.containsPoint(pointer)) {
+              targetNode = obj;
+            }
+          });
+          
+          if (targetNode && targetNode.id !== connectorSource.id) {
+            if (currentHoveredNode !== targetNode) {
+              if (currentHoveredNode) {
+                clearNodeHighlight(currentHoveredNode);
+              }
+              currentHoveredNode = targetNode;
+              highlightNode(targetNode);
+            }
+          } else {
+            if (currentHoveredNode) {
+              clearNodeHighlight(currentHoveredNode);
+              currentHoveredNode = null;
+            }
+          }
+          canvas.requestRenderAll();
+        }
+      });
+
+      // Mouse Up
+      canvas.on('mouse:up', function(opt) {
+        // Clear frame drag list
+        frameChildNodes = [];
+
+        // A. Finish Panning
+        if (isPanning) {
+          canvas.setViewportTransform(canvas.viewportTransform);
+          isPanning = false;
+          canvas.selection = true;
+          canvas.defaultCursor = isSpacePressed ? 'grab' : (currentMode === 'connect' ? 'crosshair' : 'default');
+          return;
+        }
+
+        // B. Finish Drawing Connector (Drag-and-Drop)
+        if (currentMode === 'connect' && tempLine && connectorSource && isDragDrawing) {
+          const pointer = canvas.getPointer(opt.e);
+          
+          // If the mouse barely moved, it's a click. Wait for click-to-click.
+          const dist = Math.hypot(pointer.x - mouseDownPointer.x, pointer.y - mouseDownPointer.y);
+          if (dist < 6) {
+            isDragDrawing = false; // Switch to click-to-click state
+            return;
+          }
+          
+          let targetNode = null;
+          canvas.forEachObject(function(obj) {
+            if (obj !== tempLine && obj.type === 'group' && obj.id && obj.containsPoint(pointer)) {
+              targetNode = obj;
+            }
+          });
+          
+          if (targetNode && targetNode.id !== connectorSource.id) {
+            createConnection(connectorSource, targetNode);
+          } else {
+            cancelConnectionDrawing();
+          }
+        }
+      });
+
+      // Hover styles for Connect Mode nodes
+      canvas.on('mouse:over', function(e) {
+        if (currentMode === 'connect' && e.target && e.target.type === 'group' && e.target.id) {
+          const node = e.target;
+          if (!connectorSource) {
+            const shape = node.item(0);
+            node._prevStroke = shape.stroke;
+            node._prevStrokeWidth = shape.strokeWidth;
+            shape.set({
+              stroke: '#818cf8',
+              strokeWidth: 3
+            });
+            canvas.requestRenderAll();
+          }
+        }
+      });
+
+      canvas.on('mouse:out', function(e) {
+        if (currentMode === 'connect' && e.target && e.target.type === 'group' && e.target.id) {
+          const node = e.target;
+          if (node._prevStroke !== undefined) {
+            const shape = node.item(0);
+            shape.set({
+              stroke: node._prevStroke,
+              strokeWidth: node._prevStrokeWidth
+            });
+            delete node._prevStroke;
+            delete node._prevStrokeWidth;
+            canvas.requestRenderAll();
+          }
+        }
+      });
+
+      // Double Click Node or Connector Label to Edit Text
+      canvas.on('mouse:dblclick', function(opt) {
+        const target = opt.target;
+        if (target && target.type === 'group' && target.id) {
+          openTextEditor(target);
+        } else if (target && target.isConnectorLabel && target.connectorId) {
+          openTextEditor(target);
+        }
+      });
+
+      // Object Select/Deselect Sidebar updates
+      canvas.on('selection:created', onSelectionUpdated);
+      canvas.on('selection:updated', onSelectionUpdated);
+      canvas.on('selection:cleared', onSelectionCleared);
+
+      // Global object movement and scaling trackers for connectors update (works for multi-select)
+      canvas.on('object:moving', function(opt) {
+        const target = opt.target;
+        
+        // A. If target is a Frame, move all elements currently inside the frame
+        if (target.nodeType === 'frame') {
+          if (frameChildNodes.length === 0) {
+            const dim = getNodeDimensions(target);
+            const leftBound = target.left - dim.w / 2;
+            const rightBound = target.left + dim.w / 2;
+            const topBound = target.top - dim.h / 2;
+            const bottomBound = target.top + dim.h / 2;
+            
+            canvas.forEachObject(obj => {
+              if (obj !== target && obj.type === 'group' && obj.nodeType !== 'frame') {
+                const center = obj.getCenterPoint();
+                if (center.x >= leftBound && center.x <= rightBound &&
+                    center.y >= topBound && center.y <= bottomBound) {
+                  frameChildNodes.push({
+                    node: obj,
+                    offsetX: obj.left - target.left,
+                    offsetY: obj.top - target.top
+                  });
+                }
+              }
+            });
+          }
+          
+          frameChildNodes.forEach(child => {
+            child.node.set({
+              left: target.left + child.offsetX,
+              top: target.top + child.offsetY
+            });
+            child.node.setCoords();
+            updateConnectorsForNode(child.node);
+          });
+          return;
+        }
+
+        // B. Standard movement
+        if (target.type === 'activeSelection') {
+          target.forEachObject(obj => {
+            updateConnectorsForNode(obj);
+          });
+        } else {
+          updateConnectorsForNode(target);
+        }
+      });
+
+      canvas.on('object:scaling', function(opt) {
+        const target = opt.target;
+        if (target.type === 'activeSelection') {
+          target.forEachObject(obj => {
+            updateConnectorsForNode(obj);
+          });
+        } else {
+          updateConnectorsForNode(target);
+        }
+      });
+    }
+
+    // 4. UI Trigger Controls & Listeners
+    function initUIListeners() {
+      // Toolbar Buttons Click Mode toggling
+      document.querySelectorAll('.tool-btn[data-mode]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setMode(btn.getAttribute('data-mode'));
+        });
+      });
+
+      // Zoom operations
+      document.getElementById('btn-zoom-in').addEventListener('click', () => zoomDelta(1.2));
+      document.getElementById('btn-zoom-out').addEventListener('click', () => zoomDelta(0.8));
+      document.getElementById('btn-zoom-fit').addEventListener('click', zoomToFit);
+
+      // Reset / Clear
+      document.getElementById('btn-clear').addEventListener('click', () => {
+        if (confirm('캔버스의 모든 요소가 삭제됩니다. 계속하시겠습니까?')) {
+          canvas.clear();
+          canvas.setBackgroundColor(createGridPattern(), canvas.renderAll.bind(canvas));
+          connectors = [];
+          onSelectionCleared();
+          showNotification('캔버스가 초기화되었습니다.', 'info');
+        }
+      });
+
+      // Save/Load Trigger
+      document.getElementById('btn-save').addEventListener('click', exportToJson);
+      document.getElementById('btn-load').addEventListener('click', () => {
+        document.getElementById('file-input').click();
+      });
+
+      document.getElementById('file-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          importFromJson(evt.target.result);
+        };
+        reader.readAsText(file);
+        // Reset file input value to allow importing the same file again
+        e.target.value = '';
+      });
+
+      // Delete Button inside Sidebar
+      document.getElementById('btn-delete-selected').addEventListener('click', deleteSelected);
+
+      // Property Sidebar Inputs
+      document.getElementById('prop-text').addEventListener('input', function(e) {
+        const activeObj = canvas.getActiveObject();
+        if (activeObj && activeObj.type === 'group' && activeObj.id) {
+          const textObj = activeObj.item(1);
+          textObj.set({ text: e.target.value });
+          activeObj.dirty = true;
+          canvas.requestRenderAll();
+        }
+      });
+
+      // Font Size Slider
+      document.getElementById('prop-font-size').addEventListener('input', function(e) {
+        const val = parseInt(e.target.value);
+        document.getElementById('prop-font-size-val').innerText = val + 'px';
+        const activeObj = canvas.getActiveObject();
+        if (activeObj && activeObj.type === 'group' && activeObj.id) {
+          const textObj = activeObj.item(1);
+          textObj.set({ fontSize: val });
+          activeObj.dirty = true;
+          canvas.requestRenderAll();
+        }
+      });
+
+      // Border Width Slider
+      document.getElementById('prop-border-width').addEventListener('input', function(e) {
+        const val = parseInt(e.target.value);
+        document.getElementById('prop-border-width-val').innerText = val + 'px';
+        const activeObj = canvas.getActiveObject();
+        if (activeObj && activeObj.type === 'group' && activeObj.id) {
+          const shapeObj = activeObj.item(0);
+          shapeObj.set({ strokeWidth: val });
+          activeObj.dirty = true;
+          canvas.requestRenderAll();
+        }
+      });
+
+      // Connector Stroke Width Slider
+      document.getElementById('prop-conn-width').addEventListener('input', function(e) {
+        const val = parseInt(e.target.value);
+        document.getElementById('prop-conn-width-val').innerText = val + 'px';
+        const activeObj = canvas.getActiveObject();
+        if (activeObj && activeObj.isConnector) {
+          activeObj.set({ strokeWidth: val });
+          const conn = connectors.find(c => c.pathObj === activeObj);
+          if (conn) conn.strokeWidth = val;
+          canvas.requestRenderAll();
+        }
+      });
+
+      // Connector Label Text Content Input
+      document.getElementById('prop-conn-text').addEventListener('input', function(e) {
+        const activeObj = canvas.getActiveObject();
+        let conn = null;
+        if (activeObj) {
+          if (activeObj.isConnector) {
+            conn = connectors.find(c => c.pathObj === activeObj);
+          } else if (activeObj.isConnectorLabel) {
+            conn = connectors.find(c => c.id === activeObj.connectorId);
+          }
+        }
+        
+        if (conn) {
+          conn.text = e.target.value.trim();
+          const sourceNode = canvas.getObjects().find(o => o.id === conn.sourceId);
+          if (sourceNode) {
+            updateConnectorsForNode(sourceNode);
+          }
+        }
+      });
+
+      // Text Editor Events
+      const textEditor = document.getElementById('text-editor');
+      textEditor.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          closeTextEditor();
+        } else if (e.key === 'Escape') {
+          // Revert editor and show text label
+          if (activeEditingNode) {
+            activeEditingNode.item(1).set({ visible: true });
+            canvas.requestRenderAll();
+          }
+          textEditor.style.display = 'none';
+          activeEditingNode = null;
+        }
+      });
+
+      textEditor.addEventListener('blur', () => {
+        closeTextEditor();
+      });
+    }
+
+    // 5. Logic Helper Functions
+
+    // Change editor interaction state
+    function setMode(mode) {
+      currentMode = mode;
+      
+      document.querySelectorAll('.tool-btn[data-mode]').forEach(btn => {
+        if (btn.getAttribute('data-mode') === mode) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      if (mode === 'connect') {
+        canvas.defaultCursor = 'crosshair';
+        canvas.selection = false;
+        
+        // De-select active nodes so they don't get selected during line drawing
+        canvas.discardActiveObject().requestRenderAll();
+        
+        // Disable editing selection boxes on elements
+        canvas.forEachObject(obj => {
+          if (obj.type === 'group' && obj.id) {
+            obj.selectable = false;
+          }
+        });
+      } else if (mode === 'frame') {
+        canvas.defaultCursor = 'cell';
+        canvas.selection = false;
+        canvas.discardActiveObject().requestRenderAll();
+        canvas.forEachObject(obj => {
+          if (obj.type === 'group' && obj.id) {
+            obj.selectable = false;
+          }
+        });
+      } else {
+        canvas.defaultCursor = 'default';
+        canvas.selection = true;
+        canvas.forEachObject(obj => {
+          if (obj.type === 'group' && obj.id) {
+            obj.selectable = true;
+          }
+        });
+        
+        // Create canvas node or frame if tools were selected
+        if (mode === 'rect' || mode === 'diamond' || mode === 'frame') {
+          // Place shape in current viewport center
+          const vpt = canvas.viewportTransform;
+          const zoom = canvas.getZoom();
+          const cx = (canvas.getWidth() / 2 - vpt[4]) / zoom;
+          const cy = (canvas.getHeight() / 2 - vpt[5]) / zoom;
+          if (mode === 'frame') {
+            createFrameNode(cx, cy);
+          } else {
+            createNode(mode, cx, cy);
+          }
+          setMode('select'); // Immediately reset to select mode
+        }
+      }
+      canvas.requestRenderAll();
+    }
+
+    // Node Dimension Resolver (accounts for scaling)
+    function getNodeDimensions(node) {
+      return {
+        w: node.width * (node.scaleX || 1),
+        h: node.height * (node.scaleY || 1)
+      };
+    }
+
+    // Node (Rectangle & Diamond Group) Generator
+    function createNode(type, x, y, textVal = 'Double click to edit', config = {}) {
+      const id = config.id || 'node_' + Math.random().toString(36).substr(2, 9);
+      let shape;
+      const width = type === 'rect' ? 180 : 120;
+      const height = type === 'rect' ? 90 : 120;
+      
+      // Pick Harmonious glassmorphic theme styling defaults
+      const fill = config.fill || (type === 'rect' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(236, 72, 153, 0.15)');
+      const stroke = config.stroke || (type === 'rect' ? '#6366f1' : '#ec4899');
+      const strokeWidth = config.strokeWidth || 2;
+      const strokeDashArray = config.strokeDashArray || null;
+      const textFill = config.textFill || '#f4f4f5';
+      const fontSize = config.fontSize || 14;
+      
+      if (type === 'rect') {
+        shape = new fabric.Rect({
+          width: width,
+          height: height,
+          fill: fill,
+          stroke: stroke,
+          strokeWidth: strokeWidth,
+          strokeDashArray: strokeDashArray,
+          rx: 10,
+          ry: 10,
+          originX: 'center',
+          originY: 'center',
+          shadow: new fabric.Shadow({
+            color: 'rgba(0, 0, 0, 0.2)',
+            blur: 16,
+            offsetX: 0,
+            offsetY: 8
+          })
+        });
+      } else {
+        // Diamond Shape uses rotated points or polygon paths
+        shape = new fabric.Polygon([
+          { x: 0, y: -height/2 },
+          { x: width/2, y: 0 },
+          { x: 0, y: height/2 },
+          { x: -width/2, y: 0 }
+        ], {
+          fill: fill,
+          stroke: stroke,
+          strokeWidth: strokeWidth,
+          strokeDashArray: strokeDashArray,
+          originX: 'center',
+          originY: 'center',
+          shadow: new fabric.Shadow({
+            color: 'rgba(0, 0, 0, 0.2)',
+            blur: 16,
+            offsetX: 0,
+            offsetY: 8
+          })
+        });
+      }
+
+      // Inline textbox label element
+      const textObj = new fabric.Textbox(textVal, {
+        fontSize: fontSize,
+        fill: textFill,
+        fontFamily: 'Inter, sans-serif',
+        originX: 'center',
+        originY: 'center',
+        textAlign: 'center',
+        width: type === 'rect' ? width - 24 : width / 1.4,
+        splitByGrapheme: true,
+        lockScalingX: true,
+        lockScalingY: true,
+        hasControls: false,
+        selectable: false
+      });
+
+      // Composite Node Element Group
+      const group = new fabric.Group([shape, textObj], {
+        left: x,
+        top: y,
+        width: width,
+        height: height,
+        originX: 'center',
+        originY: 'center',
+        id: id,
+        nodeType: type,
+        hasRotatingPoint: false,
+        lockScalingFlip: true,
+        
+        // Premium Figma UI handles styling
+        borderColor: '#818cf8',
+        cornerColor: '#ffffff',
+        cornerStrokeColor: '#818cf8',
+        cornerSize: 8,
+        cornerStyle: 'circle',
+        transparentCorners: false
+      });
+
+      // Attach Node listeners to re-render attachments during panning/scaling
+      group.on('scaling', () => updateConnectorsForNode(group));
+      group.on('moving', () => updateConnectorsForNode(group));
+
+      canvas.add(group);
+      canvas.setActiveObject(group);
+      canvas.requestRenderAll();
+      return group;
+    }
+
+    // Frame (Group Section Area) Generator
+    function createFrameNode(x, y, textVal = '그룹 영역', config = {}) {
+      const id = config.id || 'frame_' + Math.random().toString(36).substr(2, 9);
+      const width = config.width || 450;
+      const height = config.height || 300;
+      
+      const fill = config.fill || 'rgba(255, 255, 255, 0.012)';
+      const stroke = config.stroke || '#71717a';
+      const strokeWidth = config.strokeWidth || 1.5;
+      const strokeDashArray = config.strokeDashArray || [6, 6];
+      const fontSize = config.fontSize || 12;
+      
+      const shape = new fabric.Rect({
+        width: width,
+        height: height,
+        fill: fill,
+        stroke: stroke,
+        strokeWidth: strokeWidth,
+        strokeDashArray: strokeDashArray,
+        rx: 10,
+        ry: 10,
+        originX: 'center',
+        originY: 'center'
+      });
+      
+      const textObj = new fabric.Text(textVal, {
+        fontSize: fontSize,
+        fontWeight: 'bold',
+        fill: '#a1a1aa',
+        fontFamily: 'Inter, sans-serif',
+        originX: 'left',
+        originY: 'top',
+        left: -width / 2 + 16,
+        top: -height / 2 + 12,
+        selectable: false
+      });
+      
+      const group = new fabric.Group([shape, textObj], {
+        left: x,
+        top: y,
+        width: width,
+        height: height,
+        originX: 'center',
+        originY: 'center',
+        id: id,
+        nodeType: 'frame',
+        hasRotatingPoint: false,
+        lockScalingFlip: true,
+        
+        borderColor: '#71717a',
+        cornerColor: '#ffffff',
+        cornerStrokeColor: '#71717a',
+        cornerSize: 8,
+        cornerStyle: 'circle',
+        transparentCorners: false
+      });
+      
+      // Dynamic non-stretching scaling handler for Frame Areas
+      group.on('scaling', function() {
+        const shapeObj = group.item(0);
+        const labelObj = group.item(1);
+        
+        const newWidth = group.width * group.scaleX;
+        const newHeight = group.height * group.scaleY;
+        
+        group.set({
+          width: newWidth,
+          height: newHeight,
+          scaleX: 1,
+          scaleY: 1
+        });
+        
+        shapeObj.set({
+          width: newWidth,
+          height: newHeight
+        });
+        
+        labelObj.set({
+          left: -newWidth / 2 + 16,
+          top: -newHeight / 2 + 12
+        });
+        
+        group.setCoords();
+      });
+      
+      canvas.add(group);
+      group.sendToBack(); // Frames sit beneath diagram shape items
+      canvas.setActiveObject(group);
+      canvas.requestRenderAll();
+      
+      return group;
+    }
+
+    // Border Style toggle logic
+    function setNodeBorderStyle(style) {
+      const activeObj = canvas.getActiveObject();
+      if (activeObj && activeObj.type === 'group' && activeObj.id) {
+        const shape = activeObj.item(0);
+        if (style === 'solid') {
+          shape.set({ strokeDashArray: null });
+        } else if (style === 'dashed') {
+          shape.set({ strokeDashArray: [8, 4] });
+        }
+        activeObj.dirty = true;
+        canvas.requestRenderAll();
+        
+        // Sync Buttons active indicators
+        const btnSolid = document.getElementById('btn-border-solid');
+        const btnDashed = document.getElementById('btn-border-dashed');
+        if (btnSolid && btnDashed) {
+          btnSolid.classList.toggle('active', style === 'solid');
+          btnDashed.classList.toggle('active', style === 'dashed');
+        }
+      }
+    }
+
+    // Core Connection Boundary-Intersection Connector Renderer
+    function drawConnectorPath(sx, sy, ex, ey, isArrow = true) {
+      if (!isArrow) {
+        return `M ${sx} ${sy} L ${ex} ${ey}`;
+      }
+      const angle = Math.atan2(ey - sy, ex - sx);
+      const arrowLength = 12;
+      const arrowAngle = 25 * Math.PI / 180; // 25 degrees wing tip angle
+      
+      const xa = ex - arrowLength * Math.cos(angle - arrowAngle);
+      const ya = ey - arrowLength * Math.sin(angle - arrowAngle);
+      const xb = ex - arrowLength * Math.cos(angle + arrowAngle);
+      const yb = ey - arrowLength * Math.sin(angle + arrowAngle);
+      
+      // Form structural svg path instructions: Line segment + 2 arrow lines back
+      return `M ${sx} ${sy} L ${ex} ${ey} M ${xa} ${ya} L ${ex} ${ey} L ${xb} ${yb}`;
+    }
+
+    // Connector style setter helpers
+    function setConnArrow(hasArrow) {
+      const activeObj = canvas.getActiveObject();
+      let conn = null;
+      if (activeObj) {
+        if (activeObj.isConnector) {
+          conn = connectors.find(c => c.pathObj === activeObj);
+        } else if (activeObj.isConnectorLabel) {
+          conn = connectors.find(c => c.id === activeObj.connectorId);
+        }
+      }
+      
+      if (conn) {
+        conn.isArrow = hasArrow;
+        const sourceNode = canvas.getObjects().find(o => o.id === conn.sourceId);
+        if (sourceNode) {
+          updateConnectorsForNode(sourceNode);
+        }
+        
+        const btnArrowYes = document.getElementById('btn-conn-arrow-yes');
+        const btnArrowNo = document.getElementById('btn-conn-arrow-no');
+        if (btnArrowYes && btnArrowNo) {
+          btnArrowYes.classList.toggle('active', hasArrow);
+          btnArrowNo.classList.toggle('active', !hasArrow);
+        }
+      }
+    }
+
+    function setConnLineStyle(style) {
+      const activeObj = canvas.getActiveObject();
+      let conn = null;
+      if (activeObj) {
+        if (activeObj.isConnector) {
+          conn = connectors.find(c => c.pathObj === activeObj);
+        } else if (activeObj.isConnectorLabel) {
+          conn = connectors.find(c => c.id === activeObj.connectorId);
+        }
+      }
+      
+      if (conn) {
+        conn.lineStyle = style;
+        const sourceNode = canvas.getObjects().find(o => o.id === conn.sourceId);
+        if (sourceNode) {
+          updateConnectorsForNode(sourceNode);
+        }
+        
+        const btnSolid = document.getElementById('btn-conn-style-solid');
+        const btnDashed = document.getElementById('btn-conn-style-dashed');
+        if (btnSolid && btnDashed) {
+          btnSolid.classList.toggle('active', style === 'solid');
+          btnDashed.classList.toggle('active', style === 'dashed');
+        }
+      }
+    }
+
+    // Connect mode helper functions
+    function highlightNode(node) {
+      const shape = node.item(0);
+      node._originalStroke = shape.stroke;
+      node._originalStrokeWidth = shape.strokeWidth;
+      shape.set({
+        stroke: '#10b981', // emerald glow for success drop feedback
+        strokeWidth: 3
+      });
+      node.dirty = true;
+    }
+
+    function clearNodeHighlight(node) {
+      if (node && node._originalStroke !== undefined) {
+        const shape = node.item(0);
+        shape.set({
+          stroke: node._originalStroke,
+          strokeWidth: node._originalStrokeWidth
+        });
+        delete node._originalStroke;
+        delete node._originalStrokeWidth;
+        node.dirty = true;
+      }
+    }
+
+    function createConnection(sourceNode, targetNode) {
+      const exists = connectors.some(c => c.sourceId === sourceNode.id && c.targetId === targetNode.id);
+      if (!exists) {
+        const connId = 'conn_' + Math.random().toString(36).substr(2, 9);
+        const conn = {
+          id: connId,
+          sourceId: sourceNode.id,
+          targetId: targetNode.id,
+          color: '#818cf8',
+          strokeWidth: 2,
+          isArrow: true, // defaults to arrow
+          lineStyle: 'solid', // defaults to solid
+          pathObj: null
+        };
+        connectors.push(conn);
+        updateConnectorsForNode(sourceNode);
+        showNotification('노드가 연결되었습니다!', 'success');
+      } else {
+        showNotification('이미 연결된 노드입니다.', 'info');
+      }
+      cancelConnectionDrawing();
+      setMode('select');
+    }
+
+    function cancelConnectionDrawing() {
+      if (tempLine) {
+        canvas.remove(tempLine);
+        tempLine = null;
+      }
+      if (currentHoveredNode) {
+        clearNodeHighlight(currentHoveredNode);
+        currentHoveredNode = null;
+      }
+      connectorSource = null;
+      isDragDrawing = false;
+      canvas.requestRenderAll();
+    }
+
+    // Refresh and update all arrows connected to a moving node
+    function updateConnectorsForNode(node) {
+      connectors.forEach(conn => {
+        if (conn.sourceId === node.id || conn.targetId === node.id) {
+          const sourceNode = canvas.getObjects().find(o => o.id === conn.sourceId);
+          const targetNode = canvas.getObjects().find(o => o.id === conn.targetId);
+          
+          if (sourceNode && targetNode) {
+            const p1 = sourceNode.getCenterPoint();
+            const p2 = targetNode.getCenterPoint();
+            
+            const dim1 = getNodeDimensions(sourceNode);
+            const dim2 = getNodeDimensions(targetNode);
+            
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            
+            if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+              // A. Calculate Start point on source boundary
+              let tStart = 0;
+              if (sourceNode.nodeType === 'rect') {
+                const tx = Math.abs(dx) > 0.001 ? (dim1.w / 2) / Math.abs(dx) : Infinity;
+                const ty = Math.abs(dy) > 0.001 ? (dim1.h / 2) / Math.abs(dy) : Infinity;
+                tStart = Math.min(tx, ty);
+              } else if (sourceNode.nodeType === 'diamond') {
+                // Diamond mathematical formula boundary intersection
+                tStart = 1 / ((2 * Math.abs(dx)) / dim1.w + (2 * Math.abs(dy)) / dim1.h);
+              }
+              const sx = p1.x + tStart * dx;
+              const sy = p1.y + tStart * dy;
+
+              // B. Calculate End point on target boundary
+              let tEnd = 0;
+              if (targetNode.nodeType === 'rect') {
+                const tx = Math.abs(dx) > 0.001 ? (dim2.w / 2) / Math.abs(dx) : Infinity;
+                const ty = Math.abs(dy) > 0.001 ? (dim2.h / 2) / Math.abs(dy) : Infinity;
+                tEnd = Math.min(tx, ty);
+              } else if (targetNode.nodeType === 'diamond') {
+                tEnd = 1 / ((2 * Math.abs(dx)) / dim2.w + (2 * Math.abs(dy)) / dim2.h);
+              }
+              const ex = p2.x - tEnd * dx;
+              const ey = p2.y - tEnd * dy;
+
+              // Compute arrow connector points
+              const isArrow = conn.isArrow !== false;
+              const pathStr = drawConnectorPath(sx, sy, ex, ey, isArrow);
+
+              // Remove old path rendering wrapper
+              if (conn.pathObj) {
+                canvas.remove(conn.pathObj);
+              }
+
+              // Get stroke dash array for the connector style
+              let strokeDashArray = null;
+              if (conn.lineStyle === 'dashed') {
+                strokeDashArray = [6, 4];
+              }
+
+              // Create fresh path structure (eliminates cache update resizing bugs)
+              const newPath = new fabric.Path(pathStr, {
+                stroke: conn.color || '#818cf8',
+                strokeWidth: conn.strokeWidth || 2,
+                strokeDashArray: strokeDashArray,
+                fill: 'none',
+                selectable: true,
+                hasControls: false,
+                evented: true,
+                id: conn.id,
+                isConnector: true
+              });
+
+              canvas.add(newPath);
+              newPath.sendToBack(); // connectors sit beneath shape items
+              conn.pathObj = newPath;
+
+              // D. Handle Connector Label positioning
+              if (conn.text) {
+                const mx = (sx + ex) / 2;
+                const my = (sy + ey) / 2;
+                
+                if (!conn.labelObj) {
+                  const label = new fabric.Text(conn.text, {
+                    fontSize: 12,
+                    fill: '#cbd5e1',
+                    backgroundColor: '#0a0a0c', // solid canvas BG mask
+                    fontFamily: 'Inter, sans-serif',
+                    originX: 'center',
+                    originY: 'center',
+                    selectable: true,
+                    hasControls: false,
+                    id: conn.id + '_label',
+                    isConnectorLabel: true,
+                    connectorId: conn.id,
+                    padding: 4,
+                    lockMovementX: true,
+                    lockMovementY: true
+                  });
+                  canvas.add(label);
+                  conn.labelObj = label;
+                } else {
+                  conn.labelObj.set({
+                    text: conn.text,
+                    left: mx,
+                    top: my
+                  });
+                  conn.labelObj.setCoords();
+                  canvas.bringToFront(conn.labelObj);
+                }
+              } else {
+                if (conn.labelObj) {
+                  canvas.remove(conn.labelObj);
+                  conn.labelObj = null;
+                }
+              }
+            }
+          }
+        }
+      });
+      canvas.requestRenderAll();
+    }
+
+    // Text Editor in-place overlay popup triggers
+    function openTextEditor(targetObj) {
+      activeEditingNode = targetObj;
+      let textObj;
+      let shapeObj = null;
+      
+      if (targetObj.type === 'group') {
+        textObj = targetObj.item(1);
+        shapeObj = targetObj.item(0);
+      } else if (targetObj.isConnectorLabel) {
+        textObj = targetObj;
+      }
+      
+      if (!textObj) return;
+
+      // Make inner text object invisible temporarily while typing
+      textObj.set({ visible: false });
+      canvas.requestRenderAll();
+
+      const rect = targetObj.getBoundingRect();
+      const canvasBounds = canvas.getElement().getBoundingClientRect();
+
+      const textEditor = document.getElementById('text-editor');
+      textEditor.value = (textObj.text === 'Double click to edit' || textObj.text === '선 라벨') ? '' : textObj.text;
+      textEditor.style.display = 'block';
+
+      // Style overlay textarea container to visually blend on top of shape
+      const padding = targetObj.type === 'group' ? 12 : 8;
+      const width = Math.max(100, rect.width - padding);
+      const height = Math.max(30, rect.height - padding);
+      
+      textEditor.style.width = width + 'px';
+      textEditor.style.height = height + 'px';
+      textEditor.style.left = (canvasBounds.left + window.scrollX + rect.left + (rect.width - width) / 2) + 'px';
+      textEditor.style.top = (canvasBounds.top + window.scrollY + rect.top + (rect.height - height) / 2) + 'px';
+
+      // Re-scale font dynamically to match zoomed size
+      const currentZoom = canvas.getZoom();
+      const scaleX = targetObj.type === 'group' ? (targetObj.scaleX || 1) : 1;
+      const scaledFontSize = textObj.fontSize * scaleX * currentZoom;
+      
+      textEditor.style.fontSize = scaledFontSize + 'px';
+      textEditor.style.color = textObj.fill;
+      textEditor.style.lineHeight = '1.2';
+      
+      // Visual matching match backgrounds
+      if (shapeObj) {
+        textEditor.style.background = shapeObj.fill.includes('rgba') ? 'rgba(24, 24, 32, 0.95)' : shapeObj.fill;
+        textEditor.style.borderColor = shapeObj.stroke;
+      } else {
+        textEditor.style.background = '#18181b';
+        textEditor.style.borderColor = '#818cf8';
+      }
+      
+      textEditor.focus();
+      textEditor.select();
+    }
+
+    // Close text editing overlay and commit contents
+    function closeTextEditor() {
+      const textEditor = document.getElementById('text-editor');
+      if (textEditor.style.display === 'block' && activeEditingNode) {
+        if (activeEditingNode.type === 'group') {
+          const textObj = activeEditingNode.item(1);
+          if (textObj) {
+            const val = textEditor.value.trim();
+            textObj.set({
+              text: val || 'Double click to edit',
+              visible: true
+            });
+            activeEditingNode.dirty = true;
+            canvas.requestRenderAll();
+          }
+        } else if (activeEditingNode.isConnectorLabel) {
+          const textObj = activeEditingNode;
+          const val = textEditor.value.trim();
+          
+          // Find associated connector
+          const conn = connectors.find(c => c.id === textObj.connectorId);
+          if (conn) {
+            conn.text = val;
+            
+            // If empty, remove the label entirely
+            if (!val) {
+              canvas.remove(textObj);
+              conn.labelObj = null;
+            } else {
+              textObj.set({
+                text: val,
+                visible: true
+              });
+              textObj.setCoords();
+            }
+            
+            // Sync properties sidebar if selected
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && activeObj.isConnector && activeObj.id === conn.id) {
+              document.getElementById('prop-conn-text').value = val;
+            }
+            
+            canvas.requestRenderAll();
+          }
+        }
+        textEditor.style.display = 'none';
+        activeEditingNode = null;
+      }
+    }
+
+    // Object Deletion Resolver
+    function deleteSelected() {
+      const activeObj = canvas.getActiveObject();
+      if (!activeObj) return;
+
+      if (activeObj.isConnector) {
+        // delete connection line and its label
+        canvas.remove(activeObj);
+        const conn = connectors.find(c => c.pathObj === activeObj);
+        if (conn) {
+          if (conn.labelObj) canvas.remove(conn.labelObj);
+          connectors = connectors.filter(c => c !== conn);
+        }
+        showNotification('연결선이 삭제되었습니다.', 'info');
+      } else if (activeObj.isConnectorLabel) {
+        // delete connection label
+        const conn = connectors.find(c => c.id === activeObj.connectorId);
+        if (conn) {
+          canvas.remove(activeObj);
+          conn.labelObj = null;
+          conn.text = '';
+          showNotification('연결선 라벨이 삭제되었습니다.', 'info');
+        }
+      } else if (activeObj.type === 'group' && activeObj.id) {
+        // delete node and cleanup dependent connectors & labels
+        const connectorsToRemove = connectors.filter(c => c.sourceId === activeObj.id || c.targetId === activeObj.id);
+        connectorsToRemove.forEach(c => {
+          canvas.remove(c.pathObj);
+          if (c.labelObj) canvas.remove(c.labelObj);
+        });
+        connectors = connectors.filter(c => c.sourceId !== activeObj.id && c.targetId !== activeObj.id);
+        
+        canvas.remove(activeObj);
+        showNotification('노드가 삭제되었습니다.', 'info');
+      }
+      canvas.discardActiveObject().requestRenderAll();
+      onSelectionCleared();
+    }
+
+    // Sidebar Properties selection logic
+    function onSelectionUpdated() {
+      const activeObj = canvas.getActiveObject();
+      const sidebar = document.getElementById('properties-sidebar');
+      if (!activeObj) return;
+
+      sidebar.classList.add('visible');
+
+      if (activeObj.type === 'group' && activeObj.id) {
+        document.getElementById('prop-node-section').style.display = 'block';
+        document.getElementById('prop-conn-section').style.display = 'none';
+        
+        const shape = activeObj.item(0);
+        const text = activeObj.item(1);
+        
+        // Sync Inputs
+        document.getElementById('prop-text').value = text.text === 'Double click to edit' ? '' : text.text;
+        
+        document.getElementById('prop-font-size').value = text.fontSize;
+        document.getElementById('prop-font-size-val').innerText = text.fontSize + 'px';
+        
+        document.getElementById('prop-border-width').value = shape.strokeWidth;
+        document.getElementById('prop-border-width-val').innerText = shape.strokeWidth + 'px';
+
+        updateActivePresetIndicator('fill-presets', shape.fill);
+        updateActivePresetIndicator('stroke-presets', shape.stroke);
+
+        // Sync border style presets
+        const isDashed = shape.strokeDashArray && shape.strokeDashArray.length > 0;
+        const btnSolid = document.getElementById('btn-border-solid');
+        const btnDashed = document.getElementById('btn-border-dashed');
+        if (btnSolid && btnDashed) {
+          btnSolid.classList.toggle('active', !isDashed);
+          btnDashed.classList.toggle('active', isDashed);
+        }
+      } else if (activeObj.isConnector) {
+        document.getElementById('prop-node-section').style.display = 'none';
+        document.getElementById('prop-conn-section').style.display = 'block';
+
+        const conn = connectors.find(c => c.pathObj === activeObj);
+        document.getElementById('prop-conn-text').value = (conn && conn.text) ? conn.text : '';
+
+        document.getElementById('prop-conn-width').value = activeObj.strokeWidth;
+        document.getElementById('prop-conn-width-val').innerText = activeObj.strokeWidth + 'px';
+
+        updateActivePresetIndicator('conn-color-presets', activeObj.stroke);
+
+        // Sync arrow toggle and line style buttons
+        if (conn) {
+          const hasArrow = conn.isArrow !== false;
+          const isDashed = conn.lineStyle === 'dashed';
+          
+          document.getElementById('btn-conn-arrow-yes').classList.toggle('active', hasArrow);
+          document.getElementById('btn-conn-arrow-no').classList.toggle('active', !hasArrow);
+          document.getElementById('btn-conn-style-solid').classList.toggle('active', !isDashed);
+          document.getElementById('btn-conn-style-dashed').classList.toggle('active', isDashed);
+        }
+      } else if (activeObj.isConnectorLabel) {
+        // If label is selected, also focus connector properties!
+        document.getElementById('prop-node-section').style.display = 'none';
+        document.getElementById('prop-conn-section').style.display = 'block';
+
+        const conn = connectors.find(c => c.id === activeObj.connectorId);
+        document.getElementById('prop-conn-text').value = (conn && conn.text) ? conn.text : '';
+
+        if (conn && conn.pathObj) {
+          document.getElementById('prop-conn-width').value = conn.pathObj.strokeWidth;
+          document.getElementById('prop-conn-width-val').innerText = conn.pathObj.strokeWidth + 'px';
+          updateActivePresetIndicator('conn-color-presets', conn.pathObj.stroke);
+          
+          const hasArrow = conn.isArrow !== false;
+          const isDashed = conn.lineStyle === 'dashed';
+          
+          document.getElementById('btn-conn-arrow-yes').classList.toggle('active', hasArrow);
+          document.getElementById('btn-conn-arrow-no').classList.toggle('active', !hasArrow);
+          document.getElementById('btn-conn-style-solid').classList.toggle('active', !isDashed);
+          document.getElementById('btn-conn-style-dashed').classList.toggle('active', isDashed);
+        }
+      }
+    }
+
+    function onSelectionCleared() {
+      const sidebar = document.getElementById('properties-sidebar');
+      sidebar.classList.remove('visible');
+    }
+
+    // Update preset circles selected visual ring
+    function updateActivePresetIndicator(containerId, color) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const items = container.querySelectorAll('.color-circle');
+      
+      const normColor = color.replace(/\s+/g, '').toLowerCase();
+      
+      items.forEach(item => {
+        const itemColor = item.getAttribute('data-color').replace(/\s+/g, '').toLowerCase();
+        if (itemColor === normColor) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+    }
+
+    // Sidebar Shape Color adjustments
+    function setNodeFill(color) {
+      const activeObj = canvas.getActiveObject();
+      if (activeObj && activeObj.type === 'group' && activeObj.id) {
+        const shape = activeObj.item(0);
+        shape.set({ fill: color });
+        activeObj.dirty = true;
+        canvas.requestRenderAll();
+        updateActivePresetIndicator('fill-presets', color);
+      }
+    }
+
+    function setNodeStroke(color) {
+      const activeObj = canvas.getActiveObject();
+      if (activeObj && activeObj.type === 'group' && activeObj.id) {
+        const shape = activeObj.item(0);
+        shape.set({ stroke: color });
+        activeObj.dirty = true;
+        canvas.requestRenderAll();
+        updateActivePresetIndicator('stroke-presets', color);
+      }
+    }
+
+    // Sidebar Connector Color adjustments
+    function setConnColor(color) {
+      const activeObj = canvas.getActiveObject();
+      if (activeObj && activeObj.isConnector) {
+        activeObj.set({ stroke: color });
+        const conn = connectors.find(c => c.pathObj === activeObj);
+        if (conn) conn.color = color;
+        canvas.requestRenderAll();
+        updateActivePresetIndicator('conn-color-presets', color);
+      }
+    }
+
+    // Zoom Functions
+    function zoomDelta(factor) {
+      let zoom = canvas.getZoom() * factor;
+      if (zoom > 20) zoom = 20;
+      if (zoom < 0.08) zoom = 0.08;
+      
+      // Zoom centered in the viewport
+      canvas.zoomToPoint({ x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 }, zoom);
+      updateZoomIndicator();
+    }
+
+    function zoomToFit() {
+      const objects = canvas.getObjects().filter(o => o.type === 'group');
+      if (objects.length === 0) {
+        // Zoom back to default 100% and center view
+        canvas.setZoom(1);
+        canvas.viewportTransform[4] = (canvas.getWidth() - canvas.getWidth()) / 2;
+        canvas.viewportTransform[5] = (canvas.getHeight() - canvas.getHeight()) / 2;
+        canvas.setViewportTransform(canvas.viewportTransform);
+        updateZoomIndicator();
+        return;
+      }
+
+      // Compute bounding box surrounding all elements
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      objects.forEach(obj => {
+        const dim = getNodeDimensions(obj);
+        minX = Math.min(minX, obj.left - dim.w / 2);
+        minY = Math.min(minY, obj.top - dim.h / 2);
+        maxX = Math.max(maxX, obj.left + dim.w / 2);
+        maxY = Math.max(maxY, obj.top + dim.h / 2);
+      });
+
+      const width = maxX - minX;
+      const height = maxY - minY;
+      
+      const padding = 60;
+      const scaleX = (canvas.getWidth() - padding * 2) / width;
+      const scaleY = (canvas.getHeight() - padding * 2) / height;
+      let zoom = Math.min(scaleX, scaleY);
+      
+      if (zoom > 3) zoom = 3;
+      if (zoom < 0.1) zoom = 0.1;
+
+      canvas.setZoom(zoom);
+      
+      // Center bounds
+      const vpt = canvas.viewportTransform;
+      vpt[4] = canvas.getWidth() / 2 - (minX + width / 2) * zoom;
+      vpt[5] = canvas.getHeight() / 2 - (minY + height / 2) * zoom;
+      
+      canvas.setViewportTransform(canvas.viewportTransform);
+      updateZoomIndicator();
+    }
+
+    function updateZoomIndicator() {
+      const zoomPercent = Math.round(canvas.getZoom() * 100);
+      document.getElementById('zoom-value').innerText = zoomPercent + '%';
+    }
+
+    // 6. JSON Export & Import Engine (Save / Load)
+    function exportToJson() {
+      const data = {
+        nodes: [],
+        connectors: [],
+        zoom: canvas.getZoom(),
+        pan: [canvas.viewportTransform[4], canvas.viewportTransform[5]]
+      };
+
+      // Gather shapes metadata
+      canvas.forEachObject(function(obj) {
+        if (obj.type === 'group' && obj.id) {
+          const shape = obj.item(0);
+          const text = obj.item(1);
+          data.nodes.push({
+            id: obj.id,
+            type: obj.nodeType,
+            left: obj.left,
+            top: obj.top,
+            width: obj.width,
+            height: obj.height,
+            scaleX: obj.scaleX,
+            scaleY: obj.scaleY,
+            text: text.text,
+            fill: shape.fill,
+            stroke: shape.stroke,
+            strokeWidth: shape.strokeWidth,
+            strokeDashArray: shape.strokeDashArray,
+            textFill: text.fill,
+            fontSize: text.fontSize
+          });
+        }
+      });
+
+      // Gather arrow connections metadata
+      connectors.forEach(function(conn) {
+        data.connectors.push({
+          id: conn.id,
+          sourceId: conn.sourceId,
+          targetId: conn.targetId,
+          color: conn.color,
+          strokeWidth: conn.strokeWidth,
+          text: conn.text || ''
+        });
+      });
+
+      // Create download trigger
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'diagram_data_' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      
+      showNotification('다이어그램이 JSON 파일로 내보내기 되었습니다.', 'success');
+    }
+
+    function importFromJson(jsonString) {
+      try {
+        const data = JSON.parse(jsonString);
+        
+        // Clear canvas
+        canvas.clear();
+        canvas.setBackgroundColor(createGridPattern(), canvas.renderAll.bind(canvas));
+        connectors = [];
+        onSelectionCleared();
+
+        const nodeMap = {};
+
+        // A. Restore Nodes & Frames
+        if (data.nodes && Array.isArray(data.nodes)) {
+          data.nodes.forEach(n => {
+            let group;
+            if (n.type === 'frame') {
+              group = createFrameNode(n.left, n.top, n.text, {
+                id: n.id,
+                width: n.width,
+                height: n.height,
+                fill: n.fill,
+                stroke: n.stroke,
+                strokeWidth: n.strokeWidth,
+                strokeDashArray: n.strokeDashArray,
+                fontSize: n.fontSize
+              });
+            } else {
+              group = createNode(n.type, n.left, n.top, n.text, {
+                id: n.id,
+                fill: n.fill,
+                stroke: n.stroke,
+                strokeWidth: n.strokeWidth,
+                strokeDashArray: n.strokeDashArray,
+                textFill: n.textFill,
+                fontSize: n.fontSize
+              });
+              group.set({
+                scaleX: n.scaleX || 1,
+                scaleY: n.scaleY || 1
+              });
+              group.setCoords();
+            }
+            nodeMap[n.id] = group;
+          });
+        }
+
+        // B. Restore View zoom/pan settings
+        if (data.zoom) {
+          canvas.setZoom(data.zoom);
+          updateZoomIndicator();
+        }
+        if (data.pan && data.pan.length === 2) {
+          canvas.viewportTransform[4] = data.pan[0];
+          canvas.viewportTransform[5] = data.pan[1];
+          canvas.setViewportTransform(canvas.viewportTransform);
+        }
+
+        // C. Restore Connectors
+        if (data.connectors && Array.isArray(data.connectors)) {
+          data.connectors.forEach(c => {
+            const sourceNode = nodeMap[c.sourceId];
+            const targetNode = nodeMap[c.targetId];
+
+            if (sourceNode && targetNode) {
+              const conn = {
+                id: c.id,
+                sourceId: c.sourceId,
+                targetId: c.targetId,
+                color: c.color || '#818cf8',
+                strokeWidth: c.strokeWidth || 2,
+                text: c.text || '',
+                pathObj: null
+              };
+              connectors.push(conn);
+              updateConnectorsForNode(sourceNode);
+            }
+          });
+        }
+
+        canvas.discardActiveObject().requestRenderAll();
+        showNotification('JSON 다이어그램이 성공적으로 복원되었습니다.', 'success');
+      } catch (err) {
+        console.error(err);
+        showNotification('올바르지 않은 JSON 파일 형식입니다.', 'error');
+      }
+    }
+
+    // Visual Toast notification system
+    function showNotification(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      let icon = 'check-circle';
+      if (type === 'error') icon = 'alert-triangle';
+      if (type === 'info') icon = 'info';
+      
+      toast.innerHTML = `
+        <i data-lucide="${icon}" style="width:16px; height:16px;"></i>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+      lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+      
+      // Auto-remove notification after 3 seconds
+      setTimeout(() => {
+        toast.style.animation = 'slideUp 0.2s reverse forwards';
+        setTimeout(() => {
+          container.removeChild(toast);
+        }, 200);
+      }, 3000);
+    }
+
+    // 7. Seed Initial Mock Diagram for premium presentation
+    function createMockDiagram() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      
+      const cx = w / 2;
+      const cy = h / 2;
+
+      // Create Mock Frame Group Area
+      createFrameNode(cx - 120, cy - 80, '수입 및 품질관리 영역 (Inspection Area)', {
+        width: 500,
+        height: 240
+      });
+
+      // Create Process Node 1
+      const n1 = createNode('rect', cx - 240, cy - 80, '생산 지시 수신\n(MES Order Input)');
+      
+      // Create Decision Gateway Node 2
+      const n2 = createNode('diamond', cx, cy - 80, '품질 검사\n(Pass?)');
+      
+      // Create Process Node 3 (Pass target)
+      const n3 = createNode('rect', cx + 240, cy - 80, '바코드 인쇄 및 출하\n(Label Printing)');
+      
+      // Create Process Node 4 (Fail target)
+      const n4 = createNode('rect', cx, cy + 120, '불량 처리 및 재작업\n(Defect Handling)', {
+        fill: 'rgba(239, 68, 68, 0.15)',
+        stroke: '#ef4444'
+      });
+
+      // Establish Connections
+      connectors.push({
+        id: 'conn_mock_1',
+        sourceId: n1.id,
+        targetId: n2.id,
+        color: '#6366f1',
+        strokeWidth: 2,
+        text: '검사 대기',
+        pathObj: null
+      });
+
+      connectors.push({
+        id: 'conn_mock_2',
+        sourceId: n2.id,
+        targetId: n3.id,
+        color: '#10b981',
+        strokeWidth: 2,
+        text: '합격 (OK)',
+        pathObj: null
+      });
+
+      connectors.push({
+        id: 'conn_mock_3',
+        sourceId: n2.id,
+        targetId: n4.id,
+        color: '#ef4444',
+        strokeWidth: 2,
+        text: '불합격 (NG)',
+        pathObj: null
+      });
+
+      // Update positions of lines
+      updateConnectorsForNode(n1);
+      updateConnectorsForNode(n2);
+      
+      canvas.discardActiveObject().requestRenderAll();
+    }
+  </script>
+</body>
+</html>

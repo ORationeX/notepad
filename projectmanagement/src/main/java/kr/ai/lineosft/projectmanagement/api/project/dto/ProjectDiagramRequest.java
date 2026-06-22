@@ -17,4 +17,6 @@ public class ProjectDiagramRequest {
     private String mermaidCode;
 
     private Long lastModifiedByTaskId;
+
+    private Long requirementId;
 }

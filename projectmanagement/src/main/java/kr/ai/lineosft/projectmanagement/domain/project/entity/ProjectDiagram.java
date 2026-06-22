@@ -39,9 +39,10 @@ public class ProjectDiagram extends BaseTimeEntity {
         this.lastModifiedByTask = lastModifiedByTask;
     }
 
-    public void update(String title, String mermaidCode, Task lastModifiedByTask) {
+    public void update(String title, String mermaidCode, Requirement requirement, Task lastModifiedByTask) {
         this.title = title;
         this.mermaidCode = mermaidCode;
+        this.requirement = requirement;
         this.lastModifiedByTask = lastModifiedByTask;
     }
 }

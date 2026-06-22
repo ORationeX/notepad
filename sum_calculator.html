@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실시간 숫자 합계 계산기 | Smart Sum Calculator</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS Variables for Premium Design System */
+        :root {
+            --bg-color: #0b0719;
+            --panel-bg: rgba(20, 16, 38, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-cyan: #06b6d4;
+            --accent-pink: #ec4899;
+            --success: #10b981;
+            --danger: #ef4444;
+            
+            --grad-primary: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            --grad-cyan: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+            --grad-text: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            --grad-glow: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
+            
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-bounce: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            --shadow-neon: 0 8px 32px 0 rgba(99, 102, 241, 0.15);
+            --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.3);
+            --border-radius-lg: 16px;
+            --border-radius-md: 12px;
+        }
+
+        /* Reset and Base Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        /* Background Glows */
+        .bg-glow-1 {
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, rgba(99, 102, 241, 0) 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-glow-2 {
+            position: absolute;
+            bottom: -10%;
+            right: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.12) 0%, rgba(236, 72, 153, 0) 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            transition: var(--transition-smooth);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Container Layout */
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 40px 24px;
+            z-index: 1;
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        /* Header Styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 20px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--grad-primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            color: white;
+            font-size: 24px;
+            font-weight: 800;
+        }
+
+        .title-text h1 {
+            font-size: 24px;
+            font-weight: 700;
+            background: var(--grad-text);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+
+        .title-text p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .badge-version {
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Main Workspace Grid */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 1.3fr;
+            gap: 32px;
+            align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Glass Panel (Reusable card) */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--border-radius-lg);
+            padding: 28px;
+            box-shadow: var(--shadow-neon);
+            transition: var(--transition-smooth);
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary);
+        }
+
+        .panel-title svg {
+            color: var(--accent-primary);
+        }
+
+        /* Input Panel Customizations */
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 380px;
+            background: rgba(10, 7, 20, 0.6);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--border-radius-md);
+            padding: 16px 20px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            transition: var(--transition-smooth);
+        }
+
+        textarea:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
+            background: rgba(10, 7, 20, 0.85);
+        }
+
+        textarea::placeholder {
+            color: var(--text-muted);
+            opacity: 0.8;
+        }
+
+        .input-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        /* Button Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 18px;
+            border-radius: var(--border-radius-md);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-bounce);
+            border: none;
+            outline: none;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--grad-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45), var(--shadow-glow);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--panel-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: rgba(239, 68, 68, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 13px;
+            border-radius: 8px;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        /* Config Card styling */
+        .config-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--border-radius-md);
+            padding: 18px;
+        }
+
+        .config-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            user-select: none;
+            transition: var(--transition-smooth);
+        }
+
+        .checkbox-container:hover {
+            color: var(--text-primary);
+        }
+
+        .checkbox-container input {
+            display: none;
+        }
+
+        .custom-checkbox {
+            width: 18px;
+            height: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-smooth);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .checkbox-container input:checked + .custom-checkbox {
+            background: var(--grad-primary);
+            border-color: transparent;
+        }
+
+        .checkbox-container input:checked + .custom-checkbox::after {
+            content: '';
+            width: 5px;
+            height: 9px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+            margin-bottom: 1px;
+        }
+
+        /* Dashboard Results styling */
+        .dashboard-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Giant Sum Card */
+        .sum-card {
+            background: var(--grad-glow);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: var(--border-radius-lg);
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 40px -10px rgba(99, 102, 241, 0.25);
+        }
+
+        .sum-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--grad-primary);
+        }
+
+        .sum-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .sum-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: #a5b4fc;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sum-value-container {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .sum-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(to right, #ffffff, #e2e8f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+            line-height: 1.1;
+        }
+
+        .sum-korean-numeric {
+            font-size: 18px;
+            color: var(--accent-cyan);
+            font-weight: 600;
+            background: rgba(6, 182, 212, 0.1);
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            margin-top: 4px;
+            display: inline-block;
+        }
+
+        .sum-korean-word {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            font-style: italic;
+            word-break: break-all;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 640px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--border-radius-md);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: var(--transition-smooth);
+        }
+
+        .stat-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Parsed Numbers Table */
+        .table-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 400px;
+        }
+
+        .table-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-container {
+            overflow-y: auto;
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--panel-border);
+            background: rgba(10, 7, 20, 0.3);
+            flex-grow: 1;
+            max-height: 280px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13.5px;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--panel-border);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            backdrop-filter: blur(10px);
+        }
+
+        td {
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            vertical-align: middle;
+        }
+
+        tr {
+            transition: var(--transition-smooth);
+            cursor: pointer;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tr.excluded {
+            opacity: 0.35;
+            text-decoration: line-through;
+            background: rgba(239, 72, 72, 0.02);
+        }
+
+        .col-line { width: 10%; color: var(--text-muted); }
+        .col-raw { width: 45%; }
+        .col-parsed { width: 35%; font-weight: 700; color: var(--text-primary); }
+        .col-action { width: 10%; text-align: center; }
+
+        .toggle-switch {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid var(--text-muted);
+            display: inline-block;
+            transition: var(--transition-smooth);
+            position: relative;
+        }
+
+        tr.excluded .toggle-switch {
+            border-color: var(--danger);
+            background: var(--danger);
+        }
+
+        tr:not(.excluded) .toggle-switch {
+            border-color: var(--success);
+            background: var(--success);
+        }
+
+        /* History Panel styling */
+        .history-panel {
+            margin-top: 12px;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--border-radius-md);
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateX(4px);
+        }
+
+        .history-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .history-time {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .history-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .history-meta span {
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        .history-sum {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn-icon-only {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--panel-border);
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-icon-only:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-icon-only.delete:hover {
+            color: white;
+            background: var(--danger);
+            border-color: transparent;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-style: italic;
+        }
+
+        /* Toast feedback */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(16, 185, 129, 0.95);
+            color: white;
+            padding: 14px 24px;
+            border-radius: var(--border-radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: var(--transition-bounce);
+            z-index: 100;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Floating footer styling */
+        footer {
+            text-align: center;
+            padding: 24px;
+            font-size: 13px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--panel-border);
+            margin-top: auto;
+        }
+
+        /* Keyframe animations */
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-sum {
+            animation: countUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow-1"></div>
+    <div class="bg-glow-2"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo-container">
+                <div class="logo-icon">Σ</div>
+                <div class="title-text">
+                    <h1>실시간 숫자 합계 계산기</h1>
+                    <p>텍스트를 붙여넣으면 숫자만 파싱하여 실시간으로 합계를 계산합니다</p>
+                </div>
+            </div>
+            <div>
+                <span class="badge-version">Smart Utility v1.0</span>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="workspace-grid">
+            
+            <!-- Left Panel: Input & Settings -->
+            <div class="glass-panel">
+                <div class="panel-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    텍스트 입력 (붙여넣기)
+                </div>
+
+                <div class="input-wrapper">
+                    <textarea id="num-input" placeholder="여기에 숫자가 포함된 데이터를 붙여넣으세요...&#10;&#10;[예시]&#10;7308&#10;1,850원&#10;₩2,355&#10;24035&#10;소수점 100.50&#10;-200 (음수)"></textarea>
+                </div>
+
+                <div class="input-controls">
+                    <button id="btn-paste" class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                        클립보드 붙여넣기
+                    </button>
+                    <button id="btn-example" class="btn btn-secondary">예시 넣기</button>
+                    <button id="btn-clear" class="btn btn-danger" style="margin-left: auto;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        비우기
+                    </button>
+                </div>
+
+                <!-- Parser Settings -->
+                <div class="config-card">
+                    <div class="config-title">파싱 옵션 설정</div>
+                    <div class="config-grid">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="opt-comma" checked>
+                            <span class="custom-checkbox"></span>
+                            천 단위 쉼표(,) 제거
+                        </label>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="opt-unit" checked>
+                            <span class="custom-checkbox"></span>
+                            통화/단위(₩,$,원) 무시
+                        </label>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="opt-decimal" checked>
+                            <span class="custom-checkbox"></span>
+                            소수점 허용
+                        </label>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="opt-negative" checked>
+                            <span class="custom-checkbox"></span>
+                            음수(-) 허용
+                        </label>
+                        <label class="checkbox-container" style="grid-column: span 2;">
+                            <input type="checkbox" id="opt-extract-all">
+                            <span class="custom-checkbox"></span>
+                            텍스트 내부의 모든 숫자 추출 (줄 단위 분석 대신)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Results Dashboard -->
+            <div class="dashboard-layout">
+                
+                <!-- Giant Sum Display Card -->
+                <div class="sum-card">
+                    <div class="sum-header">
+                        <span class="sum-label">합계 결과</span>
+                        <div class="history-actions">
+                            <button id="btn-save-run" class="btn btn-secondary btn-sm" title="현재 계산 결과 저장">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                기록 저장
+                            </button>
+                            <button id="btn-copy-sum" class="btn btn-primary btn-sm" title="합계 값 복사">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                복사
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="sum-value-container">
+                        <span id="sum-display" class="sum-value">0</span>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div>
+                            <span id="korean-numeric-display" class="sum-korean-numeric">0원</span>
+                        </div>
+                        <div id="korean-word-display" class="sum-korean-word">영원</div>
+                    </div>
+                </div>
+
+                <!-- Statistics Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">데이터 개수</span>
+                        <span id="stat-count" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">평균값</span>
+                        <span id="stat-avg" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">최대값</span>
+                        <span id="stat-max" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">최소값</span>
+                        <span id="stat-min" class="stat-value">0</span>
+                    </div>
+                </div>
+
+                <!-- Parsed List Panel -->
+                <div class="glass-panel table-panel">
+                    <div class="table-header-row">
+                        <div class="panel-title" style="margin-bottom: 0;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                            파싱된 숫자 목록
+                        </div>
+                        <span id="list-help" style="font-size: 11px; color: var(--text-muted);">* 클릭 시 해당 숫자가 합계에서 제외됩니다</span>
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="col-line">줄</th>
+                                    <th class="col-raw">원문 텍스트</th>
+                                    <th class="col-parsed">인식된 값</th>
+                                    <th class="col-action">상태</th>
+                                </tr>
+                            </thead>
+                            <tbody id="parsed-list-body">
+                                <tr>
+                                    <td colspan="4" class="empty-state">입력 창에 데이터를 입력해 주세요.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- History Panel -->
+                <div class="glass-panel history-panel">
+                    <div class="table-header-row" style="margin-bottom: 16px;">
+                        <div class="panel-title" style="margin-bottom: 0;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            최근 계산 기록
+                        </div>
+                        <button id="btn-clear-history" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px;">전체 삭제</button>
+                    </div>
+
+                    <div id="history-container" class="history-list">
+                        <div class="empty-state">저장된 계산 기록이 없습니다.</div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Floating Toast Notification -->
+    <div id="toast" class="toast">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        <span id="toast-message">클립보드에 복사되었습니다.</span>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 실시간 숫자 합계 계산기. Powered by Advanced Coding Assistant.</p>
+    </footer>
+
+    <!-- Application Script -->
+    <script>
+        // DOM Elements
+        const numInput = document.getElementById('num-input');
+        const btnPaste = document.getElementById('btn-paste');
+        const btnExample = document.getElementById('btn-example');
+        const btnClear = document.getElementById('btn-clear');
+        const btnCopySum = document.getElementById('btn-copy-sum');
+        const btnSaveRun = document.getElementById('btn-save-run');
+        const btnClearHistory = document.getElementById('btn-clear-history');
+        
+        const sumDisplay = document.getElementById('sum-display');
+        const koreanNumericDisplay = document.getElementById('korean-numeric-display');
+        const koreanWordDisplay = document.getElementById('korean-word-display');
+        
+        const statCount = document.getElementById('stat-count');
+        const statAvg = document.getElementById('stat-avg');
+        const statMax = document.getElementById('stat-max');
+        const statMin = document.getElementById('stat-min');
+        
+        const parsedListBody = document.getElementById('parsed-list-body');
+        const historyContainer = document.getElementById('history-container');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+
+        // Config Elements
+        const optComma = document.getElementById('opt-comma');
+        const optUnit = document.getElementById('opt-unit');
+        const optDecimal = document.getElementById('opt-decimal');
+        const optNegative = document.getElementById('opt-negative');
+        const optExtractAll = document.getElementById('opt-extract-all');
+
+        // State variables
+        let parsedData = []; // holds list of parsed { id, line, raw, value, excluded }
+        let calculationHistory = [];
+        let runningId = 0;
+
+        // Example data matching user's format request
+        const exampleData = `7308\n1850\n2355\n24035\n200\n1000\n140\n3696\n24\n48\n350`;
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            loadHistory();
+            setupEventListeners();
+            
+            // Set initial state with example data to let the user see it running immediately
+            numInput.value = exampleData;
+            processInput();
+        });
+
+        // Event Listeners setup
+        function setupEventListeners() {
+            numInput.addEventListener('input', () => processInput());
+            
+            // Re-calculate when configs are toggled
+            [optComma, optUnit, optDecimal, optNegative, optExtractAll].forEach(opt => {
+                opt.addEventListener('change', () => processInput());
+            });
+
+            // Action buttons
+            btnExample.addEventListener('click', () => {
+                numInput.value = exampleData;
+                processInput();
+                showToast('예시 데이터를 불러왔습니다.');
+            });
+
+            btnClear.addEventListener('click', () => {
+                numInput.value = '';
+                processInput();
+                showToast('입력창을 비웠습니다.');
+            });
+
+            btnPaste.addEventListener('click', async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        numInput.value = text;
+                        processInput();
+                        showToast('클립보드 내용을 붙여넣었습니다.');
+                    } else {
+                        showToast('클립보드가 비어있거나 읽을 수 없습니다.', true);
+                    }
+                } catch (err) {
+                    showToast('클립보드 접근 권한이 없거나 지원하지 않는 브라우저입니다. 직접 붙여넣어주세요(Ctrl+V).', true);
+                }
+            });
+
+            btnCopySum.addEventListener('click', () => {
+                const sumVal = getCalculatedSum();
+                navigator.clipboard.writeText(sumVal.toString()).then(() => {
+                    showToast(`합계 ${sumVal.toLocaleString()}이(가) 복사되었습니다!`);
+                });
+            });
+
+            btnSaveRun.addEventListener('click', () => {
+                saveCurrentRun();
+            });
+
+            btnClearHistory.addEventListener('click', () => {
+                if (confirm('모든 계산 기록을 삭제하시겠습니까?')) {
+                    calculationHistory = [];
+                    localStorage.removeItem('sum_calc_history');
+                    renderHistory();
+                    showToast('기록이 삭제되었습니다.');
+                }
+            });
+        }
+
+        // Logic for core operations
+        function processInput() {
+            const rawText = numInput.value;
+            if (!rawText.trim()) {
+                resetDashboard();
+                return;
+            }
+
+            const options = {
+                removeCommas: optComma.checked,
+                ignoreUnits: optUnit.checked,
+                allowDecimal: optDecimal.checked,
+                allowNegative: optNegative.checked,
+                extractAll: optExtractAll.checked
+            };
+
+            const lines = rawText.split('\n');
+            const newParsedData = [];
+            let currentIdx = 0;
+
+            for (let i = 0; i < lines.length; i++) {
+                const originalLine = lines[i];
+                const lineNum = i + 1;
+
+                if (!originalLine.trim()) continue;
+
+                if (options.extractAll) {
+                    // Extract all separate numbers within the line
+                    // Regular expression depending on options
+                    let regexStr = '';
+                    if (options.allowNegative) regexStr += '-?';
+                    regexStr += '\\d+';
+                    if (options.allowDecimal) regexStr += '(?:\\.\\d+)?';
+                    
+                    const regex = new RegExp(regexStr, 'g');
+                    let cleanedLine = originalLine;
+                    if (options.removeCommas) {
+                        // selectively remove commas when sandwiched between digits
+                        cleanedLine = cleanedLine.replace(/(\d),(\d)/g, '$1$2');
+                    }
+                    
+                    const matches = cleanedLine.match(regex);
+                    if (matches) {
+                        matches.forEach(match => {
+                            const val = parseFloat(match);
+                            if (!isNaN(val)) {
+                                // Match the status of existing item if possible (keeps toggled items excluded on edit)
+                                const matchedPrev = parsedData.find(d => d.line === lineNum && d.value === val);
+                                const isExcluded = matchedPrev ? matchedPrev.excluded : false;
+
+                                newParsedData.push({
+                                    id: ++currentIdx,
+                                    line: lineNum,
+                                    raw: match,
+                                    value: val,
+                                    excluded: isExcluded
+                                });
+                            }
+                        });
+                    }
+                } else {
+                    // Treat the line as one candidate number sequence
+                    let cleanedText = originalLine.trim();
+
+                    if (options.removeCommas) {
+                        cleanedText = cleanedText.replace(/,/g, '');
+                    }
+
+                    if (options.ignoreUnits) {
+                        // Remove common currency symbols and Korean unit indicators
+                        cleanedText = cleanedText.replace(/[₩$€¥\s원개명배호층점%]/g, '');
+                    }
+
+                    // Build regex to extract a number from the cleaned string
+                    let regexStr = '^';
+                    if (options.allowNegative) regexStr += '(-?\\+?)';
+                    regexStr += '(\\d+';
+                    if (options.allowDecimal) regexStr += '(?:\\.\\d+)?';
+                    regexStr += ')';
+                    
+                    const numRegex = new RegExp(regexStr);
+                    const match = cleanedText.match(numRegex);
+
+                    if (match) {
+                        const parsedVal = parseFloat(match[0]);
+                        if (!isNaN(parsedVal)) {
+                            const matchedPrev = parsedData.find(d => d.line === lineNum && d.value === parsedVal);
+                            const isExcluded = matchedPrev ? matchedPrev.excluded : false;
+
+                            newParsedData.push({
+                                id: ++currentIdx,
+                                line: lineNum,
+                                raw: originalLine,
+                                value: parsedVal,
+                                excluded: isExcluded
+                            });
+                        }
+                    }
+                }
+            }
+
+            parsedData = newParsedData;
+            calculateAndDisplay();
+            renderParsedList();
+        }
+
+        // Get Sum of all active (non-excluded) elements
+        function getCalculatedSum() {
+            return parsedData
+                .filter(item => !item.excluded)
+                .reduce((acc, curr) => acc + curr.value, 0);
+        }
+
+        // Calculate and Update Results Dashboard
+        function calculateAndDisplay() {
+            const activeItems = parsedData.filter(item => !item.excluded);
+            const activeValues = activeItems.map(item => item.value);
+
+            if (activeItems.length === 0) {
+                resetDashboardExceptList();
+                return;
+            }
+
+            // Calculations
+            const sum = activeValues.reduce((a, b) => a + b, 0);
+            const count = activeValues.length;
+            const avg = sum / count;
+            const max = Math.max(...activeValues);
+            const min = Math.min(...activeValues);
+
+            // Display updates (with visual effect)
+            sumDisplay.textContent = formatWithCommas(sum);
+            sumDisplay.classList.remove('animate-sum');
+            void sumDisplay.offsetWidth; // Trigger reflow for animation restart
+            sumDisplay.classList.add('animate-sum');
+
+            // Korean Display Details
+            koreanNumericDisplay.textContent = formatKoreanNumber(sum);
+            koreanWordDisplay.textContent = numberToKoreanLetters(sum) + '원';
+
+            // Statistics Updates
+            statCount.textContent = count.toLocaleString();
+            statAvg.textContent = formatAvg(avg);
+            statMax.textContent = formatFloat(max);
+            statMin.textContent = formatFloat(min);
+        }
+
+        // Helper string formatting
+        function formatWithCommas(num) {
+            // Keep decimal format clean
+            if (num % 1 === 0) return num.toLocaleString();
+            return num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+        }
+
+        function formatAvg(val) {
+            if (val % 1 === 0) return val.toLocaleString();
+            return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatFloat(val) {
+            if (val % 1 === 0) return val.toLocaleString();
+            return val.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+        }
+
+        // Reset display to zero states
+        function resetDashboard() {
+            parsedData = [];
+            resetDashboardExceptList();
+            parsedListBody.innerHTML = `<tr><td colspan="4" class="empty-state">입력 창에 데이터를 입력해 주세요.</td></tr>`;
+        }
+
+        function resetDashboardExceptList() {
+            sumDisplay.textContent = '0';
+            koreanNumericDisplay.textContent = '0원';
+            koreanWordDisplay.textContent = '영원';
+            statCount.textContent = '0';
+            statAvg.textContent = '0';
+            statMax.textContent = '0';
+            statMin.textContent = '0';
+        }
+
+        // Render Parsed Data to Table
+        function renderParsedList() {
+            if (parsedData.length === 0) {
+                parsedListBody.innerHTML = `<tr><td colspan="4" class="empty-state">입력 창에 데이터를 입력해 주세요.</td></tr>`;
+                return;
+            }
+
+            parsedListBody.innerHTML = parsedData.map(item => `
+                <tr class="${item.excluded ? 'excluded' : ''}" onclick="toggleExclude(${item.id})">
+                    <td class="col-line">${item.line}</td>
+                    <td class="col-raw" title="${escapeHtml(item.raw)}">${escapeHtml(truncateString(item.raw, 30))}</td>
+                    <td class="col-parsed">${formatWithCommas(item.value)}</td>
+                    <td class="col-action">
+                        <span class="toggle-switch"></span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Toggle Exclude State on Table Click
+        window.toggleExclude = function(id) {
+            const index = parsedData.findIndex(item => item.id === id);
+            if (index !== -1) {
+                parsedData[index].excluded = !parsedData[index].excluded;
+                calculateAndDisplay();
+                renderParsedList();
+            }
+        };
+
+        // Format to Korean Unit System (e.g. 1억 2,500만 3,000)
+        function formatKoreanNumber(num) {
+            if (num === 0) return '0원';
+            if (isNaN(num) || !isFinite(num)) return '-';
+
+            const isNegative = num < 0;
+            let absNum = Math.abs(num);
+
+            const integerPart = Math.floor(absNum);
+            const decimalPart = absNum - integerPart;
+
+            if (integerPart === 0) {
+                return (isNegative ? '-' : '') + absNum.toLocaleString() + '원';
+            }
+
+            const units = ['', '만', '억', '조', '경'];
+            let result = [];
+            let temp = integerPart;
+            let unitIdx = 0;
+
+            while (temp > 0 && unitIdx < units.length) {
+                let remainder = temp % 10000;
+                if (remainder > 0) {
+                    result.unshift(remainder.toLocaleString() + units[unitIdx]);
+                }
+                temp = Math.floor(temp / 10000);
+                unitIdx++;
+            }
+
+            let formatted = result.join(' ');
+            if (decimalPart > 0) {
+                formatted += '.' + decimalPart.toFixed(4).split('.')[1].replace(/0+$/, '');
+            }
+
+            return (isNegative ? '-' : '') + formatted + '원';
+        }
+
+        // Full Korean Pronunciation Word Formatter
+        function numberToKoreanLetters(num) {
+            if (num === 0) return '영';
+            if (isNaN(num) || !isFinite(num)) return '';
+
+            const isNegative = num < 0;
+            let absNum = Math.floor(Math.abs(num));
+            if (absNum === 0) return isNegative ? '마이너스 영' : '영';
+
+            const korUnits = ['', '만', '억', '조', '경'];
+            const korNums = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+            const korPositions = ['', '십', '백', '천'];
+
+            let result = '';
+            let unitIdx = 0;
+
+            while (absNum > 0) {
+                let chunk = absNum % 10000;
+                if (chunk > 0) {
+                    let chunkStr = '';
+                    let tempChunk = chunk;
+                    for (let i = 0; i < 4; i++) {
+                        let digit = tempChunk % 10;
+                        if (digit > 0) {
+                            let digitStr = korNums[digit];
+                            if (i > 0 && digit === 1) {
+                                digitStr = ''; // skip '일' in 십, 백, 천 positions (e.g. 십 instead of 일십)
+                            }
+                            chunkStr = digitStr + korPositions[i] + chunkStr;
+                        }
+                        tempChunk = Math.floor(tempChunk / 10);
+                    }
+                    result = chunkStr + korUnits[unitIdx] + ' ' + result;
+                }
+                absNum = Math.floor(absNum / 10000);
+                unitIdx++;
+            }
+
+            // Apply Korean reading habits: "일만" -> "만"
+            result = result.trim().replace(/\s+/g, ' ');
+            result = result.replace(/^일만/, '만');
+
+            return (isNegative ? '마이너스 ' : '') + result;
+        }
+
+        // History Management
+        function saveCurrentRun() {
+            const sum = getCalculatedSum();
+            if (parsedData.length === 0) {
+                showToast('기록할 데이터가 없습니다.', true);
+                return;
+            }
+
+            const activeItems = parsedData.filter(item => !item.excluded);
+            
+            const record = {
+                id: Date.now(),
+                timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                date: new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+                sum: sum,
+                count: activeItems.length,
+                rawInput: numInput.value,
+                configs: {
+                    comma: optComma.checked,
+                    unit: optUnit.checked,
+                    decimal: optDecimal.checked,
+                    negative: optNegative.checked,
+                    extractAll: optExtractAll.checked
+                }
+            };
+
+            calculationHistory.unshift(record);
+            if (calculationHistory.length > 20) {
+                calculationHistory.pop(); // limit history list to 20
+            }
+            
+            localStorage.setItem('sum_calc_history', JSON.stringify(calculationHistory));
+            renderHistory();
+            showToast('현재 결과를 기록에 저장했습니다.');
+        }
+
+        function loadHistory() {
+            const stored = localStorage.getItem('sum_calc_history');
+            if (stored) {
+                try {
+                    calculationHistory = JSON.parse(stored);
+                    renderHistory();
+                } catch(e) {
+                    calculationHistory = [];
+                }
+            }
+        }
+
+        function renderHistory() {
+            if (calculationHistory.length === 0) {
+                historyContainer.innerHTML = `<div class="empty-state">저장된 계산 기록이 없습니다.</div>`;
+                return;
+            }
+
+            historyContainer.innerHTML = calculationHistory.map(item => `
+                <div class="history-item" onclick="restoreHistory(${item.id})">
+                    <div class="history-info">
+                        <div class="history-time">${item.date} ${item.timestamp}</div>
+                        <div class="history-meta">숫자 <span>${item.count}개</span> 분석</div>
+                    </div>
+                    <div class="history-sum">${formatWithCommas(item.sum)}</div>
+                    <div class="history-actions" onclick="event.stopPropagation();">
+                        <button class="btn-icon-only delete" onclick="deleteHistoryItem(${item.id})" title="삭제">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.restoreHistory = function(id) {
+            const record = calculationHistory.find(item => item.id === id);
+            if (record) {
+                numInput.value = record.rawInput;
+                optComma.checked = record.configs.comma;
+                optUnit.checked = record.configs.unit;
+                optDecimal.checked = record.configs.decimal;
+                optNegative.checked = record.configs.negative;
+                if (record.configs.hasOwnProperty('extractAll')) {
+                    optExtractAll.checked = record.configs.extractAll;
+                }
+                
+                processInput();
+                showToast('기록에서 데이터를 복원했습니다.');
+            }
+        };
+
+        window.deleteHistoryItem = function(id) {
+            calculationHistory = calculationHistory.filter(item => item.id !== id);
+            localStorage.setItem('sum_calc_history', JSON.stringify(calculationHistory));
+            renderHistory();
+            showToast('기록 항목이 삭제되었습니다.');
+        };
+
+        // UI Toast helper
+        let toastTimeout;
+        function showToast(message, isError = false) {
+            clearTimeout(toastTimeout);
+            toastMessage.textContent = message;
+            
+            if (isError) {
+                toast.style.background = 'rgba(239, 68, 68, 0.95)';
+                toast.style.boxShadow = '0 10px 30px rgba(239, 68, 68, 0.3)';
+            } else {
+                toast.style.background = 'rgba(16, 185, 129, 0.95)';
+                toast.style.boxShadow = '0 10px 30px rgba(16, 185, 129, 0.3)';
+            }
+
+            toast.classList.add('show');
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Utils
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        function truncateString(str, num) {
+            if (str.length <= num) return str;
+            return str.slice(0, num) + '...';
+        }
+    </script>
+</body>
+</html>

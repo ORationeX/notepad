@@ -228,9 +228,9 @@
                     if (response.ok && result.success) {
                         showToast(result.message || '로그인에 성공했습니다!', 'success');
                         
-                        // Set the JWT token in Cookie (30 minutes expiry)
+                        // Set the JWT token in Cookie (24 hours expiry)
                         const token = result.data.accessToken;
-                        document.cookie = `token=${token}; path=/; max-age=1800; SameSite=Strict`;
+                        document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Strict`;
                         
                         // Redirect to home page
                         setTimeout(() => {
