@@ -120,6 +120,8 @@ def get_etf_history(idx):
     history = db["etfs"][idx]["history"]
     sorted_dates = sorted(history.keys())
     
+    threshold = request.args.get("threshold", default=0.5, type=float)
+    
     events_summary = {}
     for i, date_str in enumerate(sorted_dates):
         curr_list = history[date_str]
@@ -135,7 +137,7 @@ def get_etf_history(idx):
                 break
                 
         if prev_list:
-            evs = data_manager.calculate_events(prev_list, curr_list)
+            evs = data_manager.calculate_events(prev_list, curr_list, threshold)
             events_summary[date_str] = {
                 "new": len(evs["new"]),
                 "deleted": len(evs["deleted"]),
@@ -156,6 +158,7 @@ def get_etf_history(idx):
         "code": db["etfs"][idx]["code"],
         "events": events_summary
     })
+
 
 @app.route('/api/etf/<idx>/date/<date_str>')
 def get_etf_date_details(idx, date_str):
@@ -209,7 +212,8 @@ def get_etf_date_details(idx, date_str):
                 break
                 
     # 3. 이벤트 계산
-    events = data_manager.calculate_events(prev_list, curr_list) if prev_list else {
+    threshold = request.args.get("threshold", default=0.5, type=float)
+    events = data_manager.calculate_events(prev_list, curr_list, threshold) if prev_list else {
         "new": [{"code": x["code"], "name": x["name"], "quantity": x["quantity"], "weight": x["weight"]} for x in curr_list],
         "deleted": [],
         "increased": [],
@@ -241,9 +245,10 @@ def get_stock_history_chart(idx, stock_code):
     for date_str in sorted_dates:
         constituents = history[date_str]
         for item in constituents:
-            if item["code"].lower() == stock_code.lower() or item["name"].lower() == stock_code.lower():
+            # 부분 일치 검색 지원 (예: "NVDA" -> "NVDA US EQUITY", "NVIDIA" -> "NVIDIA Corp")
+            if (stock_code.lower() in item["code"].lower()) or (stock_code.lower() in item["name"].lower()):
                 stock_name = item["name"]
-                # 만약 검색 쿼리가 한글 종목명이었다면 code도 매칭되는 실제 코드로 정정합니다.
+                # 검색된 실제 매칭 코드로 정정합니다.
                 stock_code = item["code"]
                 found_any = True
                 break
@@ -253,6 +258,17 @@ def get_stock_history_chart(idx, stock_code):
     if not found_any:
         return jsonify({"error": f"종목 코드/명 '{stock_code}'에 대한 내역을 찾을 수 없습니다."}), 404
         
+    # --- 야후 파이낸스 API 연동 및 캐싱 적용 ---
+    yahoo_ticker = data_manager.bloomberg_to_yahoo_ticker(stock_code)
+    yahoo_prices = {}
+    currency = "USD"
+    if yahoo_ticker and sorted_dates:
+        yahoo_prices, currency = data_manager.get_yahoo_cached_prices(
+            yahoo_ticker, 
+            sorted_dates[0], 
+            sorted_dates[-1]
+        )
+        
     # 2. 전체 날짜에 대해서 데이터를 생성합니다.
     stock_history = []
     for date_str in sorted_dates:
@@ -260,11 +276,17 @@ def get_stock_history_chart(idx, stock_code):
         found = False
         for item in constituents:
             if item["code"].lower() == stock_code.lower():
+                eval_price = round(item["amount"] / item["quantity"]) if item["quantity"] > 0 else 0
+                real_price = yahoo_prices.get(date_str, 0)
+                
                 stock_history.append({
                     "date": date_str,
                     "quantity": item["quantity"],
                     "weight": item["weight"],
                     "amount": item["amount"],
+                    "eval_price": eval_price,
+                    "real_price": real_price,
+                    "currency": currency,
                     "name": item["name"],
                     "present": True
                 })
@@ -276,6 +298,9 @@ def get_stock_history_chart(idx, stock_code):
                 "quantity": 0,
                 "weight": 0.0,
                 "amount": 0,
+                "eval_price": 0,
+                "real_price": 0,
+                "currency": currency,
                 "name": stock_name,
                 "present": False
             })
@@ -288,19 +313,23 @@ def get_stock_history_chart(idx, stock_code):
         
         if i == 0:
             curr["change_rate"] = 0.0
+            curr["real_price_change_rate"] = 0.0
         else:
             prev = stock_history[i-1]
             if not prev["present"] and curr["present"]:
                 # 재추가 / 신규 진입
                 curr["is_readded"] = True
                 curr["change_rate"] = 999999.0 # Special indicator or handle in JS
+                curr["real_price_change_rate"] = 0.0
             elif prev["present"] and not curr["present"]:
                 # 삭제됨
                 curr["is_deleted"] = True
                 curr["change_rate"] = -100.0
+                curr["real_price_change_rate"] = -100.0
             elif not prev["present"] and not curr["present"]:
                 # 계속 없는 상태
                 curr["change_rate"] = 0.0
+                curr["real_price_change_rate"] = 0.0
             else:
                 # 계속 존재하는 상태
                 prev_qty = prev["quantity"]
@@ -310,11 +339,20 @@ def get_stock_history_chart(idx, stock_code):
                 else:
                     curr["change_rate"] = 0.0
                     
+                prev_real_price = prev["real_price"]
+                curr_real_price = curr["real_price"]
+                if prev_real_price > 0:
+                    curr["real_price_change_rate"] = round(((curr_real_price - prev_real_price) / prev_real_price) * 100, 2)
+                else:
+                    curr["real_price_change_rate"] = 0.0
+                    
     return jsonify({
         "stock_code": stock_code,
         "stock_name": stock_name,
+        "currency": currency,
         "history": stock_history
     })
+
 
 @app.route('/api/etf/crawl-range', methods=['POST'])
 def start_crawl_range():

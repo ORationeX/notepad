@@ -161,10 +161,12 @@ def merge_pending_to_db():
     else:
         return False, "메인 데이터베이스 파일 저장에 실패했습니다."
 
-def calculate_events(prev_list, curr_list):
+CACHE_DIR = os.path.join(DATA_DIR, "yahoo_cache")
+
+def calculate_events(prev_list, curr_list, threshold=0.5):
     """
     이전 일자 리스트와 현재 일자 리스트를 비교하여
-    신규, 삭제, 수량 증가, 수량 감소 이벤트를 계산합니다.
+    신규, 삭제, 비중 증가, 비중 감소 이벤트를 계산합니다.
     """
     prev_map = {item["code"]: item for item in prev_list}
     curr_map = {item["code"]: item for item in curr_list}
@@ -207,9 +209,10 @@ def calculate_events(prev_list, curr_list):
                 "change_weight": round(weight_diff, 2)
             }
             
-            if qty_diff > 0:
+            # 비중 변화 기준(threshold) 이상/이하인지 확인
+            if weight_diff >= threshold:
                 events["increased"].append(detail)
-            elif qty_diff < 0:
+            elif weight_diff <= -threshold:
                 events["decreased"].append(detail)
                 
     # 2. 삭제 종목 감지
@@ -223,3 +226,121 @@ def calculate_events(prev_list, curr_list):
             })
             
     return events
+
+
+def bloomberg_to_yahoo_ticker(bloomberg_code):
+    if not bloomberg_code:
+        return None
+    parts = bloomberg_code.upper().split()
+    if not parts or parts[0] == "CASH":
+        return None
+    
+    code = parts[0]
+    
+    # Futures or index
+    if len(parts) >= 2 and parts[1] == "INDEX":
+        if code.startswith("NQ"):
+            return "NQ=F"
+        if code.startswith("SP"):
+            return "ES=F"
+        return None
+        
+    if len(parts) >= 2:
+        suffix = parts[1]
+        if suffix == "US":
+            return code
+        elif suffix == "JP":
+            return f"{code}.T"
+        elif suffix == "KS":
+            return f"{code}.KS"
+        elif suffix == "KQ":
+            return f"{code}.KQ"
+        elif suffix == "HK":
+            if len(code) < 4 and code.isdigit():
+                code = code.zfill(4)
+            return f"{code}.HK"
+        elif suffix == "LN":
+            return f"{code}.L"
+        elif suffix == "GR":
+            return f"{code}.DE"
+        elif suffix == "FP":
+            return f"{code}.PA"
+            
+    return code
+
+
+def get_yahoo_cached_prices(ticker, start_date_str, end_date_str):
+    """
+    로컬 캐시를 활용하여 야후 파이낸스 주가 정보를 조회합니다.
+    """
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    cache_file = os.path.join(CACHE_DIR, f"{ticker}.json")
+    
+    # 캐시 로드 시도
+    cached_data = None
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                cached_data = json.load(f)
+        except Exception as e:
+            print(f"[YAHOO] Error reading cache for {ticker}: {e}")
+            
+    # 캐시 데이터가 유효하고, 요청된 종료일이 캐시 범위 내에 있다면 캐시 반환
+    if cached_data and "prices" in cached_data and "currency" in cached_data:
+        if end_date_str in cached_data["prices"]:
+            return cached_data["prices"], cached_data["currency"]
+    
+    # 캐시가 없거나 최신 날짜가 부족하면 야후 API 호출
+    import requests
+    from datetime import datetime
+    
+    start_ts = int(datetime.strptime("2022-01-01", "%Y-%m-%d").timestamp())
+    end_ts = int(datetime.now().timestamp()) + 86400
+    
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?period1={start_ts}&period2={end_ts}&interval=1d"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    try:
+        print(f"[YAHOO] Fetching from API for {ticker}...")
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            res_data = response.json()
+            chart_data = res_data.get("chart", {}).get("result", [None])[0]
+            if chart_data:
+                meta = chart_data.get("meta", {})
+                currency = meta.get("currency", "USD")
+                
+                timestamps = chart_data.get("timestamp", [])
+                indicators = chart_data.get("indicators", {}).get("quote", [{}])[0]
+                closes = indicators.get("close", [])
+                
+                prices = {}
+                for ts, close in zip(timestamps, closes):
+                    if close is not None:
+                        date_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
+                        prices[date_str] = round(close, 2)
+                        
+                # 캐시에 병합 및 저장
+                new_cached_data = {
+                    "currency": currency,
+                    "prices": prices
+                }
+                
+                if cached_data and "prices" in cached_data:
+                    cached_data["prices"].update(prices)
+                    new_cached_data["prices"] = cached_data["prices"]
+                    
+                with open(cache_file, 'w', encoding='utf-8') as f:
+                    json.dump(new_cached_data, f, ensure_ascii=False, indent=2)
+                    
+                return new_cached_data["prices"], new_cached_data["currency"]
+    except Exception as e:
+        print(f"[YAHOO] Exception during fetch for {ticker}: {e}")
+        
+    if cached_data and "prices" in cached_data:
+        return cached_data["prices"], cached_data["currency"]
+        
+    return {}, "USD"
+

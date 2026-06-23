@@ -6,6 +6,7 @@ let selectedDate = "";
 let etfHistorySummary = {}; // date_str -> {new, deleted, increased, decreased}
 let chartInstance = null;
 let pollInterval = null;
+let weightThreshold = 0.5;
 
 // DOM Elements
 const calendarDaysEl = document.getElementById("calendar-days");
@@ -15,6 +16,7 @@ const nextMonthBtn = document.getElementById("cal-next-month");
 const selectedDateTitleEl = document.getElementById("selected-date-title");
 const liveBadgeEl = document.getElementById("live-badge");
 const statTotalCountEl = document.getElementById("stat-total-count");
+const thresholdSelectEl = document.getElementById("threshold-select");
 
 // Tab Count Badges
 const countNewEl = document.getElementById("tab-count-new");
@@ -156,6 +158,12 @@ function setupEventListeners() {
     // Pending Update Actions
     confirmUpdateBtn.addEventListener("click", confirmPendingUpdate);
     cancelUpdateBtn.addEventListener("click", cancelPendingUpdate);
+
+    // Threshold Selector Change
+    thresholdSelectEl.addEventListener("change", (e) => {
+        weightThreshold = parseFloat(e.target.value);
+        loadEtfData();
+    });
 }
 
 // Show Alert Toast Message
@@ -185,7 +193,7 @@ function showToast(message, type = "info") {
 // Load ETF Summary History for Calendar Markers
 async function loadEtfData() {
     try {
-        const response = await fetch(`/api/etf/${currentEtfIdx}/history`);
+        const response = await fetch(`/api/etf/${currentEtfIdx}/history?threshold=${weightThreshold}`);
         if (!response.ok) throw new Error("데이터를 가져오는 중 오류가 발생했습니다.");
         const data = await response.json();
         
@@ -289,7 +297,7 @@ async function loadDateDetails(dateStr) {
         // Loading skeleton or empty screen
         setTableLoadingStates();
         
-        const response = await fetch(`/api/etf/${currentEtfIdx}/date/${dateStr}`);
+        const response = await fetch(`/api/etf/${currentEtfIdx}/date/${dateStr}?threshold=${weightThreshold}`);
         if (!response.ok) {
             const errData = await response.json();
             throw new Error(errData.error || "해당 날짜의 데이터를 불러올 수 없습니다.");
@@ -347,7 +355,7 @@ function setTableEmptyStates(msg) {
 function renderAllTable(constituents, events) {
     tableAllBody.innerHTML = "";
     if (constituents.length === 0) {
-        tableAllBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">구성종목 내역이 없습니다.</td></tr>`;
+        tableAllBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">구성종목 내역이 없습니다.</td></tr>`;
         return;
     }
     
@@ -374,10 +382,13 @@ function renderAllTable(constituents, events) {
         const qBadge = upCodes.has(item.code) ? ' <span class="badge badge-up">+증가</span>' :
                        downCodes.has(item.code) ? ' <span class="badge badge-down">-감소</span>' : '';
                        
+        const evalPrice = item.quantity > 0 ? Math.round(item.amount / item.quantity) : 0;
+                       
         tr.innerHTML = `
             <td><strong>${item.name}</strong>${qBadge}</td>
             <td><code>${item.code}</code></td>
             <td>${item.quantity.toLocaleString()}</td>
+            <td>${evalPrice > 0 ? evalPrice.toLocaleString() + '원' : '-'}</td>
             <td>${item.amount.toLocaleString()}</td>
             <td>${item.weight.toFixed(2)}%</td>
         `;
@@ -529,7 +540,7 @@ async function performStockAnalysis(query) {
     }
 }
 
-// Render ECharts dual-axis plot
+// Render ECharts dual-axis plot with actual prices on third axis
 function renderStockTrendChart(data) {
     if (chartInstance) {
         chartInstance.dispose();
@@ -540,6 +551,8 @@ function renderStockTrendChart(data) {
     const dates = data.history.map(x => x.date);
     const quantities = data.history.map(x => x.quantity);
     const weights = data.history.map(x => x.weight);
+    const prices = data.history.map(x => x.real_price);
+    const currencySymbol = data.currency === "KRW" ? "₩" : data.currency === "JPY" ? "¥" : "$";
     
     // Create map for O(1) date present lookup
     const historyMap = new Map(data.history.map(x => [x.date, x]));
@@ -573,26 +586,36 @@ function renderStockTrendChart(data) {
                         let valStr = p.value !== undefined ? p.value.toLocaleString() : '-';
                         if (p.seriesName === '비중') {
                             valStr = p.value !== undefined ? `${Number(p.value).toFixed(2)}%` : '-';
+                        } else if (p.seriesName === '실제 주가') {
+                            valStr = p.value !== undefined ? `${currencySymbol}${Number(p.value).toLocaleString()}` : '-';
                         }
                         html += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">`;
                         html += `<span><span style="display:inline-block;margin-right:6px;border-radius:50%;width:8px;height:8px;background-color:${p.color};"></span>${p.seriesName}</span>`;
                         html += `<strong style="color: #fff;">${valStr}</strong>`;
                         html += `</div>`;
                     });
+                    
+                    // 평가 주가 (원화 환산)
+                    if (item && item.eval_price > 0) {
+                        html += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 4px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 4px;">`;
+                        html += `<span><span style="display:inline-block;margin-right:6px;border-radius:50%;width:8px;height:8px;background-color:#fbbf24;"></span>평가 주가 (원화)</span>`;
+                        html += `<strong style="color: #fff;">₩${item.eval_price.toLocaleString()}</strong>`;
+                        html += `</div>`;
+                    }
                 }
                 html += `</div>`;
                 return html;
             }
         },
         legend: {
-            data: ['수량', '비중'],
+            data: ['수량', '비중', '실제 주가'],
             textStyle: { color: '#9ca3af' },
             bottom: 0
         },
         grid: {
             top: '15%',
             left: '5%',
-            right: '5%',
+            right: '12%',
             bottom: '12%',
             containLabel: true
         },
@@ -609,6 +632,7 @@ function renderStockTrendChart(data) {
             {
                 type: 'value',
                 name: '수량',
+                position: 'left',
                 nameTextStyle: { color: '#9ca3af' },
                 axisLabel: {
                     color: '#9ca3af',
@@ -622,10 +646,26 @@ function renderStockTrendChart(data) {
             {
                 type: 'value',
                 name: '비중 (%)',
+                position: 'right',
                 nameTextStyle: { color: '#9ca3af' },
                 axisLabel: {
                     color: '#9ca3af',
                     formatter: '{value}%'
+                },
+                axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
+                splitLine: { show: false }
+            },
+            {
+                type: 'value',
+                name: `실제 주가 (${data.currency})`,
+                position: 'right',
+                offset: 65,
+                nameTextStyle: { color: '#9ca3af' },
+                axisLabel: {
+                    color: '#9ca3af',
+                    formatter: function(value) {
+                        return currencySymbol + value.toLocaleString();
+                    }
                 },
                 axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
                 splitLine: { show: false }
@@ -648,6 +688,15 @@ function renderStockTrendChart(data) {
                 smooth: true,
                 itemStyle: { color: '#a855f7' }, // purple
                 lineStyle: { width: 3 }
+            },
+            {
+                name: '실제 주가',
+                type: 'line',
+                yAxisIndex: 2,
+                data: prices,
+                smooth: true,
+                itemStyle: { color: '#10b981' }, // emerald green
+                lineStyle: { width: 3 }
             }
         ]
     };
@@ -667,7 +716,7 @@ function renderStockHistoryTable(history) {
     const filtered = history.filter(item => item.present || item.is_deleted);
     
     if (filtered.length === 0) {
-        tableStockHistoryBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">데이터가 없습니다.</td></tr>`;
+        tableStockHistoryBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">데이터가 없습니다.</td></tr>`;
         return;
     }
     
@@ -698,11 +747,17 @@ function renderStockHistoryTable(history) {
         const weightDisplay = item.weight === 0.0 && item.is_deleted ? "0.00%" : `${item.weight.toFixed(2)}%`;
         const amountDisplay = item.amount === 0 && item.is_deleted ? "0" : item.amount.toLocaleString();
         
+        const currencySymbol = item.currency === "KRW" ? "₩" : item.currency === "JPY" ? "¥" : "$";
+        const realPriceDisplay = item.real_price > 0 ? `${currencySymbol}${item.real_price.toLocaleString()}` : "-";
+        const evalPriceDisplay = item.eval_price > 0 ? `₩${item.eval_price.toLocaleString()}` : "-";
+        
         tr.innerHTML = `
             <td><code>${item.date}</code></td>
             <td><strong>${qtyDisplay}</strong></td>
             <td class="${changeClass}">${changeText}</td>
             <td>${weightDisplay}</td>
+            <td>${realPriceDisplay}</td>
+            <td>${evalPriceDisplay}</td>
             <td>${amountDisplay}</td>
         `;
         tableStockHistoryBody.appendChild(tr);
