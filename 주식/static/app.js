@@ -570,12 +570,19 @@ function renderStockTrendChart(data) {
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'line' },
+            backgroundColor: 'rgba(20, 26, 41, 0.95)',
+            borderColor: 'rgba(255, 255, 255, 0.12)',
+            borderWidth: 1,
+            textStyle: {
+                color: '#f3f4f6',
+                fontFamily: 'var(--font-ui)'
+            },
             formatter: function (params) {
                 if (!params || params.length === 0) return '';
                 const dateStr = params[0].axisValue;
                 const item = historyMap.get(dateStr);
                 
-                let html = `<div style="font-family: var(--font-ui); font-size: 13px; padding: 4px; line-height: 1.6;">`;
+                let html = `<div style="font-family: var(--font-ui); font-size: 13px; padding: 4px; line-height: 1.6; color: #f3f4f6;">`;
                 html += `<div style="font-weight: 700; margin-bottom: 6px; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${dateStr}</div>`;
                 
                 if (item && !item.present) {
