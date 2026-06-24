@@ -86,10 +86,10 @@ def calculate_forward_metrics(
             
             # Max Drawdown (MDD) during the horizon
             # MDD = (Price - Running Max) / Running Max
-            running_max = np.maximum.accumulate(horizon_prices)
-            drawdowns = (horizon_prices - running_max) / running_max
-            # Also need to check drawdown relative to trigger price
-            drawdown_from_trigger = (horizon_prices - trigger_price) / trigger_price
+            # Prepend trigger_price to include the initial entry price as a potential peak
+            prices_with_trigger = np.insert(horizon_prices, 0, trigger_price)
+            running_max = np.maximum.accumulate(prices_with_trigger)
+            drawdowns = (prices_with_trigger - running_max) / running_max
             
             # We take the worst drop from any peak in the horizon
             mdd = float(drawdowns.min()) if len(drawdowns) > 0 else 0.0

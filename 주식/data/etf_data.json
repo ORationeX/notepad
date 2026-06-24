@@ -301341,6 +301341,323 @@
             "amount": 7931104,
             "weight": 0.64
           }
+        ],
+        "2026-06-24": [
+          {
+            "code": "SNDK US EQUITY",
+            "name": "Sandisk Corp",
+            "quantity": 26,
+            "amount": 90986943,
+            "weight": 7.26
+          },
+          {
+            "code": "INTC US EQUITY",
+            "name": "Intel Corp",
+            "quantity": 326,
+            "amount": 70716165,
+            "weight": 5.65
+          },
+          {
+            "code": "MU US EQUITY",
+            "name": "Micron Technology Inc",
+            "quantity": 37,
+            "amount": 68984093,
+            "weight": 5.51
+          },
+          {
+            "code": "NVDA US EQUITY",
+            "name": "NVIDIA Corp",
+            "quantity": 184,
+            "amount": 59088511,
+            "weight": 4.72
+          },
+          {
+            "code": "LRCX US EQUITY",
+            "name": "Lam Research Corp",
+            "quantity": 75,
+            "amount": 47274226,
+            "weight": 3.77
+          },
+          {
+            "code": "CRDO US EQUITY",
+            "name": "Credo Technology Group Holding Ltd",
+            "quantity": 101,
+            "amount": 47026461,
+            "weight": 3.75
+          },
+          {
+            "code": "AMD US EQUITY",
+            "name": "Advanced Micro Devices Inc",
+            "quantity": 55,
+            "amount": 46695755,
+            "weight": 3.73
+          },
+          {
+            "code": "MRVL US EQUITY",
+            "name": "Marvell Technology Inc",
+            "quantity": 97,
+            "amount": 45961250,
+            "weight": 3.67
+          },
+          {
+            "code": "DELL US EQUITY",
+            "name": "Dell Technologies Inc",
+            "quantity": 68,
+            "amount": 43821686,
+            "weight": 3.5
+          },
+          {
+            "code": "WDC US EQUITY",
+            "name": "Western Digital Corp",
+            "quantity": 38,
+            "amount": 42847866,
+            "weight": 3.42
+          },
+          {
+            "code": "STX US EQUITY",
+            "name": "Seagate Technology Holdings PLC",
+            "quantity": 24,
+            "amount": 40412087,
+            "weight": 3.23
+          },
+          {
+            "code": "NQU6 INDEX",
+            "name": "NASDAQ 100 E-MINI INDEX SEPT 2026",
+            "quantity": 0,
+            "amount": 37743041,
+            "weight": 3.01
+          },
+          {
+            "code": "ARM US EQUITY",
+            "name": "ARM Holdings PLC",
+            "quantity": 57,
+            "amount": 35768745,
+            "weight": 2.86
+          },
+          {
+            "code": "AMAT US EQUITY",
+            "name": "Applied Materials Inc",
+            "quantity": 33,
+            "amount": 32514934,
+            "weight": 2.6
+          },
+          {
+            "code": "GOOGL US EQUITY",
+            "name": "Alphabet Inc",
+            "quantity": 56,
+            "amount": 30138779,
+            "weight": 2.41
+          },
+          {
+            "code": "AAPL US EQUITY",
+            "name": "Apple Inc",
+            "quantity": 62,
+            "amount": 28341941,
+            "weight": 2.26
+          },
+          {
+            "code": "NBIS US EQUITY",
+            "name": "Nebius Group NV",
+            "quantity": 63,
+            "amount": 27499761,
+            "weight": 2.2
+          },
+          {
+            "code": "CASH",
+            "name": "현금",
+            "quantity": 27117219,
+            "amount": 27117219,
+            "weight": 2.17
+          },
+          {
+            "code": "AVGO US EQUITY",
+            "name": "Broadcom Inc",
+            "quantity": 42,
+            "amount": 25348145,
+            "weight": 2.02
+          },
+          {
+            "code": "AAOI US EQUITY",
+            "name": "Applied Optoelectronics Inc",
+            "quantity": 89,
+            "amount": 23455068,
+            "weight": 1.87
+          },
+          {
+            "code": "MSFT US EQUITY",
+            "name": "Microsoft Corp",
+            "quantity": 40,
+            "amount": 22614919,
+            "weight": 1.81
+          },
+          {
+            "code": "TSLA US EQUITY",
+            "name": "Tesla Inc",
+            "quantity": 35,
+            "amount": 21819435,
+            "weight": 1.74
+          },
+          {
+            "code": "HOOD US EQUITY",
+            "name": "Robinhood Markets Inc",
+            "quantity": 130,
+            "amount": 21150773,
+            "weight": 1.69
+          },
+          {
+            "code": "KLAC US EQUITY",
+            "name": "KLA Corp",
+            "quantity": 51,
+            "amount": 21127471,
+            "weight": 1.69
+          },
+          {
+            "code": "ASML US EQUITY",
+            "name": "ASML Holding NV",
+            "quantity": 7,
+            "amount": 20785160,
+            "weight": 1.66
+          },
+          {
+            "code": "AMZN US EQUITY",
+            "name": "Amazon.com Inc",
+            "quantity": 57,
+            "amount": 20422364,
+            "weight": 1.63
+          },
+          {
+            "code": "GLW US EQUITY",
+            "name": "Corning Inc",
+            "quantity": 61,
+            "amount": 19699910,
+            "weight": 1.57
+          },
+          {
+            "code": "VRT US EQUITY",
+            "name": "Vertiv Holdings Co",
+            "quantity": 34,
+            "amount": 18731832,
+            "weight": 1.5
+          },
+          {
+            "code": "ALAB US EQUITY",
+            "name": "Astera Labs Inc",
+            "quantity": 24,
+            "amount": 16240336,
+            "weight": 1.3
+          },
+          {
+            "code": "TER US EQUITY",
+            "name": "Teradyne Inc",
+            "quantity": 23,
+            "amount": 16177480,
+            "weight": 1.29
+          },
+          {
+            "code": "COIN US EQUITY",
+            "name": "Coinbase Global Inc",
+            "quantity": 63,
+            "amount": 15983430,
+            "weight": 1.28
+          },
+          {
+            "code": "SIMO US EQUITY",
+            "name": "Silicon Motion Technology Corp",
+            "quantity": 30,
+            "amount": 15555683,
+            "weight": 1.24
+          },
+          {
+            "code": "CRCL US EQUITY",
+            "name": "Circle Internet Group Inc",
+            "quantity": 126,
+            "amount": 15504431,
+            "weight": 1.24
+          },
+          {
+            "code": "BE US EQUITY",
+            "name": "Bloom Energy Corp",
+            "quantity": 27,
+            "amount": 14372038,
+            "weight": 1.15
+          },
+          {
+            "code": "SPCX US EQUITY",
+            "name": "Space Exploration Technologies Corp",
+            "quantity": 55,
+            "amount": 13086967,
+            "weight": 1.05
+          },
+          {
+            "code": "QCOM US EQUITY",
+            "name": "QUALCOMM Inc",
+            "quantity": 38,
+            "amount": 12977999,
+            "weight": 1.04
+          },
+          {
+            "code": "GEV US EQUITY",
+            "name": "GE Vernova Inc",
+            "quantity": 7,
+            "amount": 12148316,
+            "weight": 0.97
+          },
+          {
+            "code": "APP US EQUITY",
+            "name": "AppLovin Corp",
+            "quantity": 16,
+            "amount": 11559010,
+            "weight": 0.92
+          },
+          {
+            "code": "TSM US EQUITY",
+            "name": "Taiwan Semiconductor Manufacturing Co Ltd",
+            "quantity": 16,
+            "amount": 11516654,
+            "weight": 0.92
+          },
+          {
+            "code": "META US EQUITY",
+            "name": "Meta Platforms Inc",
+            "quantity": 13,
+            "amount": 11281679,
+            "weight": 0.9
+          },
+          {
+            "code": "LITE US EQUITY",
+            "name": "Lumentum Holdings Inc",
+            "quantity": 8,
+            "amount": 11006781,
+            "weight": 0.88
+          },
+          {
+            "code": "MSTR US EQUITY",
+            "name": "Strategy Inc",
+            "quantity": 61,
+            "amount": 10276663,
+            "weight": 0.82
+          },
+          {
+            "code": "RKLB US EQUITY",
+            "name": "Rocket Lab Corp",
+            "quantity": 63,
+            "amount": 9724449,
+            "weight": 0.78
+          },
+          {
+            "code": "CRWV US EQUITY",
+            "name": "CoreWeave Inc",
+            "quantity": 56,
+            "amount": 9592040,
+            "weight": 0.77
+          },
+          {
+            "code": "ORCL US EQUITY",
+            "name": "Oracle Corp",
+            "quantity": 28,
+            "amount": 7544606,
+            "weight": 0.6
+          }
         ]
       }
     },

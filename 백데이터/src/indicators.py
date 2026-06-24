@@ -76,9 +76,12 @@ def calculate_market_breadth(constituents_df: pd.DataFrame) -> pd.DataFrame:
     # Avoid division by zero
     active_counts_safe = active_counts.replace(0, np.nan)
     
+    # Guard rails to prevent noise when there are fewer than 10 active stocks
+    valid_breadth = active_counts >= 10
+    
     breadth_df["Active_Stocks"] = active_counts
-    breadth_df["New_Highs_Pct"] = high_counts / active_counts_safe
-    breadth_df["New_Lows_Pct"] = low_counts / active_counts_safe
+    breadth_df["New_Highs_Pct"] = (high_counts / active_counts_safe).where(valid_breadth, 0.0)
+    breadth_df["New_Lows_Pct"] = (low_counts / active_counts_safe).where(valid_breadth, 0.0)
     
     # Condition 1: Both New Highs Pct and New Lows Pct > 2.8% (0.028)
     breadth_df["Cond1_Breadth_Divergence"] = (
@@ -88,15 +91,15 @@ def calculate_market_breadth(constituents_df: pd.DataFrame) -> pd.DataFrame:
     
     # Condition 2: McClellan Oscillator Proxy
     # NetRatio = (Advances - Declines) / Active
-    net_ratio = (adv_counts - dec_counts) / active_counts_safe
-    breadth_df["Net_Advances_Ratio"] = net_ratio.fillna(0.0)
+    net_ratio = ((adv_counts - dec_counts) / active_counts_safe).fillna(0.0).where(valid_breadth, 0.0)
+    breadth_df["Net_Advances_Ratio"] = net_ratio
     
-    # McClellan Oscillator 대용 = EMA19(NetRatio) - EMA39(NetRatio)
+    # McClellan Oscillator 대용 = (EMA19(NetRatio) - EMA39(NetRatio)) * 1000
     # Using standard exponential moving average (EMA)
     ema19 = breadth_df["Net_Advances_Ratio"].ewm(span=19, adjust=False).mean()
     ema39 = breadth_df["Net_Advances_Ratio"].ewm(span=39, adjust=False).mean()
     
-    breadth_df["McClellan_Oscillator"] = ema19 - ema39
+    breadth_df["McClellan_Oscillator"] = (ema19 - ema39) * 1000
     
     logger.info("Successfully calculated market breadth & McClellan Oscillator.")
     return breadth_df

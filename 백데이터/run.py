@@ -193,7 +193,7 @@ def prefetch_data():
     net_advances_ratio = (((is_advancing.sum(axis=1) - is_declining.sum(axis=1)) / active_counts_safe).fillna(0.0)).where(valid_breadth, 0.0)
     ema19 = net_advances_ratio.ewm(span=19, adjust=False).mean()
     ema39 = net_advances_ratio.ewm(span=39, adjust=False).mean()
-    breadth_df["McClellan_Oscillator"] = ema19 - ema39
+    breadth_df["McClellan_Oscillator"] = (ema19 - ema39) * 1000
     
     credit_df = pd.DataFrame(index=macro_df.index)
     if "HYG_Close" in macro_df.columns and "TNX_Close" in macro_df.columns:

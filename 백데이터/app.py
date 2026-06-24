@@ -290,7 +290,7 @@ def compute_indicators(macro_df: pd.DataFrame, constituents_df: pd.DataFrame) ->
     net_advances_ratio = (((is_advancing.sum(axis=1) - is_declining.sum(axis=1)) / active_counts_safe).fillna(0.0)).where(valid_breadth, 0.0)
     ema19 = net_advances_ratio.ewm(span=19, adjust=False).mean()
     ema39 = net_advances_ratio.ewm(span=39, adjust=False).mean()
-    breadth_df["McClellan_Oscillator"] = ema19 - ema39
+    breadth_df["McClellan_Oscillator"] = (ema19 - ema39) * 1000
     
     # 조건 C: 국채 금리 급등 및 스프레드 상관계수 연산
     credit_df = pd.DataFrame(index=macro_df.index)
@@ -552,8 +552,12 @@ import json
 def save_user_settings(settings: dict) -> None:
     st.session_state.user_settings = settings.copy()
     try:
-        with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
+        import tempfile
+        temp_dir = os.path.dirname(SETTINGS_PATH)
+        with tempfile.NamedTemporaryFile("w", dir=temp_dir, delete=False, suffix=".tmp", encoding="utf-8") as f:
             json.dump(settings, f, indent=4, ensure_ascii=False)
+            temp_name = f.name
+        os.replace(temp_name, SETTINGS_PATH)
     except Exception as e:
         st.warning(f"사용자 설정 저장 실패: {e}")
 
