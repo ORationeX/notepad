@@ -132,31 +132,70 @@ def scrape_nasdaq100_tickers() -> list:
             "AMGN", "ISRG", "AMAT", "CMCSA", "BKNG", "HON", "VRTX", "ADP", "PANW", "MU"
         ]
 
+def download_oas_data(start_date: str, end_date: str) -> pd.DataFrame:
+    """FRED에서 Moody's Seasoned Baa Corporate Bond Yield Spread (BAA10Y) CSV 다운로드."""
+    url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAA10Y"
+    try:
+        df = pd.read_csv(url, parse_dates=["observation_date"], index_col="observation_date")
+        df["BAA10Y"] = pd.to_numeric(df["BAA10Y"], errors="coerce")
+        df = df.rename(columns={"BAA10Y": "OAS_Close"})
+        
+        # 타입 불일치 방지용 포맷팅 세이프가드
+        if not isinstance(start_date, str):
+            start_date = start_date.strftime("%Y-%m-%d")
+        if not isinstance(end_date, str):
+            end_date = end_date.strftime("%Y-%m-%d")
+            
+        df.index = pd.to_datetime(df.index)
+        start_ts = pd.Timestamp(start_date)
+        end_ts = pd.Timestamp(end_date)
+        
+        # 실제 데이터 인덱스 범위에 안전하게 밀착(Clamping)하여 데이터 슬라이싱 유실 방지
+        min_idx = df.index.min()
+        max_idx = df.index.max()
+        
+        actual_start = max(min_idx, start_ts)
+        actual_end = min(max_idx, end_ts)
+        
+        df = df.loc[actual_start:actual_end]
+        return df
+    except Exception as e:
+        st.warning(f"FRED OAS 데이터 다운로드 실패: {e}. 이전 캐시 혹은 빈 값을 사용합니다.")
+        return pd.DataFrame(columns=["OAS_Close"])
+
 @st.cache_data(show_spinner=False)
 def download_macro_data(start_date: str, end_date: str) -> pd.DataFrame:
-    """매크로 지수 데이터 다운로드 (^IXIC: 나스닥종합, HYG: 하이일드채권, ^TNX: 10년물 국채금리)."""
-    tickers = ["^IXIC", "HYG", "^TNX"]
+    """매크로 지수 데이터 다운로드 (^NDX: 나스닥 100 지수, QQQ, TQQQ, HYG: 하이일드채권, ^TNX: 10년물 국채금리, ^VIX: VIX 현물, ^VIX3M: VIX 3개월 지수)."""
+    tickers = ["^NDX", "QQQ", "TQQQ", "HYG", "^TNX", "^VIX", "^VIX3M"]
     df = yf.download(tickers, start=start_date, end=end_date, group_by="ticker", progress=False)
     if df.empty:
         raise ValueError("yfinance로부터 나스닥 및 매크로 지수를 받지 못했습니다.")
     
     macro_df = pd.DataFrame(index=df.index)
-    if "^IXIC" in df.columns.levels[0]:
-        nasdaq = df["^IXIC"]
-        macro_df["NASDAQ_Open"] = nasdaq["Open"]
-        macro_df["NASDAQ_High"] = nasdaq["High"]
-        macro_df["NASDAQ_Low"] = nasdaq["Low"]
-        macro_df["NASDAQ_Close"] = nasdaq["Close"]
-        macro_df["NASDAQ_AdjClose"] = nasdaq["Adj Close"] if "Adj Close" in nasdaq.columns else nasdaq["Close"]
-        macro_df["NASDAQ_Volume"] = nasdaq["Volume"]
+    for ticker_name, col_prefix in [("^NDX", "NDX"), ("QQQ", "QQQ"), ("TQQQ", "TQQQ")]:
+        if ticker_name in df.columns.levels[0]:
+            asset_data = df[ticker_name]
+            macro_df[f"{col_prefix}_Open"] = asset_data["Open"]
+            macro_df[f"{col_prefix}_High"] = asset_data["High"]
+            macro_df[f"{col_prefix}_Low"] = asset_data["Low"]
+            macro_df[f"{col_prefix}_Close"] = asset_data["Close"]
+            macro_df[f"{col_prefix}_AdjClose"] = asset_data["Adj Close"] if "Adj Close" in asset_data.columns else asset_data["Close"]
+            macro_df[f"{col_prefix}_Volume"] = asset_data["Volume"]
+            
     if "HYG" in df.columns.levels[0]:
         hyg = df["HYG"]
         macro_df["HYG_Close"] = hyg["Adj Close"] if "Adj Close" in hyg.columns else hyg["Close"]
     if "^TNX" in df.columns.levels[0]:
         tnx = df["^TNX"]
         macro_df["TNX_Close"] = tnx["Adj Close"] if "Adj Close" in tnx.columns else tnx["Close"]
+    if "^VIX" in df.columns.levels[0]:
+        vix = df["^VIX"]
+        macro_df["VIX_Close"] = vix["Adj Close"] if "Adj Close" in vix.columns else vix["Close"]
+    if "^VIX3M" in df.columns.levels[0]:
+        vix_f = df["^VIX3M"]
+        macro_df["VIX_F_Close"] = vix_f["Adj Close"] if "Adj Close" in vix_f.columns else vix_f["Close"]
         
-    return macro_df.dropna(subset=["NASDAQ_Close"])
+    return macro_df.dropna(subset=["NDX_Close"])
 
 @st.cache_data(show_spinner=False)
 def download_constituent_data(tickers: list, start_date: str, end_date: str) -> pd.DataFrame:
@@ -218,6 +257,15 @@ def get_complete_data(force_refresh: bool = False) -> tuple[pd.DataFrame, pd.Dat
         
     with st.spinner(f"매크로 변수 수집 중 ({start_date} ~ {end_date})..."):
         new_macro = download_macro_data(start_date, end_date)
+        try:
+            oas_df = download_oas_data(start_date, end_date)
+            oas_df.index = pd.to_datetime(oas_df.index)
+            new_macro.index = pd.to_datetime(new_macro.index)
+            new_macro = new_macro.join(oas_df, how="left")
+            new_macro["OAS_Close"] = new_macro["OAS_Close"].ffill().bfill()
+        except Exception as e:
+            st.warning(f"OAS 데이터 병합 오류: {e}")
+            new_macro["OAS_Close"] = np.nan
         
     with st.spinner(f"나스닥 100 구성 종목 가격 수집 중 ({start_date} ~ {end_date})..."):
         new_constituents = download_constituent_data(tickers, start_date, end_date)
@@ -234,10 +282,14 @@ def get_complete_data(force_refresh: bool = False) -> tuple[pd.DataFrame, pd.Dat
         constituents_df = new_constituents
         
     # 이동평균 연산 수행
-    macro_df["NASDAQ_SMA20"] = macro_df["NASDAQ_Close"].rolling(window=20).mean()
-    macro_df["NASDAQ_SMA50"] = macro_df["NASDAQ_Close"].rolling(window=50).mean()
-    macro_df["NASDAQ_SMA200"] = macro_df["NASDAQ_Close"].rolling(window=200).mean()
-    
+    for asset in ["NDX", "QQQ", "TQQQ"]:
+        macro_df[f"{asset}_SMA20"] = macro_df[f"{asset}_Close"].rolling(window=20).mean()
+        macro_df[f"{asset}_SMA50"] = macro_df[f"{asset}_Close"].rolling(window=50).mean()
+        macro_df[f"{asset}_SMA200"] = macro_df[f"{asset}_Close"].rolling(window=200).mean()
+        
+    if "OAS_Close" in macro_df.columns:
+        macro_df["OAS_Close_SMA20"] = macro_df["OAS_Close"].rolling(window=20).mean()
+        
     try:
         macro_df.to_parquet(CACHE_MACRO_PATH)
         constituents_df.to_parquet(CACHE_CONSTITUENTS_PATH)
@@ -302,12 +354,27 @@ def compute_indicators(macro_df: pd.DataFrame, constituents_df: pd.DataFrame) ->
         credit_df["Spread_ROC_20"] = credit_df["Spread_Ratio"].pct_change(periods=20)
         credit_df["TNX_Close_SMA20"] = macro_df["TNX_Close"].rolling(window=20).mean()
         
+    # OAS_Close가 있고 OAS_Close_SMA20이 아직 없다면 여기서 연산 (테스트 및 단독 호출 대응)
+    if "OAS_Close" in macro_df.columns and "OAS_Close_SMA20" not in macro_df.columns:
+        macro_df["OAS_Close_SMA20"] = macro_df["OAS_Close"].rolling(window=20).mean()
+        
+    # VIX 스프레드 비율 추가 (VIX 선물 결측치 대응용 안전장치 포함)
+    if "VIX_Close" in macro_df.columns:
+        vix_close = macro_df["VIX_Close"]
+        if "VIX_F_Close" in macro_df.columns and not macro_df["VIX_F_Close"].isna().all():
+            vix_f_safe = macro_df["VIX_F_Close"].replace(0, np.nan).ffill().bfill()
+        else:
+            vix_f_safe = vix_close.replace(0, np.nan)
+        credit_df["VIX_Spread_Ratio"] = vix_close / vix_f_safe
+    else:
+        credit_df["VIX_Spread_Ratio"] = np.nan
+        
     # 전체 데이터 Join 통합
     master = macro_df.join(breadth_df, how="inner")
     master = master.join(credit_df, how="inner")
     
-    # 개장일 기준 필터링: 나스닥 지수가 정상 거래된 날만 사용
-    master = master.dropna(subset=["NASDAQ_Close"])
+    # 개장일 기준 필터링: 나스닥 100 지수가 정상 거래된 날만 사용
+    master = master.dropna(subset=["NDX_Close"])
     
     # 남은 NaN 복구
     master = master.ffill().bfill()
@@ -323,14 +390,19 @@ def backtest_alarm_strategy(
     hl_threshold_sell: float,
     mcclellan_threshold_sell: float,
     tnx_sma_factor_sell: float,
-    min_active_conditions_sell: int,
+    vix_spread_threshold_sell: float = 1.0,
+    oas_threshold_sell: float = 4.5,
+    min_active_conditions_sell: int = 2,
     # 매수 (Entry) 조건 파라미터
-    reentry_strategy: str,
-    lockout_days: int,
-    hl_threshold_buy: float,
-    mcclellan_threshold_buy: float,
-    tnx_sma_factor_buy: float,
-    sma_pct_buy: float
+    reentry_strategy: str = "sma50",
+    lockout_days: int = 20,
+    hl_threshold_buy: float = 0.015,
+    mcclellan_threshold_buy: float = 5.0,
+    tnx_sma_factor_buy: float = 1.02,
+    vix_spread_threshold_buy: float = 1.0,
+    oas_threshold_buy: float = 4.5,
+    sma_pct_buy: float = 0.0,
+    selected_asset: str = "QQQ"
 ) -> dict:
     """하락 위험 경보 발동 시 전량 매도(현금화) 및 조건별 매수(재진입) 시뮬레이션."""
     data = df.copy().reset_index()
@@ -340,30 +412,46 @@ def backtest_alarm_strategy(
     cond_a_sell = (data["New_Highs_Pct"] > hl_threshold_sell) & (data["New_Lows_Pct"] > hl_threshold_sell)
     cond_b_sell = data["McClellan_Oscillator"] <= mcclellan_threshold_sell
     cond_c_sell = data["TNX_Close"] > (tnx_sma_factor_sell * data["TNX_Close_SMA20"])
+    cond_d_sell = data["VIX_Spread_Ratio"] > vix_spread_threshold_sell
+    cond_e_sell = data["OAS_Close"] > oas_threshold_sell
     
     cond_a_sell = cond_a_sell.fillna(False).astype(int)
     cond_b_sell = cond_b_sell.fillna(False).astype(int)
     cond_c_sell = cond_c_sell.fillna(False).astype(int)
+    cond_d_sell = cond_d_sell.fillna(False).astype(int)
+    cond_e_sell = cond_e_sell.fillna(False).astype(int)
     
     # 최근 5일 롤링 결합
     a_rolling_sell = cond_a_sell.rolling(5, min_periods=1).max().astype(int)
     b_rolling_sell = cond_b_sell.rolling(5, min_periods=1).max().astype(int)
     c_rolling_sell = cond_c_sell.rolling(5, min_periods=1).max().astype(int)
+    d_rolling_sell = cond_d_sell.rolling(5, min_periods=1).max().astype(int)
+    e_rolling_sell = cond_e_sell.rolling(5, min_periods=1).max().astype(int)
     
-    active_count_sell = a_rolling_sell + b_rolling_sell + c_rolling_sell
+    active_count_sell = a_rolling_sell + b_rolling_sell + c_rolling_sell + d_rolling_sell + e_rolling_sell
     alarm_sell_signal = active_count_sell >= min_active_conditions_sell
     
     # 2. 매수 (Buy) 복합 시그널 조건 평가 (reentry_strategy == "multi_cond" 시 사용)
     cond_a_buy = data["New_Lows_Pct"] <= hl_threshold_buy
     cond_b_buy = data["McClellan_Oscillator"] > mcclellan_threshold_buy
     cond_c_buy = data["TNX_Close"] <= (tnx_sma_factor_buy * data["TNX_Close_SMA20"])
+    cond_d_buy = data["VIX_Spread_Ratio"] <= vix_spread_threshold_buy
+    cond_e_buy = data["OAS_Close"] <= oas_threshold_buy
     
     cond_a_buy = cond_a_buy.fillna(True).astype(int)
     cond_b_buy = cond_b_buy.fillna(False).astype(int)
     cond_c_buy = cond_c_buy.fillna(True).astype(int)
+    cond_d_buy = cond_d_buy.fillna(True).astype(int)
+    cond_e_buy = cond_e_buy.fillna(True).astype(int)
     
-    nasdaq_close = data["NASDAQ_Close"].values
-    nasdaq_open = data["NASDAQ_Open"].values
+    # 선택 자산 컬럼 바인딩
+    close_col = f"{selected_asset}_Close"
+    open_col = f"{selected_asset}_Open"
+    sma50_col = f"{selected_asset}_SMA50"
+    sma20_col = f"{selected_asset}_SMA20"
+    
+    nasdaq_close = data[close_col].values
+    nasdaq_open = data[open_col].values
     dates = data["Date"].values
     
     benchmark_wealth = nasdaq_close / nasdaq_close[0]
@@ -393,6 +481,8 @@ def backtest_alarm_strategy(
                 if cond_a_sell.iloc[t-1]: reasons.append("A(시장균열)")
                 if cond_b_sell.iloc[t-1]: reasons.append("B(수급악화)")
                 if cond_c_sell.iloc[t-1]: reasons.append("C(금리충격)")
+                if cond_d_sell.iloc[t-1]: reasons.append("D(VIX패닉)")
+                if cond_e_sell.iloc[t-1]: reasons.append("E(신용경색)")
                 reason_str = f"하락 경보 발동 (충족 조건: {', '.join(reasons)} | 전체 활성: {active_count_sell.iloc[t-1]}개)"
                 
                 trade_logs.append({
@@ -417,19 +507,19 @@ def backtest_alarm_strategy(
                     can_reenter = True
                     reenter_reason = "의무 안전 대기기간 종료 및 하락 신호 해제에 따른 재진입"
                 elif reentry_strategy == "sma50":
-                    nasdaq_c = data["NASDAQ_Close"].iloc[t-1]
-                    nasdaq_sma = data["NASDAQ_SMA50"].iloc[t-1]
+                    nasdaq_c = data[close_col].iloc[t-1]
+                    nasdaq_sma = data[sma50_col].iloc[t-1]
                     threshold_val = nasdaq_sma * (1 + sma_pct_buy / 100.0)
                     if nasdaq_c > threshold_val:
                         can_reenter = True
-                        reenter_reason = f"나스닥 지수({nasdaq_c:.1f})가 50일 이평선 + {sma_pct_buy}%({threshold_val:.1f}) 상회 추세 확인 재진입"
+                        reenter_reason = f"{selected_asset} 지수({nasdaq_c:.1f})가 50일 이평선 + {sma_pct_buy}%({threshold_val:.1f}) 상회 추세 확인 재진입"
                 elif reentry_strategy == "sma20":
-                    nasdaq_c = data["NASDAQ_Close"].iloc[t-1]
-                    nasdaq_sma = data["NASDAQ_SMA20"].iloc[t-1]
+                    nasdaq_c = data[close_col].iloc[t-1]
+                    nasdaq_sma = data[sma20_col].iloc[t-1]
                     threshold_val = nasdaq_sma * (1 + sma_pct_buy / 100.0)
                     if nasdaq_c > threshold_val:
                         can_reenter = True
-                        reenter_reason = f"나스닥 지수({nasdaq_c:.1f})가 20일 이평선 + {sma_pct_buy}%({threshold_val:.1f}) 상회 단기 반등 확인 재진입"
+                        reenter_reason = f"{selected_asset} 지수({nasdaq_c:.1f})가 20일 이평선 + {sma_pct_buy}%({threshold_val:.1f}) 상회 단기 반등 확인 재진입"
                 elif reentry_strategy == "mcclellan":
                     mcc = data["McClellan_Oscillator"].iloc[t-1]
                     if mcc > mcclellan_threshold_buy:
@@ -439,11 +529,14 @@ def backtest_alarm_strategy(
                     c_a_ok = data["New_Lows_Pct"].iloc[t-1] <= hl_threshold_buy
                     c_b_ok = data["McClellan_Oscillator"].iloc[t-1] > mcclellan_threshold_buy
                     c_c_ok = data["TNX_Close"].iloc[t-1] <= (tnx_sma_factor_buy * data["TNX_Close_SMA20"].iloc[t-1])
+                    c_d_ok = data["VIX_Spread_Ratio"].iloc[t-1] <= vix_spread_threshold_buy
+                    c_e_ok = data["OAS_Close"].iloc[t-1] <= oas_threshold_buy
                     
-                    if c_a_ok and c_b_ok and c_c_ok:
+                    if c_a_ok and c_b_ok and c_c_ok and c_d_ok and c_e_ok:
                         can_reenter = True
                         reenter_reason = (f"복합 매수 조건 동시 충족 재진입 (신저가={data['New_Lows_Pct'].iloc[t-1]*100:.2f}% <= {hl_threshold_buy*100:.2f}%, "
-                                          f"매클레런={data['McClellan_Oscillator'].iloc[t-1]:.2f} > {mcclellan_threshold_buy:.1f}, 국채금리 안정)")
+                                          f"매클레런={data['McClellan_Oscillator'].iloc[t-1]:.2f} > {mcclellan_threshold_buy:.1f}, "
+                                          f"국채금리 안정, VIX 스프레드 안정, OAS 안정)")
             
             if can_reenter:
                 holding = True
@@ -480,6 +573,8 @@ def backtest_alarm_strategy(
     data["CondA_Sell"] = cond_a_sell
     data["CondB_Sell"] = cond_b_sell
     data["CondC_Sell"] = cond_c_sell
+    data["CondD_Sell"] = cond_d_sell
+    data["CondE_Sell"] = cond_e_sell
     data["Alarm_Signal"] = alarm_sell_signal.astype(int)
     data["Benchmark_Wealth"] = benchmark_wealth
     data["Strategy_Wealth"] = strategy_wealth
@@ -507,7 +602,14 @@ master_dataset = None
 # 캐시가 있고 강제 갱신이 아니면 최종 가공 데이터 즉시 로드 (1초 이내)
 if not st.session_state.force_refresh and os.path.exists(CACHE_PROCESSED_PATH):
     try:
-        master_dataset = load_cached_processed_data()
+        loaded_df = load_cached_processed_data()
+        # 새 컬럼(VIX_Spread_Ratio, OAS_Close 등)이 캐시에 존재하는지 확인
+        required_cols = ["NDX_Close", "QQQ_Close", "TQQQ_Close", "VIX_Spread_Ratio", "OAS_Close"]
+        if all(col in loaded_df.columns for col in required_cols):
+            master_dataset = loaded_df
+        else:
+            st.warning("기존 캐시 파일이 구버전입니다. 새로운 다중 자산 및 VIX/OAS 데이터를 실시간으로 가져옵니다.")
+            st.session_state.force_refresh = True
     except Exception:
         pass
 
@@ -532,19 +634,61 @@ if master_dataset is None:
 SETTINGS_PATH = os.path.join(DATA_DIR, "settings.json")
 
 # 기본 권장 설정값 정의
-default_settings = {
-    "start_date": "2016-01-01",  # 디폴트는 최근 10년으로 시작하여 로딩 성능 극대화
-    "end_date": master_dataset.index.max().strftime("%Y-%m-%d"),
-    "hl_threshold_pct_sell": 2.50,
-    "mcclellan_threshold_sell": 0.0,
-    "tnx_sma_factor_sell": 1.050,
-    "min_active_conditions_sell": 2,
-    "reentry_strategy": "sma50",
-    "lockout_days": 20,
-    "sma_pct_buy": 0.0,
-    "hl_threshold_pct_buy": 1.50,
-    "mcclellan_threshold_buy": 5.0,
-    "tnx_sma_factor_buy": 1.020
+default_settings_per_asset = {
+    "QQQ": {
+        "start_date": "2016-01-01",
+        "end_date": master_dataset.index.max().strftime("%Y-%m-%d"),
+        "hl_threshold_pct_sell": 2.50,
+        "mcclellan_threshold_sell": 0.0,
+        "tnx_sma_factor_sell": 1.050,
+        "vix_spread_threshold_sell": 0.95,
+        "oas_threshold_sell": 3.00,
+        "min_active_conditions_sell": 2,
+        "reentry_strategy": "sma50",
+        "lockout_days": 20,
+        "sma_pct_buy": 0.0,
+        "hl_threshold_pct_buy": 1.50,
+        "mcclellan_threshold_buy": 5.0,
+        "tnx_sma_factor_buy": 1.020,
+        "vix_spread_threshold_buy": 0.95,
+        "oas_threshold_buy": 3.00
+    },
+    "NDX": {
+        "start_date": "2016-01-01",
+        "end_date": master_dataset.index.max().strftime("%Y-%m-%d"),
+        "hl_threshold_pct_sell": 2.50,
+        "mcclellan_threshold_sell": 0.0,
+        "tnx_sma_factor_sell": 1.050,
+        "vix_spread_threshold_sell": 0.95,
+        "oas_threshold_sell": 3.00,
+        "min_active_conditions_sell": 2,
+        "reentry_strategy": "sma50",
+        "lockout_days": 20,
+        "sma_pct_buy": 0.0,
+        "hl_threshold_pct_buy": 1.50,
+        "mcclellan_threshold_buy": 5.0,
+        "tnx_sma_factor_buy": 1.020,
+        "vix_spread_threshold_buy": 0.95,
+        "oas_threshold_buy": 3.00
+    },
+    "TQQQ": {
+        "start_date": "2016-01-01",
+        "end_date": master_dataset.index.max().strftime("%Y-%m-%d"),
+        "hl_threshold_pct_sell": 2.50,
+        "mcclellan_threshold_sell": 0.0,
+        "tnx_sma_factor_sell": 1.050,
+        "vix_spread_threshold_sell": 0.95,
+        "oas_threshold_sell": 3.00,
+        "min_active_conditions_sell": 2,
+        "reentry_strategy": "sma50",
+        "lockout_days": 20,
+        "sma_pct_buy": 0.0,
+        "hl_threshold_pct_buy": 1.50,
+        "mcclellan_threshold_buy": 5.0,
+        "tnx_sma_factor_buy": 1.020,
+        "vix_spread_threshold_buy": 0.95,
+        "oas_threshold_buy": 3.00
+    }
 }
 
 import json
@@ -568,39 +712,89 @@ def get_current_settings() -> dict:
         "hl_threshold_pct_sell": float(hl_threshold_pct_sell),
         "mcclellan_threshold_sell": float(mcclellan_threshold_sell),
         "tnx_sma_factor_sell": float(tnx_sma_factor_sell),
+        "vix_spread_threshold_sell": float(vix_spread_threshold_sell),
+        "oas_threshold_sell": float(oas_threshold_sell),
         "min_active_conditions_sell": int(min_active_conditions_sell),
         "reentry_strategy": reentry_strategy,
         "lockout_days": int(lockout_days),
         "sma_pct_buy": float(sma_pct_buy),
         "hl_threshold_pct_buy": float(hl_threshold_pct_buy),
         "mcclellan_threshold_buy": float(mcclellan_threshold_buy),
-        "tnx_sma_factor_buy": float(tnx_sma_factor_buy)
+        "tnx_sma_factor_buy": float(tnx_sma_factor_buy),
+        "vix_spread_threshold_buy": float(vix_spread_threshold_buy),
+        "oas_threshold_buy": float(oas_threshold_buy)
     }
 
 # 세션 상태에 저장된 세팅 정보가 없으면 JSON 파일 로드 혹은 기본값 지정
 if "user_settings" not in st.session_state:
+    loaded_settings = None
     if os.path.exists(SETTINGS_PATH):
         try:
             with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
-                st.session_state.user_settings = json.load(f)
-                # 누락된 키가 있으면 기본값 채우기
-                for key, val in default_settings.items():
-                    if key not in st.session_state.user_settings:
-                        st.session_state.user_settings[key] = val
+                loaded_settings = json.load(f)
         except Exception:
-            st.session_state.user_settings = default_settings.copy()
+            pass
+
+    if loaded_settings and "settings" in loaded_settings:
+        st.session_state.user_settings = loaded_settings
     else:
-        st.session_state.user_settings = default_settings.copy()
+        st.session_state.user_settings = {
+            "selected_asset": "QQQ",
+            "settings": {
+                "QQQ": default_settings_per_asset["QQQ"].copy(),
+                "NDX": default_settings_per_asset["NDX"].copy(),
+                "TQQQ": default_settings_per_asset["TQQQ"].copy()
+            }
+        }
+        # 구버전 단일 딕셔너리 구조 마이그레이션
+        if loaded_settings:
+            for key in default_settings_per_asset["QQQ"].keys():
+                if key in loaded_settings:
+                    st.session_state.user_settings["settings"]["QQQ"][key] = loaded_settings[key]
+                    st.session_state.user_settings["settings"]["NDX"][key] = loaded_settings[key]
+                    st.session_state.user_settings["settings"]["TQQQ"][key] = loaded_settings[key]
+
+# -----------------------------------------------------------------------------
+# 6.5. 분석 대상 자산 선택 UI
+# -----------------------------------------------------------------------------
+st.sidebar.markdown("### 🔍 분석 대상 자산 선택")
+selected_display_asset = st.sidebar.radio(
+    "대상 자산 선택",
+    options=["QQQ (나스닥 100 ETF)", "나스닥 100 지수 (^NDX)", "TQQQ (나스닥 3배 레버리지)"],
+    index=0 if st.session_state.user_settings["selected_asset"] == "QQQ" else
+          1 if st.session_state.user_settings["selected_asset"] == "NDX" else 2
+)
+# 매핑
+selected_asset = "QQQ"
+if "^NDX" in selected_display_asset:
+    selected_asset = "NDX"
+elif "TQQQ" in selected_display_asset:
+    selected_asset = "TQQQ"
+
+if selected_asset != st.session_state.user_settings["selected_asset"]:
+    st.session_state.user_settings["selected_asset"] = selected_asset
+    save_user_settings(st.session_state.user_settings)
+    st.rerun()
+
+# 현재 선택된 자산의 설정 딕셔너리 참조 바인딩
+asset_settings = st.session_state.user_settings["settings"][selected_asset]
 
 st.sidebar.markdown("### 📊 데이터 범위 & 갱신")
 
-min_date = master_dataset.index.min().to_pydatetime()
-max_date = master_dataset.index.max().to_pydatetime()
+# 각 자산별 실제 최초 상장일(Inception Date) 정의하여 캐시 백필(bfill) 구간 제외
+INCEPTION_DATES = {
+    "QQQ": "1999-03-10",
+    "NDX": "1985-10-01",
+    "TQQQ": "2010-02-11"
+}
+inception_date = INCEPTION_DATES.get(selected_asset, "1985-10-01")
+valid_asset_data = master_dataset.loc[pd.Timestamp(inception_date):]
+min_date = valid_asset_data.index.min().to_pydatetime()
+max_date = valid_asset_data.index.max().to_pydatetime()
 
 # 날짜 초기값 설정
-# Ensure stored start/end dates are valid datetime objects
-stored_start = pd.to_datetime(st.session_state.user_settings.get("start_date", "2016-01-01"), errors='coerce')
-stored_end = pd.to_datetime(st.session_state.user_settings.get("end_date", max_date.strftime("%Y-%m-%d")), errors='coerce')
+stored_start = pd.to_datetime(asset_settings.get("start_date", "2016-01-01"), errors='coerce')
+stored_end = pd.to_datetime(asset_settings.get("end_date", max_date.strftime("%Y-%m-%d")), errors='coerce')
 # Fallback to defaults if parsing failed
 if pd.isna(stored_start):
     stored_start = pd.to_datetime("2016-01-01")
@@ -627,9 +821,9 @@ hl_threshold_pct_sell = st.sidebar.slider(
     "조건 A(매도): 52주 신/저가 동시 비율 (%)",
     min_value=0.10,
     max_value=10.00,
-    value=float(st.session_state.user_settings.get("hl_threshold_pct_sell", 2.50)),
+    value=float(asset_settings.get("hl_threshold_pct_sell", 2.50)),
     step=0.01,
-    help="나스닥 100 종목 중 52주 신고가 종목 비율과 52주 신저가 종목 비율이 동시에 이 수준을 넘어가면 시장 폭 내부 균열로 판정하여 매도 대기합니다."
+    help="나스닥 100 구성 종목 중 52주 신고가 종목 비율과 52주 신저가 종목 비율이 동시에 이 수준을 넘어가면 시장 폭 내부 균열로 판정하여 매도 대기합니다."
 )
 hl_threshold_sell = hl_threshold_pct_sell / 100.0
 
@@ -637,7 +831,7 @@ mcclellan_threshold_sell = st.sidebar.slider(
     "조건 B(매도): 매클레런 오실레이터 하한선",
     min_value=-50.0,
     max_value=50.0,
-    value=float(st.session_state.user_settings.get("mcclellan_threshold_sell", 0.0)),
+    value=float(asset_settings.get("mcclellan_threshold_sell", 0.0)),
     step=0.1,
     help="매클레런 오실레이터가 이 값 이하로 내려가면 매도 대기합니다."
 )
@@ -646,16 +840,34 @@ tnx_sma_factor_sell = st.sidebar.slider(
     "조건 C(매도): 국채 금리 급등율 (SMA20 대비 배수)",
     min_value=1.000,
     max_value=1.200,
-    value=float(st.session_state.user_settings.get("tnx_sma_factor_sell", 1.050)),
+    value=float(asset_settings.get("tnx_sma_factor_sell", 1.050)),
     step=0.002,
     help="미국 10년물 국채 금리가 최근 20일 이동평균선(SMA20)을 이 배율 이상 초과하면 매도 대기합니다."
 )
 
+vix_spread_threshold_sell = st.sidebar.slider(
+    "조건 D(매도): VIX 현물/3개월 스프레드 비율",
+    min_value=0.80,
+    max_value=1.50,
+    value=float(asset_settings.get("vix_spread_threshold_sell", 0.95)),
+    step=0.01,
+    help="VIX 현물/3개월 변동성 비율이 이 값 이상이면 시장의 비정상적 단기 공포(백워데이션)로 판정하고 매도 대기합니다. (1.0 이상은 백워데이션)"
+)
+
+oas_threshold_sell = st.sidebar.slider(
+    "조건 E(매도): 신용 스프레드 임계치 (Baa %)",
+    min_value=1.00,
+    max_value=6.00,
+    value=float(asset_settings.get("oas_threshold_sell", 3.00)),
+    step=0.05,
+    help="미국 Moody's Baa 회사채 신용 스프레드가 이 값 이상으로 오르면 신용 경색 위험으로 판단하고 매도 대기합니다."
+)
+
 min_active_conditions_sell = st.sidebar.selectbox(
     "🚨 매도 경보 최소 충족 조건 수",
-    options=[1, 2, 3],
-    index=[1, 2, 3].index(int(st.session_state.user_settings.get("min_active_conditions_sell", 2))),
-    help="설정한 조건 A, B, C 중 최소 몇 개 이상이 만족되어야 대피 신호(경보)를 발동할지 선택합니다."
+    options=[1, 2, 3, 4, 5],
+    index=[1, 2, 3, 4, 5].index(int(asset_settings.get("min_active_conditions_sell", 2))),
+    help="설정한 조건 A, B, C, D, E 중 최소 몇 개 이상이 만족되어야 대피 신호(경보)를 발동할지 선택합니다."
 )
 
 st.sidebar.markdown("---")
@@ -665,7 +877,7 @@ st.sidebar.markdown("### 🟢 매수(재진입) 시그널 설정")
 reentry_strategy = st.sidebar.selectbox(
     "🚨 매수 (재진입) 시그널 필터",
     options=["lockout", "sma50", "sma20", "mcclellan", "multi_cond"],
-    index=["lockout", "sma50", "sma20", "mcclellan", "multi_cond"].index(st.session_state.user_settings.get("reentry_strategy", "sma50")),
+    index=["lockout", "sma50", "sma20", "mcclellan", "multi_cond"].index(asset_settings.get("reentry_strategy", "sma50")),
     format_func=lambda x: {
         "lockout": "1. 단순 의무 대기기간",
         "sma50": "2. 50일 이평선 상회 (추천)",
@@ -680,20 +892,22 @@ lockout_days = st.sidebar.slider(
     "의무 안전 대기기간 (거래일 기준)",
     min_value=0,
     max_value=60,
-    value=int(st.session_state.user_settings.get("lockout_days", 20)),
+    value=int(asset_settings.get("lockout_days", 20)),
     step=1,
     help="자산을 전량 청산한 후, 재매수 진입이 원천 차단되는 안전 동결 기간을 거래일 기준으로 설정합니다."
 )
 
-# 재진입 전략별 상세 파라미터 로출 및 디폴트 설정
-sma_pct_buy = float(st.session_state.user_settings.get("sma_pct_buy", 0.0))
-hl_threshold_pct_buy = float(st.session_state.user_settings.get("hl_threshold_pct_buy", 1.50))
-mcclellan_threshold_buy = float(st.session_state.user_settings.get("mcclellan_threshold_buy", 5.0))
-tnx_sma_factor_buy = float(st.session_state.user_settings.get("tnx_sma_factor_buy", 1.020))
+# 재진입 전략별 상세 파라미터 노출 및 디폴트 설정
+sma_pct_buy = float(asset_settings.get("sma_pct_buy", 0.0))
+hl_threshold_pct_buy = float(asset_settings.get("hl_threshold_pct_buy", 1.50))
+mcclellan_threshold_buy = float(asset_settings.get("mcclellan_threshold_buy", 5.0))
+tnx_sma_factor_buy = float(asset_settings.get("tnx_sma_factor_buy", 1.020))
+vix_spread_threshold_buy = float(asset_settings.get("vix_spread_threshold_buy", 0.95))
+oas_threshold_buy = float(asset_settings.get("oas_threshold_buy", 3.00))
 
 if reentry_strategy in ["sma50", "sma20"]:
     sma_pct_buy = st.sidebar.slider(
-        "나스닥 돌파 기준 (%)",
+        f"{selected_asset} 돌파 기준 (%)",
         min_value=-2.00,
         max_value=5.00,
         value=sma_pct_buy,
@@ -734,90 +948,151 @@ elif reentry_strategy == "multi_cond":
         step=0.002,
         help="미국 10년물 국채 금리가 최근 20일 이동평균선 대비 이 배율 이하로 내려와 진정되어야 진입합니다."
     )
+    vix_spread_threshold_buy = st.sidebar.slider(
+        "조건 D(매수): VIX 스프레드 안정 기준",
+        min_value=0.80,
+        max_value=1.50,
+        value=vix_spread_threshold_buy,
+        step=0.01,
+        help="VIX 현물/3개월 비율이 이 값 이하로 떨어져 단기 패닉이 완전히 해소되어야 진입합니다."
+    )
+    oas_threshold_buy = st.sidebar.slider(
+        "조건 E(매수): 신용 스프레드 안정 기준 (Baa %)",
+        min_value=1.00,
+        max_value=6.00,
+        value=oas_threshold_buy,
+        step=0.05,
+        help="Baa 신용 스프레드가 이 임계값 이하로 안정을 되찾아야 진입합니다."
+    )
 
 hl_threshold_buy = hl_threshold_pct_buy / 100.0
 
-# 날짜 필터링 및 백테스트 실행 (사전 계산된 마스터 데이터를 사용하므로 0.05초 만에 완료됨)
-filtered_df = master_dataset.loc[pd.Timestamp(start_date_val):pd.Timestamp(end_date_val)]
+# 날짜 필터링 및 백테스트 실행 (선택된 자산의 유효 데이터가 있는 날만 사용)
+filtered_df = valid_asset_data.loc[pd.Timestamp(start_date_val):pd.Timestamp(end_date_val)]
 
 # ── 자동 민감도 튜닝 ────────────────────────────────────────
 st.sidebar.markdown("---")
 st.sidebar.subheader("🤖 자동 민감도 튜닝")
+
+from functools import partial
+backtest_func_bound = partial(backtest_alarm_strategy, selected_asset=selected_asset)
+
 if st.sidebar.button("🚀 매도 시그널 자동 최적화"):
-    with st.spinner("매도 파라미터 탐색 중..."):
-        sell_grid = {
-            "hl_threshold_pct_sell": np.arange(0.5, 5.5, 0.5),
-            "mcclellan_threshold_sell": np.arange(-20, 21, 5),
-            "tnx_sma_factor_sell": np.arange(1.00, 1.10, 0.01),
-            "min_active_conditions_sell": (1, 2, 3),
-        }
-        buy_grid = {
-            "hl_threshold_pct_buy": (hl_threshold_pct_buy,),
-            "mcclellan_threshold_buy": (mcclellan_threshold_buy,),
-            "tnx_sma_factor_buy": (tnx_sma_factor_buy,),
-            "sma_pct_buy": (sma_pct_buy,),
-        }
-        sell_opt, _ = tuner.grid_search(
-            df=filtered_df,
-            reentry_strategy=reentry_strategy,
-            lockout_days=lockout_days,
-            sell_grid=sell_grid,
-            buy_grid=buy_grid,
-            backtest_func=backtest_alarm_strategy,
-        )
-        optimized_settings = get_current_settings()
-        optimized_settings.update(sell_opt)
-        save_user_settings(optimized_settings)
-        st.success("매도 파라미터 최적화 완료 🎉")
-        st.rerun()
+    progress_bar = st.sidebar.progress(0.0)
+    progress_text = st.sidebar.empty()
+    
+    def update_progress(pct: float):
+        progress_bar.progress(pct)
+        progress_text.markdown(f"**🔍 최적화 진행률: {pct * 100:.1f}%**")
+        
+    sell_grid = {
+        "hl_threshold_pct_sell": np.arange(0.5, 5.5, 0.5),
+        "mcclellan_threshold_sell": np.arange(-20, 21, 5),
+        "tnx_sma_factor_sell": np.arange(1.00, 1.10, 0.01),
+        "vix_spread_threshold_sell": np.arange(0.85, 1.20, 0.05),
+        "oas_threshold_sell": np.arange(1.5, 4.5, 0.5),
+        "min_active_conditions_sell": (1, 2, 3, 4, 5),
+    }
+    buy_grid = {
+        "hl_threshold_pct_buy": (hl_threshold_pct_buy,),
+        "mcclellan_threshold_buy": (mcclellan_threshold_buy,),
+        "tnx_sma_factor_buy": (tnx_sma_factor_buy,),
+        "vix_spread_threshold_buy": (vix_spread_threshold_buy,),
+        "oas_threshold_buy": (oas_threshold_buy,),
+        "sma_pct_buy": (sma_pct_buy,),
+    }
+    
+    sell_opt, _ = tuner.grid_search(
+        df=filtered_df,
+        reentry_strategy=reentry_strategy,
+        lockout_days=lockout_days,
+        sell_grid=sell_grid,
+        buy_grid=buy_grid,
+        backtest_func=backtest_func_bound,
+        progress_callback=update_progress
+    )
+    
+    progress_bar.empty()
+    progress_text.empty()
+    
+    optimized_settings = get_current_settings()
+    optimized_settings.update(sell_opt)
+    st.session_state.user_settings["settings"][selected_asset] = optimized_settings
+    save_user_settings(st.session_state.user_settings)
+    st.success("매도 파라미터 최적화 완료 🎉")
+    st.rerun()
 
 if st.sidebar.button("🚀 매수 시그널 자동 최적화"):
-    with st.spinner("매수 파라미터 탐색 중..."):
-        sell_grid = {
-            "hl_threshold_pct_sell": (hl_threshold_pct_sell,),
-            "mcclellan_threshold_sell": (mcclellan_threshold_sell,),
-            "tnx_sma_factor_sell": (tnx_sma_factor_sell,),
-            "min_active_conditions_sell": (min_active_conditions_sell,),
-        }
-        buy_grid = {
-            "hl_threshold_pct_buy": np.arange(0.5, 3.5, 0.5),
-            "mcclellan_threshold_buy": np.arange(-10, 31, 5),
-            "tnx_sma_factor_buy": np.arange(0.95, 1.06, 0.01),
-            "sma_pct_buy": np.arange(-1.0, 3.1, 0.5),
-        }
-        _, buy_opt = tuner.grid_search(
-            df=filtered_df,
-            reentry_strategy=reentry_strategy,
-            lockout_days=lockout_days,
-            sell_grid=sell_grid,
-            buy_grid=buy_grid,
-            backtest_func=backtest_alarm_strategy,
-        )
-        optimized_settings = get_current_settings()
-        optimized_settings.update(buy_opt)
-        save_user_settings(optimized_settings)
-        st.success("매수 파라미터 최적화 완료 🎉")
-        st.rerun()
+    progress_bar = st.sidebar.progress(0.0)
+    progress_text = st.sidebar.empty()
+    
+    def update_progress(pct: float):
+        progress_bar.progress(pct)
+        progress_text.markdown(f"**🔍 최적화 진행률: {pct * 100:.1f}%**")
+        
+    sell_grid = {
+        "hl_threshold_pct_sell": (hl_threshold_pct_sell,),
+        "mcclellan_threshold_sell": (mcclellan_threshold_sell,),
+        "tnx_sma_factor_sell": (tnx_sma_factor_sell,),
+        "vix_spread_threshold_sell": (vix_spread_threshold_sell,),
+        "oas_threshold_sell": (oas_threshold_sell,),
+        "min_active_conditions_sell": (min_active_conditions_sell,),
+    }
+    buy_grid = {
+        "hl_threshold_pct_buy": np.arange(0.5, 3.5, 0.5),
+        "mcclellan_threshold_buy": np.arange(-10, 31, 5),
+        "tnx_sma_factor_buy": np.arange(0.95, 1.06, 0.01),
+        "vix_spread_threshold_buy": np.arange(0.85, 1.20, 0.05),
+        "oas_threshold_buy": np.arange(1.5, 4.5, 0.5),
+        "sma_pct_buy": np.arange(-1.0, 3.1, 0.5),
+    }
+    
+    _, buy_opt = tuner.grid_search(
+        df=filtered_df,
+        reentry_strategy=reentry_strategy,
+        lockout_days=lockout_days,
+        sell_grid=sell_grid,
+        buy_grid=buy_grid,
+        backtest_func=backtest_func_bound,
+        progress_callback=update_progress
+    )
+    
+    progress_bar.empty()
+    progress_text.empty()
+    
+    optimized_settings = get_current_settings()
+    optimized_settings.update(buy_opt)
+    st.session_state.user_settings["settings"][selected_asset] = optimized_settings
+    save_user_settings(st.session_state.user_settings)
+    st.success("매수 파라미터 최적화 완료 🎉")
+    st.rerun()
 
 # -----------------------------------------------------------------------------
 # 사용자 설정 실시간 파일 저장
 # -----------------------------------------------------------------------------
 current_settings = get_current_settings()
 
-if current_settings != st.session_state.user_settings:
-    save_user_settings(current_settings)
+if current_settings != st.session_state.user_settings["settings"][selected_asset]:
+    st.session_state.user_settings["settings"][selected_asset] = current_settings
+    save_user_settings(st.session_state.user_settings)
+
 backtest_results = backtest_alarm_strategy(
     df=filtered_df,
     hl_threshold_sell=hl_threshold_sell,
     mcclellan_threshold_sell=mcclellan_threshold_sell,
     tnx_sma_factor_sell=tnx_sma_factor_sell,
+    vix_spread_threshold_sell=vix_spread_threshold_sell,
+    oas_threshold_sell=oas_threshold_sell,
     min_active_conditions_sell=min_active_conditions_sell,
     reentry_strategy=reentry_strategy,
     lockout_days=lockout_days,
     hl_threshold_buy=hl_threshold_buy,
     mcclellan_threshold_buy=mcclellan_threshold_buy,
     tnx_sma_factor_buy=tnx_sma_factor_buy,
-    sma_pct_buy=sma_pct_buy
+    vix_spread_threshold_buy=vix_spread_threshold_buy,
+    oas_threshold_buy=oas_threshold_buy,
+    sma_pct_buy=sma_pct_buy,
+    selected_asset=selected_asset
 )
 
 sim_df = backtest_results["df"]
@@ -826,8 +1101,8 @@ latest_row = sim_df.iloc[-1]
 # -----------------------------------------------------------------------------
 # 7. 메인 헤더 레이아웃
 # -----------------------------------------------------------------------------
-st.markdown("<div class='main-header'>🚨 나스닥 복합 조건 하락장 경보 대시보드</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-header'>나스닥 종합 지수(^IXIC), 나스닥 100 구성 종목 시장폭 내부 분산, 수급 에너지(매클레런), 10년물 국채금리 변동성을 결합한 원클릭 하락 피하기 시뮬레이터</div>", unsafe_allow_html=True)
+st.markdown(f"<div class='main-header'>🚨 {selected_asset} 복합 조건 하락장 경보 대시보드</div>", unsafe_allow_html=True)
+st.markdown(f"<div class='sub-header'>분석 자산({selected_asset}), 나스닥 100 구성 종목 시장폭 내부 분산, 수급 에너지(매클레런), 10년물 국채금리, VIX 현/선물 스프레드, 하이일드 채권 스프레드(OAS) 변동성을 결합한 원클릭 하락 피하기 시뮬레이터</div>", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # 8. 종합 진단 KPI 메트릭 카드 (한글화)
@@ -835,8 +1110,10 @@ st.markdown("<div class='sub-header'>나스닥 종합 지수(^IXIC), 나스닥 1
 cond_a_active = latest_row["New_Highs_Pct"] > hl_threshold_sell and latest_row["New_Lows_Pct"] > hl_threshold_sell
 cond_b_active = latest_row["McClellan_Oscillator"] <= mcclellan_threshold_sell
 cond_c_active = latest_row["TNX_Close"] > (tnx_sma_factor_sell * latest_row["TNX_Close_SMA20"])
+cond_d_active = latest_row["VIX_Spread_Ratio"] > vix_spread_threshold_sell
+cond_e_active = latest_row["OAS_Close"] > oas_threshold_sell
 
-active_conditions = int(cond_a_active) + int(cond_b_active) + int(cond_c_active)
+active_conditions = int(cond_a_active) + int(cond_b_active) + int(cond_c_active) + int(cond_d_active) + int(cond_e_active)
 status_class = "status-safe"
 status_text = "🟢 안전 (SAFE)"
 status_desc = "하락 위험 징후가 감지되지 않았습니다. 현재 매수 보유 구간입니다."
@@ -851,7 +1128,8 @@ elif active_conditions > 0:
     status_text = "🟡 주의 (CAUTION)"
     status_desc = f"위험 신호가 {active_conditions}개 켜졌습니다. (대피 기준선: {min_active_conditions_sell}개 만족시) 시장 관찰을 요합니다."
 
-col1, col2, col3, col4 = st.columns(4)
+# 1행: 종합 진단, 조건 A, 조건 B
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown(f"""
@@ -880,12 +1158,33 @@ with col3:
     </div>
     """, unsafe_allow_html=True)
 
+# 2행: 조건 C, 조건 D, 조건 E
+col4, col5, col6 = st.columns(3)
+
 with col4:
     st.markdown(f"""
     <div class='status-card' style='background-color:#111827;'>
         <div class='card-title'>조건 C: 금리 변동성 충격</div>
         <div class='card-value' style='color:{"#f87171" if cond_c_active else "#34d399"};'>{"충격" if cond_c_active else "안정"}</div>
         <div class='card-desc'>국채 금리: {latest_row["TNX_Close"]:.2f}% (SMA20 대비: {(latest_row["TNX_Close"]/latest_row["TNX_Close_SMA20"] - 1)*100:+.2f}%)</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col5:
+    st.markdown(f"""
+    <div class='status-card' style='background-color:#111827;'>
+        <div class='card-title'>조건 D: VIX 패닉 위험</div>
+        <div class='card-value' style='color:{"#f87171" if cond_d_active else "#34d399"};'>{"위험" if cond_d_active else "정상"}</div>
+        <div class='card-desc'>VIX 현/선물 비율: {latest_row["VIX_Spread_Ratio"]:.2f} (기준선: {vix_spread_threshold_sell:.2f})</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col6:
+    st.markdown(f"""
+    <div class='status-card' style='background-color:#111827;'>
+        <div class='card-title'>조건 E: 신용 시장 경색</div>
+        <div class='card-value' style='color:{"#f87171" if cond_e_active else "#34d399"};'>{"위험" if cond_e_active else "정상"}</div>
+        <div class='card-desc'>하이일드 OAS: {latest_row["OAS_Close"]:.2f}% (기준선: {oas_threshold_sell:.2f}%)</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -963,7 +1262,7 @@ fig = make_subplots(
     vertical_spacing=0.06,
     row_heights=[0.48, 0.26, 0.26],
     subplot_titles=[
-        "<b>[Panel 1] 나스닥 종합 지수 추이 및 전략 보유/현금화 구간 오버레이</b>",
+        f"<b>[Panel 1] {selected_asset} 가격 추이 및 전략 보유/현금화 구간 오버레이</b>",
         "<b>[Panel 2] 나스닥 100 내부 구성종목 시장폭 (52주 신고가 vs 신저가 비율)</b>",
         "<b>[Panel 3] 신용 위험 스프레드 대용 지표 (미국 하이일드 채권 및 국채수익률 상관계수)</b>"
     ]
@@ -972,12 +1271,12 @@ fig = make_subplots(
 # 전략 매매 로그 기준 배경색: 보유 구간은 초록, 현금화 구간은 빨강
 add_trade_background(fig, trade_background_intervals, rows=[1, 2, 3])
 
-# Panel 1: NASDAQ Composite Price
+# Panel 1: Selected Asset Price
 fig.add_trace(
     go.Scatter(
         x=dates_idx, 
-        y=chart_df["NASDAQ_Close"], 
-        name="나스닥 지수 종가", 
+        y=chart_df[f"{selected_asset}_Close"], 
+        name=f"{selected_asset} 종가", 
         line=dict(color="#3b82f6", width=2.8)
     ),
     row=1, col=1
@@ -1044,7 +1343,7 @@ fig.update_layout(
     )
 )
 
-fig.update_yaxes(title_text="나스닥 지수 종가", gridcolor="rgba(255,255,255,0.08)", row=1, col=1)
+fig.update_yaxes(title_text=f"{selected_asset} 종가", gridcolor="rgba(255,255,255,0.08)", row=1, col=1)
 fig.update_yaxes(title_text="종목 비율 (%)", gridcolor="rgba(255,255,255,0.08)", row=2, col=1)
 fig.update_yaxes(title_text="상관계수 (-1 ~ 1)", gridcolor="rgba(255,255,255,0.08)", row=3, col=1)
 fig.update_xaxes(gridcolor="rgba(255,255,255,0.08)")
@@ -1141,12 +1440,12 @@ with col_right:
     mdd_improvement = st_stats["mdd"] - bm_stats["mdd"]
     
     if outperformance > 0:
-        st.success(f"📈 대피 전략이 나스닥 벤치마크 대비 **{outperformance*100:.2f}%p 초과 수익**을 달성했습니다.")
+        st.success(f"📈 대피 전략이 {selected_asset} 벤치마크 대비 **{outperformance*100:.2f}%p 초과 수익**을 달성했습니다.")
     else:
-        st.warning(f"📉 대피 전략 수익률이 나스닥 벤치마크 대비 **{abs(outperformance)*100:.2f}%p 하회**했습니다.")
+        st.warning(f"📉 대피 전략 수익률이 {selected_asset} 벤치마크 대비 **{abs(outperformance)*100:.2f}%p 하회**했습니다.")
         
     if mdd_improvement > 0:
-        st.success(f"🛡️ 최대 낙폭(MDD)을 **{mdd_improvement*100:.2f}%p 만큼 개선하여 나스닥 폭락을 헤지**했습니다.")
+        st.success(f"🛡️ 최대 낙폭(MDD)을 **{mdd_improvement*100:.2f}%p 만큼 개선하여 {selected_asset} 폭락을 헤지**했습니다.")
 
 # -----------------------------------------------------------------------------
 # 11. 전략 매매 로그 한글 매핑
@@ -1157,8 +1456,8 @@ st.markdown("### 📋 전략 매매 신호 기록 로그 (청산 및 재매수 �
 logs = backtest_results["trade_logs"]
 if logs:
     logs_df = pd.DataFrame(logs)
-    logs_df.columns = ["날짜", "포지션 조치", "체결 가격 (NASDAQ)", "누적 자산 가치", "사유"]
-    logs_df = logs_df[["날짜", "포지션 조치", "체결 가격 (NASDAQ)", "누적 자산 가치", "사유"]]
+    logs_df.columns = ["날짜", "포지션 조치", f"체결 가격 ({selected_asset})", "누적 자산 가치", "사유"]
+    logs_df = logs_df[["날짜", "포지션 조치", f"체결 가격 ({selected_asset})", "누적 자산 가치", "사유"]]
     
     def highlight_actions(val):
         if val == '청산 (현금화)':

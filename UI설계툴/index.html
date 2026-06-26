@@ -1,0 +1,2102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>O-RationeX UI Designer</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- JSZip CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <style>
+    /* CSS Reset & Variables */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    :root {
+      --bg-darker: #0c0d0e;
+      --bg-dark: #121315;
+      --bg-panel: #18191b;
+      --bg-active: #202225;
+      --border-color: #2b2d31;
+      --text-main: #f0f0f5;
+      --text-muted: #9ba1a6;
+      --accent-color: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-light: rgba(59, 130, 246, 0.15);
+      --accent-neon: #60a5fa;
+      --success-color: #10b981;
+      --danger-color: #ef4444;
+      --sidebar-width: 280px;
+      --right-panel-width: 320px;
+      --header-height: 56px;
+    }
+
+    body {
+      background-color: var(--bg-darker);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-darker);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* Top Navigation Bar */
+    header {
+      height: var(--header-height);
+      background-color: var(--bg-dark);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 16px;
+      z-index: 10;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      background: linear-gradient(135deg, var(--accent-color), #8b5cf6);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: bold;
+      font-size: 1.1rem;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .logo-text {
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, var(--text-main), var(--text-muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background-color: var(--bg-active);
+      border-color: var(--text-muted);
+    }
+
+    .btn-primary {
+      background-color: var(--accent-color);
+      border-color: var(--accent-color);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+      border-color: var(--accent-hover);
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .file-upload-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+
+    .file-upload-wrapper input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .mode-switch-group {
+      display: flex;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 2px;
+    }
+
+    .mode-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background-color: var(--bg-active);
+      color: var(--accent-neon);
+      font-weight: 600;
+    }
+
+    /* Main Container Split Layout */
+    .main-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - var(--header-height));
+      overflow: hidden;
+    }
+
+    /* Left Sidebar: File Tree & Components */
+    .left-sidebar {
+      width: var(--sidebar-width);
+      background-color: var(--bg-dark);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--bg-panel);
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 12px 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn.active {
+      color: var(--accent-neon);
+      border-bottom-color: var(--accent-color);
+      background-color: rgba(59, 130, 246, 0.05);
+    }
+
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    /* File Tree UI */
+    .tree-node {
+      margin-left: 12px;
+      margin-top: 4px;
+    }
+
+    .tree-folder {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      transition: background 0.2s;
+    }
+
+    .tree-folder:hover {
+      background-color: var(--bg-panel);
+    }
+
+    .tree-file {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .tree-file:hover {
+      background-color: var(--bg-panel);
+      color: var(--text-main);
+    }
+
+    .tree-file.active {
+      background-color: var(--accent-light);
+      color: var(--accent-neon);
+      font-weight: 500;
+    }
+
+    .tree-icon {
+      color: var(--text-muted);
+      width: 14px;
+      height: 14px;
+    }
+
+    .tree-folder > .tree-icon {
+      color: #fbbf24;
+    }
+
+    .empty-state {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-align: center;
+      margin-top: 40px;
+      line-height: 1.5;
+    }
+
+    /* Elements Library */
+    .lib-section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin: 16px 0 8px 0;
+      font-weight: 600;
+    }
+
+    .lib-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .lib-item {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+      cursor: grab;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .lib-item:hover {
+      background-color: var(--bg-active);
+      border-color: var(--accent-color);
+      transform: translateY(-1px);
+    }
+
+    .lib-item:active {
+      cursor: grabbing;
+    }
+
+    .lib-item i, .lib-item svg {
+      width: 20px;
+      height: 20px;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+
+    .lib-item:hover svg {
+      color: var(--accent-neon);
+    }
+
+    .lib-item-name {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    /* Central Canvas Area */
+    .canvas-container {
+      flex: 1;
+      background-color: var(--bg-darker);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .canvas-toolbar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      height: 40px;
+      background: rgba(24, 25, 27, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      z-index: 5;
+    }
+
+    .canvas-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.8rem;
+    }
+
+    .canvas-device-selector {
+      background-color: var(--bg-darker);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .canvas-workspace {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px 20px 20px;
+    }
+
+    /* Iframe Wrapper (Device Simulator) */
+    .iframe-wrapper {
+      background-color: #fff;
+      border-radius: 4px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    /* Resize handle indicator when editing element inside iframe */
+    .iframe-canvas {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background-color: #ffffff;
+      border-radius: 4px;
+      display: block;
+    }
+
+    /* Right Properties Panel */
+    .right-panel {
+      width: var(--right-panel-width);
+      background-color: var(--bg-dark);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .panel-section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .property-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .property-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      width: 70px;
+      flex-shrink: 0;
+    }
+
+    .property-input {
+      flex: 1;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    .property-input:focus {
+      border-color: var(--accent-color);
+    }
+
+    .property-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .color-picker-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .color-picker-input {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid var(--border-color);
+      background: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    /* Toast messages */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(24, 25, 27, 0.95);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 100;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast-success {
+      border-left: 3px solid var(--success-color);
+    }
+
+    .toast-error {
+      border-left: 3px solid var(--danger-color);
+    }
+
+    /* Utility Helpers */
+    .no-select {
+      user-select: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header>
+    <div class="logo-area">
+      <div class="logo-icon">OR</div>
+      <div class="logo-text">O-RationeX UI Designer</div>
+    </div>
+
+    <!-- Undo/Redo & View Controls -->
+    <div class="top-controls">
+      <button class="btn" id="btn-undo" title="실행 취소 (Ctrl+Z)" disabled>
+        <i data-lucide="undo"></i>
+      </button>
+      <button class="btn" id="btn-redo" title="재실행 (Ctrl+Y)" disabled>
+        <i data-lucide="redo"></i>
+      </button>
+
+      <div style="width: 1px; height: 20px; background-color: var(--border-color); margin: 0 4px;"></div>
+
+      <div class="mode-switch-group">
+        <button class="mode-btn active" id="mode-design">
+          <i data-lucide="edit-3" style="width:14px;height:14px;"></i> 디자인 모드
+        </button>
+        <button class="mode-btn" id="mode-preview">
+          <i data-lucide="play" style="width:14px;height:14px;"></i> 프리뷰 모드
+        </button>
+      </div>
+
+      <div style="width: 1px; height: 20px; background-color: var(--border-color); margin: 0 4px;"></div>
+
+      <!-- File Upload Inputs (Folder Mode) -->
+      <div class="file-upload-wrapper">
+        <button class="btn">
+          <i data-lucide="folder-open"></i> CSS 폴더 업로드
+        </button>
+        <input type="file" id="css-folder-input" webkitdirectory directory multiple>
+      </div>
+
+      <div class="file-upload-wrapper">
+        <button class="btn">
+          <i data-lucide="folder-code"></i> HTML/JSP 폴더 업로드
+        </button>
+        <input type="file" id="jsp-folder-input" webkitdirectory directory multiple>
+      </div>
+
+      <div style="width: 1px; height: 20px; background-color: var(--border-color); margin: 0 4px;"></div>
+
+      <!-- Export Project -->
+      <button class="btn btn-primary" id="btn-export" disabled>
+        <i data-lucide="download"></i> 프로젝트 ZIP 다운로드
+      </button>
+    </div>
+  </header>
+
+  <!-- Split Screen Layout -->
+  <div class="main-container">
+    
+    <!-- Left Sidebar: Tab Navigation -->
+    <aside class="left-sidebar">
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" data-tab="pages">
+          <i data-lucide="files" style="width: 16px; height: 16px;"></i> 페이지 목록
+        </button>
+        <button class="tab-btn" data-tab="elements">
+          <i data-lucide="layout-grid" style="width: 16px; height: 16px;"></i> 컴포넌트 추가
+        </button>
+      </div>
+
+      <!-- Left Panel Contents -->
+      <div class="tab-content">
+        <!-- 1. Pages Tree Pane -->
+        <div class="tab-pane active" id="pane-pages">
+          <div id="pages-tree-container">
+            <div class="empty-state">
+              JSP / HTML 폴더를 업로드하면<br>여기에 페이지 목록이 생성됩니다.
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Components Library Pane -->
+        <div class="tab-pane" id="pane-elements">
+          <div class="lib-section-title">기본 컨테이너</div>
+          <div class="lib-grid">
+            <div class="lib-item" draggable="true" data-type="div">
+              <i data-lucide="box"></i>
+              <div class="lib-item-name">Div 박스</div>
+            </div>
+            <div class="lib-item" draggable="true" data-type="section">
+              <i data-lucide="layout"></i>
+              <div class="lib-item-name">섹션</div>
+            </div>
+          </div>
+
+          <div class="lib-section-title">타이포그래피</div>
+          <div class="lib-grid">
+            <div class="lib-item" draggable="true" data-type="h1">
+              <i data-lucide="heading-1"></i>
+              <div class="lib-item-name">대제목 H1</div>
+            </div>
+            <div class="lib-item" draggable="true" data-type="p">
+              <i data-lucide="type"></i>
+              <div class="lib-item-name">텍스트 단락</div>
+            </div>
+          </div>
+
+          <div class="lib-section-title">폼 요소</div>
+          <div class="lib-grid">
+            <div class="lib-item" draggable="true" data-type="button">
+              <i data-lucide="play-square"></i>
+              <div class="lib-item-name">버튼</div>
+            </div>
+            <div class="lib-item" draggable="true" data-type="input">
+              <i data-lucide="text-cursor-input"></i>
+              <div class="lib-item-name">입력창 (Input)</div>
+            </div>
+          </div>
+
+          <div class="lib-section-title">미디어 & 임베드</div>
+          <div class="lib-grid">
+            <div class="lib-item" draggable="true" data-type="img">
+              <i data-lucide="image"></i>
+              <div class="lib-item-name">이미지</div>
+            </div>
+            <div class="lib-item" draggable="true" data-type="iframe">
+              <i data-lucide="panels-top-left"></i>
+              <div class="lib-item-name">Iframe 블록</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Canvas Preview Workspace -->
+    <main class="canvas-container">
+      <div class="canvas-toolbar">
+        <div class="canvas-toolbar-left">
+          <span id="canvas-status-text" style="color: var(--text-muted);">선택된 파일 없음</span>
+          <span style="color: var(--border-color)">|</span>
+          <label style="color: var(--text-muted); font-size:0.75rem;">기기 모드:</label>
+          <select class="canvas-device-selector" id="device-selector">
+            <option value="100%,100%">꽉 찬 화면 (Responsive)</option>
+            <option value="1280px,800px">데스크탑 (1280x800)</option>
+            <option value="768px,1024px">태블릿 IPad (768x1024)</option>
+            <option value="375px,812px">모바일 iPhone (375x812)</option>
+          </select>
+        </div>
+        <div class="canvas-toolbar-right" id="layout-mode-selector" style="display:flex; gap:8px; align-items:center;">
+          <label style="color: var(--text-muted); font-size:0.75rem;">정렬 모드:</label>
+          <select class="canvas-device-selector" id="drag-mode-select">
+            <option value="reorder">구조 재배치 (Flex/Block)</option>
+            <option value="absolute">Figma 자유배치 (Absolute)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="canvas-workspace" id="canvas-workspace">
+        <div class="iframe-wrapper" id="iframe-wrapper" style="width: 100%; height: 100%;">
+          <iframe id="editor-iframe" class="iframe-canvas"></iframe>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Sidebar: Properties & Elements Inspector -->
+    <aside class="right-panel">
+      <div class="panel-header">
+        <span>속성 편집 (Properties)</span>
+        <button class="btn" id="btn-delete-element" title="선택 요소 삭제 (Delete)" style="padding: 4px; color: var(--danger-color);" disabled>
+          <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+        </button>
+      </div>
+
+      <div id="inspector-content" class="hidden">
+        <!-- 1. HTML Info -->
+        <div class="panel-section">
+          <div class="panel-section-title">요소 정보</div>
+          <div class="property-row">
+            <span class="property-label">태그</span>
+            <input type="text" class="property-input" id="prop-tag" readonly style="opacity:0.6;">
+          </div>
+          <div class="property-row">
+            <span class="property-label">ID</span>
+            <input type="text" class="property-input" id="prop-id" placeholder="id 입력">
+          </div>
+          <div class="property-row">
+            <span class="property-label">Class</span>
+            <input type="text" class="property-input" id="prop-class" placeholder="클래스 목록">
+          </div>
+        </div>
+
+        <!-- 2. Text Content (only if not container) -->
+        <div class="panel-section" id="section-text-content">
+          <div class="panel-section-title">텍스트 편집</div>
+          <div class="property-row" style="align-items: flex-start;">
+            <span class="property-label">내용</span>
+            <textarea class="property-input" id="prop-text" rows="3" placeholder="텍스트 입력" style="resize:vertical;"></textarea>
+          </div>
+        </div>
+
+        <!-- 3. Dimension & Spacing -->
+        <div class="panel-section">
+          <div class="panel-section-title">레이아웃 및 여백</div>
+          <div class="property-grid-2">
+            <div class="property-row">
+              <span class="property-label" style="width:30px;">너비</span>
+              <input type="text" class="property-input" id="prop-width" placeholder="auto">
+            </div>
+            <div class="property-row">
+              <span class="property-label" style="width:30px;">높이</span>
+              <input type="text" class="property-input" id="prop-height" placeholder="auto">
+            </div>
+          </div>
+          <div class="property-grid-2">
+            <div class="property-row">
+              <span class="property-label" style="width:30px;">마진</span>
+              <input type="text" class="property-input" id="prop-margin" placeholder="0px">
+            </div>
+            <div class="property-row">
+              <span class="property-label" style="width:30px;">패딩</span>
+              <input type="text" class="property-input" id="prop-padding" placeholder="0px">
+            </div>
+          </div>
+          <div class="property-row">
+            <span class="property-label">Display</span>
+            <select class="property-input" id="prop-display">
+              <option value="">기본값</option>
+              <option value="block">block</option>
+              <option value="inline-block">inline-block</option>
+              <option value="flex">flex</option>
+              <option value="grid">grid</option>
+              <option value="inline">inline</option>
+              <option value="none">none</option>
+            </select>
+          </div>
+          <div class="property-row">
+            <span class="property-label">Position</span>
+            <select class="property-input" id="prop-position">
+              <option value="">기본값</option>
+              <option value="static">static</option>
+              <option value="relative">relative</option>
+              <option value="absolute">absolute</option>
+              <option value="fixed">fixed</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 4. Style Customizer (Color, Font) -->
+        <div class="panel-section">
+          <div class="panel-section-title">스타일 디자인</div>
+          <div class="property-row">
+            <span class="property-label">글자색</span>
+            <div class="color-picker-wrapper">
+              <input type="color" class="color-picker-input" id="prop-color-picker">
+              <input type="text" class="property-input" id="prop-color" placeholder="#000000">
+            </div>
+          </div>
+          <div class="property-row">
+            <span class="property-label">배경색</span>
+            <div class="color-picker-wrapper">
+              <input type="color" class="color-picker-input" id="prop-bg-picker">
+              <input type="text" class="property-input" id="prop-bg" placeholder="transparent">
+            </div>
+          </div>
+          <div class="property-grid-2">
+            <div class="property-row">
+              <span class="property-label" style="width:40px;">크기</span>
+              <input type="text" class="property-input" id="prop-fontsize" placeholder="14px">
+            </div>
+            <div class="property-row">
+              <span class="property-label" style="width:40px;">정렬</span>
+              <select class="property-input" id="prop-align">
+                <option value="">기본</option>
+                <option value="left">왼쪽</option>
+                <option value="center">가운데</option>
+                <option value="right">오른쪽</option>
+                <option value="justify">양끝</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="inspector-empty" class="empty-state">
+        화면에서 요소를 선택하여<br>속성을 편집하십시오.
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Toast Notification Template -->
+  <div class="toast" id="global-toast">
+    <span class="toast-icon-wrapper" style="display: flex; align-items: center; justify-content: center;">
+      <i data-lucide="info" style="width: 18px; height: 18px;"></i>
+    </span>
+    <span class="toast-message">메시지 내용</span>
+  </div>
+
+  <!-- Client Application Logic -->
+  <script>
+    // ----------------------------------------------------
+    // Application State Management
+    // ----------------------------------------------------
+    const state = {
+      cssFiles: {},      // File path -> content
+      jspFiles: {},      // File path -> content (JSP/HTML)
+      activeFile: null,  // Current file path being edited
+      undoStack: [],     // Array of HTML snapshots
+      redoStack: [],     // Array of HTML snapshots
+      selectedEl: null,  // Selected DOM element (reference inside iframe)
+      editMode: 'design',// 'design' or 'preview'
+      dragMode: 'reorder',// 'reorder' or 'absolute'
+      draggedType: null  // Type of element being dragged from library
+    };
+
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // ----------------------------------------------------
+    // Utility functions
+    // ----------------------------------------------------
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('global-toast');
+      const text = toast.querySelector('.toast-message');
+      const iconWrapper = toast.querySelector('.toast-icon-wrapper');
+      
+      text.innerText = message;
+      toast.className = `toast show toast-${type}`;
+      
+      let iconName = 'info';
+      let iconColor = 'var(--accent-neon)';
+      
+      if (type === 'success') {
+        iconName = 'check-circle-2';
+        iconColor = 'var(--success-color)';
+      } else if (type === 'error') {
+        iconName = 'alert-circle';
+        iconColor = 'var(--danger-color)';
+      }
+
+      iconWrapper.innerHTML = `<i data-lucide="${iconName}" style="width: 18px; height: 18px; color: ${iconColor};"></i>`;
+      lucide.createIcons({attrs: {class: 'toast-icon'}});
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // ----------------------------------------------------
+    // JSP Parser & Transformer (Preprocess & Restore)
+    // ----------------------------------------------------
+    // Safe-rendering converter for JSP/JSTL
+    function preprocessJSP(content, filePath) {
+      if (!content) return "";
+      let output = content;
+
+      // 1. Convert <%@ page ... %>, <%@ taglib ... %>, <%@ include ... %> to comments
+      output = output.replace(/<%@\s*([\s\S]*?)\s*%>/g, '<!-- JSP_DIRECTIVE: $1 -->');
+
+      // 2. Convert <% scriptlets %> to comments
+      output = output.replace(/<%\s*([\s\S]*?)\s*%>/g, '<!-- JSP_SCRIPTLET: $1 -->');
+
+      // 3. Convert <%= expressions %> to a span placeholder
+      output = output.replace(/<%=\s*([\s\S]*?)\s*%>/g, '<span data-jsp-expr="$1" style="border-bottom: 1px dashed var(--accent-color); color: #8b5cf6;" title="JSP Expression: $1">${$1}</span>');
+
+      // 4. Transform JSTL tags: <c:if test="...">...</c:if> etc. to mock elements
+      output = output.replace(/<c:([a-zA-Z0-9]+)(\s+[\s\S]*?)>/g, '<jstl-c-$1 data-jstl-attrs="$2" style="display: contents; outline: 1px dotted rgba(239, 68, 68, 0.4);">');
+      output = output.replace(/<\/c:([a-zA-Z0-9]+)>/g, '</jstl-c-$1>');
+
+      // 5. Handle standard JSP tags: <jsp:include page="..." />
+      output = output.replace(/<jsp:include\s+page="([^"]+)"\s*\/>/g, (match, includePath) => {
+        const resolvedPath = resolveRelativePath(filePath, includePath);
+        if (state.jspFiles[resolvedPath]) {
+          // Inline include with wrapper to trace it
+          return `<div data-jsp-include="${includePath}" style="border: 1px dashed rgba(16, 185, 129, 0.4); padding: 4px; margin: 4px 0;">
+            ${preprocessJSP(state.jspFiles[resolvedPath], resolvedPath)}
+          </div>`;
+        }
+        return `<!-- JSP_INCLUDE_MISSING: ${includePath} (Resolved: ${resolvedPath}) -->`;
+      });
+
+      return output;
+    }
+
+    // Convert back from Edited HTML to JSP/JSTL
+    function restoreJSP(htmlContent) {
+      if (!htmlContent) return "";
+      let output = htmlContent;
+
+      // 1. Restore Directives
+      output = output.replace(/<!--\s*JSP_DIRECTIVE:\s*([\s\S]*?)\s*-->/g, '<%@ $1 %>');
+
+      // 2. Restore Scriptlets
+      output = output.replace(/<!--\s*JSP_SCRIPTLET:\s*([\s\S]*?)\s*-->/g, '<% $1 %>');
+
+      // 3. Restore Expressions
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(output, 'text/html');
+      
+      const expressions = doc.querySelectorAll('[data-jsp-expr]');
+      expressions.forEach(el => {
+        const expr = el.getAttribute('data-jsp-expr');
+        const textNode = doc.createTextNode(`<%= ${expr} %>`);
+        el.replaceWith(textNode);
+      });
+
+      // Restore inline imports wrappers
+      const includes = doc.querySelectorAll('[data-jsp-include]');
+      includes.forEach(el => {
+        const page = el.getAttribute('data-jsp-include');
+        const textNode = doc.createTextNode(`<jsp:include page="${page}" />`);
+        el.replaceWith(textNode);
+      });
+
+      output = doc.body.innerHTML;
+
+      // 4. Restore JSTL tags
+      output = output.replace(/<jstl-c-([a-zA-Z0-9]+)\s+data-jstl-attrs="([^"]*)"[^>]*>/g, (match, tagName, attrs) => {
+        let decodedAttrs = attrs.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        return `<c:${tagName}${decodedAttrs}>`;
+      });
+      output = output.replace(/<\/jstl-c-([a-zA-Z0-9]+)>/g, '</c:$1>');
+
+      return output;
+    }
+
+    function resolveRelativePath(basePath, relativePath) {
+      const baseParts = basePath.split('/');
+      baseParts.pop(); // Remove file name
+      
+      const relParts = relativePath.split('/');
+      for (const part of relParts) {
+        if (part === '.') continue;
+        if (part === '..') {
+          baseParts.pop();
+        } else {
+          baseParts.push(part);
+        }
+      }
+      return baseParts.join('/');
+    }
+
+    // ----------------------------------------------------
+    // Folder Upload Processors
+    // ----------------------------------------------------
+    document.getElementById('css-folder-input').addEventListener('change', async (e) => {
+      const files = e.target.files;
+      let count = 0;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileNameLower = file.name.toLowerCase();
+        if (fileNameLower.endsWith('.css')) {
+          const content = await file.text();
+          let relativePath = file.webkitRelativePath.replace(/\\/g, '/');
+          const slashIndex = relativePath.indexOf('/');
+          if (slashIndex !== -1) {
+            relativePath = relativePath.substring(slashIndex + 1);
+          }
+          state.cssFiles[relativePath] = content;
+          count++;
+        }
+      }
+      showToast(`${count}개의 CSS 파일을 불러왔습니다.`);
+      if (state.activeFile) {
+        reloadIframe();
+      }
+    });
+
+    document.getElementById('jsp-folder-input').addEventListener('change', async (e) => {
+      const files = e.target.files;
+      let count = 0;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileNameLower = file.name.toLowerCase();
+        if (fileNameLower.endsWith('.jsp') || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm')) {
+          const content = await file.text();
+          let relativePath = file.webkitRelativePath.replace(/\\/g, '/');
+          const slashIndex = relativePath.indexOf('/');
+          if (slashIndex !== -1) {
+            relativePath = relativePath.substring(slashIndex + 1);
+          }
+          state.jspFiles[relativePath] = content;
+          count++;
+        }
+      }
+      showToast(`${count}개의 JSP/HTML 파일을 불러왔습니다.`);
+      buildPagesTree();
+      document.getElementById('btn-export').removeAttribute('disabled');
+    });
+
+    // ----------------------------------------------------
+    // Pages Sidebar Tree Builder
+    // ----------------------------------------------------
+    function buildPagesTree() {
+      const container = document.getElementById('pages-tree-container');
+      container.innerHTML = "";
+
+      const filePaths = Object.keys(state.jspFiles).sort();
+      if (filePaths.length === 0) {
+        container.innerHTML = `<div class="empty-state">JSP / HTML 폴더를 업로드하면<br>여기에 페이지 목록이 생성됩니다.</div>`;
+        return;
+      }
+
+      const root = {};
+      filePaths.forEach(path => {
+        const parts = path.split('/');
+        let current = root;
+        parts.forEach((part, index) => {
+          const isLast = index === parts.length - 1;
+          if (isLast) {
+            if (!current[part]) {
+              current[part] = null;
+            }
+          } else {
+            if (!current[part] || typeof current[part] !== 'object') {
+              current[part] = {};
+            }
+            current = current[part];
+          }
+        });
+      });
+
+      function renderTree(node, parentEl, currentPath = "") {
+        if (!node) return;
+        const keys = Object.keys(node).sort((a,b) => {
+          const isDirA = node[a] !== null && typeof node[a] === 'object';
+          const isDirB = node[b] !== null && typeof node[b] === 'object';
+          if (isDirA && !isDirB) return -1;
+          if (!isDirA && isDirB) return 1;
+          return a.localeCompare(b);
+        });
+
+        keys.forEach(key => {
+          const path = currentPath ? `${currentPath}/${key}` : key;
+          const isFolder = node[key] !== null && typeof node[key] === 'object';
+          
+          const nodeEl = document.createElement('div');
+          nodeEl.className = 'tree-node';
+
+          if (isFolder) {
+            const folderHeader = document.createElement('div');
+            folderHeader.className = 'tree-folder';
+            folderHeader.innerHTML = `<i class="tree-icon" data-lucide="folder"></i> <span>${key}</span>`;
+            nodeEl.appendChild(folderHeader);
+
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'tree-children';
+            nodeEl.appendChild(childrenContainer);
+
+            folderHeader.addEventListener('click', (e) => {
+              e.stopPropagation();
+              childrenContainer.classList.toggle('hidden');
+              const icon = folderHeader.querySelector('i');
+              if (childrenContainer.classList.contains('hidden')) {
+                icon.setAttribute('data-lucide', 'folder-closed');
+              } else {
+                icon.setAttribute('data-lucide', 'folder');
+              }
+              lucide.createIcons();
+            });
+
+            renderTree(node[key], childrenContainer, path);
+          } else {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'tree-file';
+            if (state.activeFile === path) {
+              fileItem.classList.add('active');
+            }
+            fileItem.innerHTML = `<i class="tree-icon" data-lucide="file-code"></i> <span>${key}</span>`;
+            fileItem.setAttribute('data-path', path);
+            
+            fileItem.addEventListener('click', (e) => {
+              e.stopPropagation();
+              selectFile(path);
+            });
+            nodeEl.appendChild(fileItem);
+          }
+          parentEl.appendChild(nodeEl);
+        });
+      }
+
+      const rootWrapper = document.createElement('div');
+      renderTree(root, rootWrapper);
+      container.appendChild(rootWrapper);
+      lucide.createIcons();
+    }
+
+    function selectFile(path) {
+      if (state.activeFile) {
+        saveCurrentProgress();
+      }
+
+      state.activeFile = path;
+      document.getElementById('canvas-status-text').innerText = path;
+      
+      document.querySelectorAll('.tree-file').forEach(el => {
+        if (el.getAttribute('data-path') === path) {
+          el.classList.add('active');
+        } else {
+          el.classList.remove('active');
+        }
+      });
+
+      state.undoStack = [];
+      state.redoStack = [];
+      updateUndoRedoButtons();
+
+      reloadIframe();
+    }
+
+    function saveCurrentProgress() {
+      if (!state.activeFile) return;
+      const iframe = document.getElementById('editor-iframe');
+      if (iframe && iframe.contentDocument) {
+        const doc = iframe.contentDocument.cloneNode(true);
+        cleanEditorMarkup(doc);
+        state.jspFiles[state.activeFile] = restoreJSP(doc.body.innerHTML);
+      }
+    }
+
+    function cleanEditorMarkup(doc) {
+      const guides = doc.querySelectorAll('.editor-guide-overlay, #editor-helper-styles, .resize-handle, .editor-drop-line, .editor-selection-overlay');
+      guides.forEach(el => el.remove());
+      
+      const editedEls = doc.querySelectorAll('[contenteditable]');
+      editedEls.forEach(el => el.removeAttribute('contenteditable'));
+
+      const hoveredEls = doc.querySelectorAll('.editor-hovered, .editor-selected');
+      hoveredEls.forEach(el => {
+        el.classList.remove('editor-hovered');
+        el.classList.remove('editor-selected');
+      });
+    }
+
+    // ----------------------------------------------------
+    // Editor Iframe Rendering System
+    // ----------------------------------------------------
+    function reloadIframe() {
+      if (!state.activeFile) return;
+      const iframe = document.getElementById('editor-iframe');
+      const rawContent = state.jspFiles[state.activeFile];
+
+      const preprocessedHtml = preprocessJSP(rawContent, state.activeFile);
+
+      let injectedCSS = "";
+      Object.keys(state.cssFiles).forEach(path => {
+        injectedCSS += `\n/* Path: ${path} */\n${state.cssFiles[path]}\n`;
+      });
+
+      const runtimeEditorCSS = `
+        .editor-hovered {
+          outline: 1.5px dashed var(--editor-accent, #3b82f6) !important;
+          outline-offset: -1px !important;
+          cursor: pointer !important;
+        }
+        .editor-selected {
+          outline: 1.5px solid var(--editor-accent, #3b82f6) !important;
+          outline-offset: -1px !important;
+        }
+        
+        .editor-drop-indicator {
+          border: 2px dashed #10b981 !important;
+          background-color: rgba(16, 185, 129, 0.1) !important;
+          pointer-events: none !important;
+        }
+
+        .editor-drop-line {
+          position: absolute;
+          background-color: #10b981;
+          height: 4px;
+          z-index: 99999;
+          pointer-events: none;
+          border-radius: 2px;
+        }
+
+        /* Selection Overlay & Resize Handles */
+        .editor-selection-overlay {
+          position: absolute !important;
+          border: 1.5px solid var(--editor-accent, #3b82f6) !important;
+          pointer-events: none !important;
+          z-index: 99998 !important;
+          box-sizing: border-box !important;
+        }
+
+        .resize-handle {
+          position: absolute !important;
+          width: 8px !important;
+          height: 8px !important;
+          background: #ffffff !important;
+          border: 1.5px solid var(--editor-accent, #3b82f6) !important;
+          border-radius: 50% !important;
+          pointer-events: auto !important;
+          z-index: 99999 !important;
+          box-sizing: border-box !important;
+        }
+
+        .resize-handle.nw { top: -4px; left: -4px; cursor: nwse-resize; }
+        .resize-handle.n  { top: -4px; left: calc(50% - 4px); cursor: ns-resize; }
+        .resize-handle.ne { top: -4px; right: -4px; cursor: nesw-resize; }
+        .resize-handle.e  { top: calc(50% - 4px); right: -4px; cursor: ew-resize; }
+        .resize-handle.se { bottom: -4px; right: -4px; cursor: nwse-resize; }
+        .resize-handle.s  { bottom: -4px; left: calc(50% - 4px); cursor: ns-resize; }
+        .resize-handle.sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
+        .resize-handle.w  { top: calc(50% - 4px); left: -4px; cursor: ew-resize; }
+      `;
+
+      const fullDocSource = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style id="project-styles">${injectedCSS}</style>
+          <style id="editor-helper-styles">${runtimeEditorCSS}</style>
+        </head>
+        <body>
+          ${preprocessedHtml}
+        </body>
+        </html>
+      `;
+
+      iframe.srcdoc = fullDocSource;
+    }
+
+    document.getElementById('editor-iframe').addEventListener('load', (e) => {
+      const iframe = e.target;
+      const doc = iframe.contentDocument;
+      if (!doc || !state.activeFile) return;
+
+      doc.documentElement.style.setProperty('--editor-accent', '#3b82f6');
+      resolveSubIframes(doc);
+
+      if (state.editMode === 'design') {
+        setupIframeInteractions(iframe);
+      }
+      
+      pushSnapshot();
+    });
+
+    function resolveSubIframes(doc) {
+      const subIframes = doc.querySelectorAll('iframe');
+      subIframes.forEach(sub => {
+        const src = sub.getAttribute('src');
+        if (src && !src.startsWith('http') && !src.startsWith('//')) {
+          const resolvedPath = resolveRelativePath(state.activeFile, src);
+          if (state.jspFiles[resolvedPath]) {
+            const childRaw = state.jspFiles[resolvedPath];
+            const childPreprocessed = preprocessJSP(childRaw, resolvedPath);
+            
+            let cssInjections = "";
+            Object.keys(state.cssFiles).forEach(path => {
+              cssInjections += `\n${state.cssFiles[path]}\n`;
+            });
+
+            sub.removeAttribute('src');
+            sub.srcdoc = `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <style>${cssInjections}</style>
+              </head>
+              <body>
+                ${childPreprocessed}
+              </body>
+              </html>
+            `;
+          }
+        }
+      });
+    }
+
+    // ----------------------------------------------------
+    // Core Drag and Drop & Visual Editing Logic
+    // ----------------------------------------------------
+    let dropIndicatorLine = null;
+    let currentDropTarget = null;
+    let currentDropPosition = 'after';
+
+    function setupIframeInteractions(iframe) {
+      const doc = iframe.contentDocument;
+      const win = iframe.contentWindow;
+
+      doc.addEventListener('mouseover', (e) => {
+        if (state.editMode !== 'design') return;
+        e.stopPropagation();
+        if (e.target === doc.body || e.target === doc.documentElement) return;
+        e.target.classList.add('editor-hovered');
+      });
+
+      doc.addEventListener('mouseout', (e) => {
+        e.stopPropagation();
+        e.target.classList.remove('editor-hovered');
+      });
+
+      doc.addEventListener('click', (e) => {
+        if (state.editMode !== 'design') return;
+        e.preventDefault();
+        e.stopPropagation();
+        selectElement(e.target);
+      });
+
+      doc.addEventListener('dblclick', (e) => {
+        if (state.editMode !== 'design') return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const el = e.target;
+        if (el === doc.body || el === doc.documentElement) return;
+
+        el.contentEditable = "true";
+        el.focus();
+        
+        el.addEventListener('blur', function blurHandler() {
+          el.removeAttribute('contenteditable');
+          pushSnapshot();
+          el.removeEventListener('blur', blurHandler);
+        });
+      });
+
+      doc.addEventListener('dragover', (e) => {
+        if (state.editMode !== 'design') return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const target = e.target;
+        if (target === doc.documentElement) return;
+        calculateDropPosition(target, e.clientX, e.clientY);
+      });
+
+      doc.addEventListener('dragleave', (e) => {
+        removeDropIndicator();
+      });
+
+      doc.addEventListener('drop', (e) => {
+        if (state.editMode !== 'design') return;
+        e.preventDefault();
+        e.stopPropagation();
+        
+        removeDropIndicator();
+
+        let newEl = null;
+        if (state.draggedType) {
+          newEl = createLibraryElement(state.draggedType);
+        } else if (state.selectedEl) {
+          newEl = state.selectedEl;
+        }
+
+        if (!newEl) return;
+
+        const target = e.target === doc.documentElement ? doc.body : e.target;
+
+        if (state.dragMode === 'absolute') {
+          if (newEl.style.position !== 'absolute') {
+            newEl.style.position = 'absolute';
+          }
+          const rect = target.getBoundingClientRect();
+          const leftX = e.clientX - rect.left;
+          const topY = e.clientY - rect.top;
+
+          newEl.style.left = `${leftX}px`;
+          newEl.style.top = `${topY}px`;
+          
+          if (state.draggedType) {
+            target.appendChild(newEl);
+          }
+        } else {
+          if (currentDropPosition === 'before') {
+            target.parentNode.insertBefore(newEl, target);
+          } else if (currentDropPosition === 'after') {
+            target.parentNode.insertBefore(newEl, target.nextSibling);
+          } else {
+            target.appendChild(newEl);
+          }
+        }
+
+        selectElement(newEl);
+        pushSnapshot();
+        state.draggedType = null;
+      });
+
+      let isDragging = false;
+      let startX, startY, startLeft, startTop;
+
+      doc.addEventListener('mousedown', (e) => {
+        if (state.editMode !== 'design' || state.dragMode !== 'absolute') return;
+        if (!state.selectedEl || e.target !== state.selectedEl) return;
+
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        const computedStyle = win.getComputedStyle(state.selectedEl);
+        startLeft = parseInt(computedStyle.left) || 0;
+        startTop = parseInt(computedStyle.top) || 0;
+
+        if (computedStyle.position === 'static') {
+          state.selectedEl.style.position = 'relative';
+        }
+
+        e.preventDefault();
+      });
+
+      doc.addEventListener('mousemove', (e) => {
+        if (!isDragging || !state.selectedEl) return;
+        
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        state.selectedEl.style.left = `${startLeft + dx}px`;
+        state.selectedEl.style.top = `${startTop + dy}px`;
+        
+        updateInspectorPanel();
+      });
+
+      doc.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          pushSnapshot();
+        }
+      });
+    }
+
+    function calculateDropPosition(target, x, y) {
+      if (target === document.getElementById('editor-iframe').contentDocument.body) {
+        currentDropTarget = target;
+        currentDropPosition = 'append';
+        drawDropIndicatorLine(target, 'append');
+        return;
+      }
+
+      const rect = target.getBoundingClientRect();
+      const relativeY = y - rect.top;
+      const height = rect.height;
+
+      currentDropTarget = target;
+      if (relativeY < height * 0.3) {
+        currentDropPosition = 'before';
+      } else if (relativeY > height * 0.7) {
+        currentDropPosition = 'after';
+      } else {
+        currentDropPosition = 'append';
+      }
+
+      drawDropIndicatorLine(target, currentDropPosition);
+    }
+
+    function drawDropIndicatorLine(target, position) {
+      const doc = document.getElementById('editor-iframe').contentDocument;
+      removeDropIndicator();
+
+      dropIndicatorLine = doc.createElement('div');
+      dropIndicatorLine.className = 'editor-drop-line';
+
+      const rect = target.getBoundingClientRect();
+      const bodyScrollTop = doc.body.scrollTop || doc.documentElement.scrollTop;
+      const bodyScrollLeft = doc.body.scrollLeft || doc.documentElement.scrollLeft;
+
+      if (position === 'before') {
+        dropIndicatorLine.style.top = `${rect.top + bodyScrollTop - 2}px`;
+        dropIndicatorLine.style.left = `${rect.left + bodyScrollLeft}px`;
+        dropIndicatorLine.style.width = `${rect.width}px`;
+      } else if (position === 'after') {
+        dropIndicatorLine.style.top = `${rect.bottom + bodyScrollTop - 2}px`;
+        dropIndicatorLine.style.left = `${rect.left + bodyScrollLeft}px`;
+        dropIndicatorLine.style.width = `${rect.width}px`;
+      } else {
+        dropIndicatorLine.style.top = `${rect.top + bodyScrollTop}px`;
+        dropIndicatorLine.style.left = `${rect.left + bodyScrollLeft}px`;
+        dropIndicatorLine.style.width = `${rect.width}px`;
+        dropIndicatorLine.style.height = `${rect.height}px`;
+        dropIndicatorLine.style.border = '2px dashed #10b981';
+        dropIndicatorLine.style.backgroundColor = 'rgba(16, 185, 129, 0.08)';
+      }
+
+      doc.body.appendChild(dropIndicatorLine);
+    }
+
+    function removeDropIndicator() {
+      if (dropIndicatorLine) {
+        dropIndicatorLine.remove();
+        dropIndicatorLine = null;
+      }
+    }
+
+    // ----------------------------------------------------
+    // Element Library Spawner
+    // ----------------------------------------------------
+    function createLibraryElement(type) {
+      const doc = document.getElementById('editor-iframe').contentDocument;
+      const el = doc.createElement(type);
+
+      switch(type) {
+        case 'div':
+          el.style.width = '100%';
+          el.style.minHeight = '100px';
+          el.style.backgroundColor = '#f3f4f6';
+          el.style.border = '1px solid #e5e7eb';
+          el.style.padding = '12px';
+          el.innerText = '콘테이너 박스';
+          break;
+        case 'section':
+          el.style.width = '100%';
+          el.style.minHeight = '150px';
+          el.style.padding = '24px';
+          el.style.backgroundColor = '#ffffff';
+          el.innerText = '새로운 섹션 영역';
+          break;
+        case 'h1':
+          el.innerText = '제목을 여기에 입력하세요';
+          el.style.fontSize = '2rem';
+          el.style.fontWeight = 'bold';
+          el.style.margin = '10px 0';
+          break;
+        case 'p':
+          el.innerText = '이곳에 상세한 단락 텍스트 내용을 자유롭게 편집 및 구성할 수 있습니다.';
+          el.style.fontSize = '1rem';
+          el.style.margin = '8px 0';
+          break;
+        case 'button':
+          el.innerText = '기본 버튼';
+          el.style.padding = '8px 16px';
+          el.style.backgroundColor = '#3b82f6';
+          el.style.color = '#ffffff';
+          el.style.border = 'none';
+          el.style.borderRadius = '4px';
+          el.style.cursor = 'pointer';
+          break;
+        case 'input':
+          el.type = 'text';
+          el.placeholder = '내용을 입력하세요...';
+          el.style.padding = '8px';
+          el.style.border = '1px solid #d1d5db';
+          el.style.borderRadius = '4px';
+          break;
+        case 'img':
+          el.src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=60';
+          el.style.maxWidth = '100%';
+          el.style.height = 'auto';
+          el.style.borderRadius = '6px';
+          break;
+        case 'iframe':
+          el.style.width = '100%';
+          el.style.height = '200px';
+          el.style.border = '1px dashed #cccccc';
+          break;
+      }
+      return el;
+    }
+
+    document.querySelectorAll('.lib-item').forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        state.draggedType = item.getAttribute('data-type');
+        state.selectedEl = null;
+      });
+    });
+
+    // ----------------------------------------------------
+    // Element Selection & Properties Inspector
+    // ----------------------------------------------------
+    function selectElement(el) {
+      const doc = document.getElementById('editor-iframe').contentDocument;
+      
+      const oldSelected = doc.querySelectorAll('.editor-selected');
+      oldSelected.forEach(x => x.classList.remove('editor-selected'));
+      
+      const oldOverlay = doc.querySelector('.editor-selection-overlay');
+      if (oldOverlay) oldOverlay.remove();
+
+      if (!el || el === doc.body || el === doc.documentElement) {
+        state.selectedEl = null;
+        document.getElementById('inspector-content').classList.add('hidden');
+        document.getElementById('inspector-empty').classList.remove('hidden');
+        document.getElementById('btn-delete-element').setAttribute('disabled', 'true');
+        return;
+      }
+
+      state.selectedEl = el;
+      el.classList.add('editor-selected');
+
+      document.getElementById('inspector-content').classList.remove('hidden');
+      document.getElementById('inspector-empty').classList.add('hidden');
+      document.getElementById('btn-delete-element').removeAttribute('disabled');
+
+      createSelectionOverlay(el);
+      updateInspectorPanel();
+    }
+
+    function createSelectionOverlay(el) {
+      const doc = document.getElementById('editor-iframe').contentDocument;
+      const win = document.getElementById('editor-iframe').contentWindow;
+      
+      const overlay = doc.createElement('div');
+      overlay.className = 'editor-selection-overlay';
+      
+      const updatePosition = () => {
+        if (!state.selectedEl) return;
+        const rect = state.selectedEl.getBoundingClientRect();
+        const bodyScrollTop = doc.body.scrollTop || doc.documentElement.scrollTop;
+        const bodyScrollLeft = doc.body.scrollLeft || doc.documentElement.scrollLeft;
+
+        overlay.style.top = `${rect.top + bodyScrollTop}px`;
+        overlay.style.left = `${rect.left + bodyScrollLeft}px`;
+        overlay.style.width = `${rect.width}px`;
+        overlay.style.height = `${rect.height}px`;
+      };
+      
+      updatePosition();
+      
+      const directions = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+      directions.forEach(dir => {
+        const handle = doc.createElement('div');
+        handle.className = `resize-handle ${dir}`;
+        handle.setAttribute('data-dir', dir);
+        
+        handle.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const startWidth = el.offsetWidth;
+          const startHeight = el.offsetHeight;
+          const rect = el.getBoundingClientRect();
+          const startLeft = parseInt(win.getComputedStyle(el).left) || rect.left;
+          const startTop = parseInt(win.getComputedStyle(el).top) || rect.top;
+          const isAbsolute = win.getComputedStyle(el).position === 'absolute';
+
+          const onMouseMove = (moveEvt) => {
+            const dx = moveEvt.clientX - startX;
+            const dy = moveEvt.clientY - startY;
+            
+            let newWidth = startWidth;
+            let newHeight = startHeight;
+
+            if (dir.includes('e')) {
+              newWidth = Math.max(10, startWidth + dx);
+              el.style.width = `${newWidth}px`;
+            }
+            if (dir.includes('s')) {
+              newHeight = Math.max(10, startHeight + dy);
+              el.style.height = `${newHeight}px`;
+            }
+            if (dir.includes('w')) {
+              newWidth = Math.max(10, startWidth - dx);
+              el.style.width = `${newWidth}px`;
+              if (isAbsolute) {
+                el.style.left = `${startLeft + dx}px`;
+              }
+            }
+            if (dir.includes('n')) {
+              newHeight = Math.max(10, startHeight - dy);
+              el.style.height = `${newHeight}px`;
+              if (isAbsolute) {
+                el.style.top = `${startTop + dy}px`;
+              }
+            }
+
+            updatePosition();
+            updateInspectorPanel();
+          };
+
+          const onMouseUp = () => {
+            doc.removeEventListener('mousemove', onMouseMove);
+            doc.removeEventListener('mouseup', onMouseUp);
+            pushSnapshot();
+          };
+
+          doc.addEventListener('mousemove', onMouseMove);
+          doc.addEventListener('mouseup', onMouseUp);
+        });
+        
+        overlay.appendChild(handle);
+      });
+
+      doc.body.appendChild(overlay);
+      state.updateOverlayPosition = updatePosition;
+    }
+
+    function updateInspectorPanel() {
+      if (!state.selectedEl) return;
+      const el = state.selectedEl;
+      const win = document.getElementById('editor-iframe').contentWindow;
+      const style = win.getComputedStyle(el);
+
+      document.getElementById('prop-tag').value = el.tagName.toLowerCase();
+      document.getElementById('prop-id').value = el.id || '';
+      document.getElementById('prop-class').value = Array.from(el.classList).filter(c => c !== 'editor-selected' && c !== 'editor-hovered').join(' ');
+
+      const textSection = document.getElementById('section-text-content');
+      const isContainer = ['DIV', 'SECTION', 'UL', 'OL', 'FORM', 'BODY', 'TABLE', 'TR'].includes(el.tagName);
+      if (isContainer) {
+        textSection.classList.add('hidden');
+      } else {
+        textSection.classList.remove('hidden');
+        document.getElementById('prop-text').value = el.innerText;
+      }
+
+      document.getElementById('prop-width').value = el.style.width || style.width;
+      document.getElementById('prop-height').value = el.style.height || style.height;
+      document.getElementById('prop-margin').value = el.style.margin || style.margin;
+      document.getElementById('prop-padding').value = el.style.padding || style.padding;
+      document.getElementById('prop-display').value = el.style.display || style.display;
+      document.getElementById('prop-position').value = el.style.position || style.position;
+
+      const textColor = style.color;
+      const bgColor = style.backgroundColor;
+
+      document.getElementById('prop-color').value = el.style.color || rgbToHex(textColor) || '';
+      document.getElementById('prop-color-picker').value = rgbToHex(textColor) || '#000000';
+      document.getElementById('prop-bg').value = el.style.backgroundColor || rgbToHex(bgColor) || '';
+      document.getElementById('prop-bg-picker').value = rgbToHex(bgColor) || '#ffffff';
+
+      document.getElementById('prop-fontsize').value = el.style.fontSize || style.fontSize;
+      document.getElementById('prop-align').value = el.style.textAlign || style.textAlign;
+    }
+
+    function rgbToHex(rgb) {
+      if (!rgb || rgb === 'transparent' || rgb.startsWith('rgba(0, 0, 0, 0)')) return '';
+      const parts = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+))?\)$/);
+      if (!parts) return '';
+      const r = parseInt(parts[1]);
+      const g = parseInt(parts[2]);
+      const b = parseInt(parts[3]);
+      return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    document.getElementById('prop-id').addEventListener('input', (e) => {
+      if (state.selectedEl) {
+        state.selectedEl.id = e.target.value;
+        pushSnapshot();
+      }
+    });
+
+    document.getElementById('prop-class').addEventListener('input', (e) => {
+      if (state.selectedEl) {
+        const classNames = e.target.value.trim().split(/\s+/).filter(Boolean);
+        state.selectedEl.className = "";
+        classNames.forEach(c => state.selectedEl.classList.add(c));
+        state.selectedEl.classList.add('editor-selected');
+        pushSnapshot();
+      }
+    });
+
+    document.getElementById('prop-text').addEventListener('input', (e) => {
+      if (state.selectedEl) {
+        state.selectedEl.innerText = e.target.value;
+        pushSnapshot();
+      }
+    });
+
+    function bindStyleChange(inputId, cssProperty, isColor = false, colorPickerId = null) {
+      const input = document.getElementById(inputId);
+      
+      const updateStyle = (val) => {
+        if (state.selectedEl) {
+          state.selectedEl.style[cssProperty] = val;
+          if (colorPickerId && isColor) {
+            document.getElementById(colorPickerId).value = val;
+          }
+          if (state.updateOverlayPosition) {
+            state.updateOverlayPosition();
+          }
+          pushSnapshot();
+        }
+      };
+
+      input.addEventListener('input', (e) => updateStyle(e.target.value));
+      
+      if (colorPickerId) {
+        const picker = document.getElementById(colorPickerId);
+        picker.addEventListener('input', (e) => {
+          input.value = e.target.value;
+          updateStyle(e.target.value);
+        });
+      }
+    }
+
+    bindStyleChange('prop-width', 'width');
+    bindStyleChange('prop-height', 'height');
+    bindStyleChange('prop-margin', 'margin');
+    bindStyleChange('prop-padding', 'padding');
+    bindStyleChange('prop-display', 'display');
+    bindStyleChange('prop-position', 'position');
+    bindStyleChange('prop-color', 'color', true, 'prop-color-picker');
+    bindStyleChange('prop-bg', 'backgroundColor', true, 'prop-bg-picker');
+    bindStyleChange('prop-fontsize', 'fontSize');
+    bindStyleChange('prop-align', 'textAlign');
+
+    document.getElementById('btn-delete-element').addEventListener('click', deleteSelected);
+
+    function deleteSelected() {
+      if (state.selectedEl) {
+        state.selectedEl.remove();
+        selectElement(null);
+        pushSnapshot();
+        showToast('요소가 삭제되었습니다.');
+      }
+    }
+
+    // ----------------------------------------------------
+    // History & Undo / Redo Engine
+    // ----------------------------------------------------
+    function pushSnapshot() {
+      if (!state.activeFile) return;
+      const iframe = document.getElementById('editor-iframe');
+      if (!iframe || !iframe.contentDocument) return;
+
+      const docClone = iframe.contentDocument.cloneNode(true);
+      cleanEditorMarkup(docClone);
+      
+      const currentMarkup = docClone.body.innerHTML;
+
+      if (state.undoStack.length > 0 && state.undoStack[state.undoStack.length - 1] === currentMarkup) {
+        return;
+      }
+
+      state.undoStack.push(currentMarkup);
+      state.redoStack = [];
+      
+      if (state.undoStack.length > 30) {
+        state.undoStack.shift();
+      }
+
+      updateUndoRedoButtons();
+    }
+
+    function applySnapshot(markup) {
+      const iframe = document.getElementById('editor-iframe');
+      if (iframe && iframe.contentDocument) {
+        iframe.contentDocument.body.innerHTML = markup;
+        selectElement(null);
+        if (state.editMode === 'design') {
+          setupIframeInteractions(iframe);
+        }
+      }
+    }
+
+    document.getElementById('btn-undo').addEventListener('click', () => {
+      if (state.undoStack.length > 1) {
+        const current = state.undoStack.pop();
+        state.redoStack.push(current);
+        const prev = state.undoStack[state.undoStack.length - 1];
+        applySnapshot(prev);
+        updateUndoRedoButtons();
+        showToast('실행 취소됨');
+      }
+    });
+
+    document.getElementById('btn-redo').addEventListener('click', () => {
+      if (state.redoStack.length > 0) {
+        const next = state.redoStack.pop();
+        state.undoStack.push(next);
+        applySnapshot(next);
+        updateUndoRedoButtons();
+        showToast('다시 실행됨');
+      }
+    });
+
+    function updateUndoRedoButtons() {
+      const undoBtn = document.getElementById('btn-undo');
+      const redoBtn = document.getElementById('btn-redo');
+
+      if (state.undoStack.length > 1) {
+        undoBtn.removeAttribute('disabled');
+      } else {
+        undoBtn.setAttribute('disabled', 'true');
+      }
+
+      if (state.redoStack.length > 0) {
+        redoBtn.removeAttribute('disabled');
+      } else {
+        redoBtn.setAttribute('disabled', 'true');
+      }
+    }
+
+    // ----------------------------------------------------
+    // Mode Switch & Device Toolbar
+    // ----------------------------------------------------
+    document.getElementById('mode-design').addEventListener('click', (e) => {
+      toggleEditMode('design');
+    });
+
+    document.getElementById('mode-preview').addEventListener('click', () => {
+      toggleEditMode('preview');
+    });
+
+    function toggleEditMode(mode) {
+      if (state.editMode === mode) return;
+      state.editMode = mode;
+
+      document.getElementById('mode-design').classList.toggle('active', mode === 'design');
+      document.getElementById('mode-preview').classList.toggle('active', mode === 'preview');
+
+      selectElement(null);
+      reloadIframe();
+      showToast(mode === 'design' ? '디자인 편집 모드로 전환' : '사용자 인터랙션 프리뷰 모드로 전환');
+    }
+
+    document.getElementById('drag-mode-select').addEventListener('change', (e) => {
+      state.dragMode = e.target.value;
+      showToast(state.dragMode === 'absolute' ? '자유 드래그 좌표 배치 모드 활성화' : 'DOM 흐름 재배치 모드 활성화');
+    });
+
+    document.getElementById('device-selector').addEventListener('change', (e) => {
+      const val = e.target.value;
+      const [w, h] = val.split(',');
+      const wrapper = document.getElementById('iframe-wrapper');
+      
+      wrapper.style.width = w;
+      wrapper.style.height = h;
+
+      if (w === '100%') {
+        wrapper.style.borderRadius = '0';
+        wrapper.style.boxShadow = 'none';
+      } else {
+        wrapper.style.borderRadius = '4px';
+        wrapper.style.boxShadow = '0 12px 36px rgba(0, 0, 0, 0.5)';
+      }
+    });
+
+    // ----------------------------------------------------
+    // Tab Controller
+    // ----------------------------------------------------
+    document.querySelectorAll('.sidebar-tabs .tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.sidebar-tabs .tab-btn').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.tab-content .tab-pane').forEach(x => x.classList.remove('active'));
+        
+        btn.classList.add('active');
+        const paneId = `pane-${btn.getAttribute('data-tab')}`;
+        document.getElementById(paneId).classList.add('active');
+      });
+    });
+
+    // ----------------------------------------------------
+    // Global Keyboard Shortcuts Binding
+    // ----------------------------------------------------
+    window.addEventListener('keydown', handleShortcuts);
+    document.getElementById('editor-iframe').addEventListener('load', () => {
+      const iframeWin = document.getElementById('editor-iframe').contentWindow;
+      iframeWin.addEventListener('keydown', handleShortcuts);
+    });
+
+    function handleShortcuts(e) {
+      if (state.editMode !== 'design') return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        document.getElementById('btn-undo').click();
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        document.getElementById('btn-redo').click();
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        const iframeDoc = document.getElementById('editor-iframe').contentDocument;
+        if (iframeDoc && iframeDoc.activeElement && (iframeDoc.activeElement.tagName === 'INPUT' || iframeDoc.activeElement.getAttribute('contenteditable') === 'true')) {
+          return;
+        }
+
+        e.preventDefault();
+        deleteSelected();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        if (state.selectedEl) {
+          state.clipboardData = state.selectedEl.cloneNode(true);
+          state.clipboardData.classList.remove('editor-selected');
+          showToast('선택한 요소가 복사되었습니다. (Ctrl+V로 붙여넣기)');
+        }
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        if (state.clipboardData && state.selectedEl) {
+          e.preventDefault();
+          const clone = state.clipboardData.cloneNode(true);
+          state.selectedEl.parentNode.insertBefore(clone, state.selectedEl.nextSibling);
+          selectElement(clone);
+          pushSnapshot();
+          showToast('요소가 붙여넣어졌습니다.');
+        }
+      }
+    }
+
+    // ----------------------------------------------------
+    // Project Zip Export System
+    // ----------------------------------------------------
+    document.getElementById('btn-export').addEventListener('click', async () => {
+      saveCurrentProgress();
+
+      const zip = new JSZip();
+      
+      Object.keys(state.cssFiles).forEach(path => {
+        zip.file(path, state.cssFiles[path]);
+      });
+
+      Object.keys(state.jspFiles).forEach(path => {
+        zip.file(path, state.jspFiles[path]);
+      });
+
+      showToast('내보내기 압축 파일을 생성하고 있습니다...');
+      const blob = await zip.generateAsync({type: "blob"});
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'ui_project_designed.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('프로젝트 ZIP 압축이 성공적으로 다운로드되었습니다.');
+    });
+  </script>
+</body>
+</html>

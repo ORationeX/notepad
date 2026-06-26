@@ -1,0 +1,12 @@
+{
+    "start_date": "2022-01-01",
+    "end_date": "2026-06-23",
+    "hl_threshold_pct_sell": 5.0,
+    "mcclellan_threshold_sell": -10.0,
+    "tnx_sma_factor_sell": 1.09,
+    "min_active_conditions_sell": 2,
+    "reentry_strategy": "multi_cond",
+    "lockout_days": 20,
+    "sma_pct_buy": -1.0,
+    "hl_threshold_pct_buy": 0.5,
+    "mcclellan_threshold_buy": 

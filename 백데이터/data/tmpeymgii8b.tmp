@@ -1,0 +1,12 @@
+{
+    "start_date": "2008-01-01",
+    "end_date": "2026-06-23",
+    "hl_threshold_pct_sell": 3.5,
+    "mcclellan_threshold_sell": -20.0,
+    "tnx_sma_factor_sell": 1.04,
+    "min_active_conditions_sell": 3,
+    "reentry_strategy": "multi_cond",
+    "lockout_days": 20,
+    "sma_pct_buy": -1.0,
+    "hl_threshold_pct_buy": 2.5,
+    "mcclellan_threshold_buy": 

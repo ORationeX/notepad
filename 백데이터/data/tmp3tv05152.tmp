@@ -1,0 +1,43 @@
+{
+    "selected_asset": "NDX",
+    "settings": {
+        "QQQ": {
+            "start_date": "1999-03-10",
+            "end_date": "2026-06-23",
+            "hl_threshold_pct_sell": 4.0,
+            "mcclellan_threshold_sell": 10.0,
+            "tnx_sma_factor_sell": 1.01,
+            "min_active_conditions_sell": 3,
+            "reentry_strategy": "multi_cond",
+            "lockout_days": 20,
+            "sma_pct_buy": -1.0,
+            "hl_threshold_pct_buy": 1.5,
+            "mcclellan_threshold_buy": 30.0,
+            "tnx_sma_factor_buy": 0.98
+        },
+        "NDX": {
+            "start_date": "1990-09-01",
+            "end_date": "2026-06-23",
+            "hl_threshold_pct_sell": 4.0,
+            "mcclellan_threshold_sell": 10.0,
+            "tnx_sma_factor_sell": 1.01,
+            "min_active_conditions_sell": 3,
+            "reentry_strategy": "multi_cond",
+            "lockout_days": 20,
+            "sma_pct_buy": -1.0,
+            "hl_threshold_pct_buy": 1.5,
+            "mcclellan_threshold_buy": 30.0,
+            "tnx_sma_factor_buy": 0.98
+        },
+        "TQQQ": {
+            "start_date": "2010-02-11",
+            "end_date": "2026-06-23",
+            "hl_threshold_pct_sell": 3.5,
+            "mcclellan_threshold_sell": -20.0,
+            "tnx_sma_factor_sell": 1.04,
+            "min_active_conditions_sell": 3,
+            "reentry_strategy": "multi_cond",
+            "lockout_days": 20,
+            "sma_pct_buy": -1.0,
+            "hl_threshold_pct_buy": 1.5,
+            "mcclellan_threshold_buy": 
