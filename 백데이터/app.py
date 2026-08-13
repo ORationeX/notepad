@@ -1105,88 +1105,195 @@ st.markdown(f"<div class='main-header'>🚨 {selected_asset} 복합 조건 하�
 st.markdown(f"<div class='sub-header'>분석 자산({selected_asset}), 나스닥 100 구성 종목 시장폭 내부 분산, 수급 에너지(매클레런), 10년물 국채금리, VIX 현/선물 스프레드, 하이일드 채권 스프레드(OAS) 변동성을 결합한 원클릭 하락 피하기 시뮬레이터</div>", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 8. 종합 진단 KPI 메트릭 카드 (한글화)
+# 8. 종합 진단 KPI 메트릭 카드 (매도/매수 탭 구성)
 # -----------------------------------------------------------------------------
-cond_a_active = latest_row["New_Highs_Pct"] > hl_threshold_sell and latest_row["New_Lows_Pct"] > hl_threshold_sell
-cond_b_active = latest_row["McClellan_Oscillator"] <= mcclellan_threshold_sell
-cond_c_active = latest_row["TNX_Close"] > (tnx_sma_factor_sell * latest_row["TNX_Close_SMA20"])
-cond_d_active = latest_row["VIX_Spread_Ratio"] > vix_spread_threshold_sell
-cond_e_active = latest_row["OAS_Close"] > oas_threshold_sell
+tab_sell_kpi, tab_buy_kpi = st.tabs(["🚨 매도 (하락 대피) 위험 진단", "🟢 매수 (재진입) 조건 진단"])
 
-active_conditions = int(cond_a_active) + int(cond_b_active) + int(cond_c_active) + int(cond_d_active) + int(cond_e_active)
-status_class = "status-safe"
-status_text = "🟢 안전 (SAFE)"
-status_desc = "하락 위험 징후가 감지되지 않았습니다. 현재 매수 보유 구간입니다."
+with tab_sell_kpi:
+    cond_a_active = latest_row["New_Highs_Pct"] > hl_threshold_sell and latest_row["New_Lows_Pct"] > hl_threshold_sell
+    cond_b_active = latest_row["McClellan_Oscillator"] <= mcclellan_threshold_sell
+    cond_c_active = latest_row["TNX_Close"] > (tnx_sma_factor_sell * latest_row["TNX_Close_SMA20"])
+    cond_d_active = latest_row["VIX_Spread_Ratio"] > vix_spread_threshold_sell
+    cond_e_active = latest_row["OAS_Close"] > oas_threshold_sell
 
-# 종합 경보 판단에 min_active_conditions_sell 반영
-if active_conditions >= min_active_conditions_sell:
-    status_class = "status-danger"
-    status_text = "🚨 위험 (DANGER)"
-    status_desc = f"다중 조건 위험 신호가 {active_conditions}개 켜졌습니다! 설정된 임계치({min_active_conditions_sell}개)에 도달하여 대피(청산) 권장 구간입니다."
-elif active_conditions > 0:
-    status_class = "status-warning"
-    status_text = "🟡 주의 (CAUTION)"
-    status_desc = f"위험 신호가 {active_conditions}개 켜졌습니다. (대피 기준선: {min_active_conditions_sell}개 만족시) 시장 관찰을 요합니다."
+    active_conditions = int(cond_a_active) + int(cond_b_active) + int(cond_c_active) + int(cond_d_active) + int(cond_e_active)
+    status_class = "status-safe"
+    status_text = "🟢 안전 (SAFE)"
+    status_desc = "하락 위험 징후가 감지되지 않았습니다. 현재 매수 보유 구간입니다."
 
-# 1행: 종합 진단, 조건 A, 조건 B
-col1, col2, col3 = st.columns(3)
+    # 종합 경보 판단에 min_active_conditions_sell 반영
+    if active_conditions >= min_active_conditions_sell:
+        status_class = "status-danger"
+        status_text = "🚨 위험 (DANGER)"
+        status_desc = f"다중 조건 위험 신호가 {active_conditions}개 켜졌습니다! 설정된 임계치({min_active_conditions_sell}개)에 도달하여 대피(청산) 권장 구간입니다."
+    elif active_conditions > 0:
+        status_class = "status-warning"
+        status_text = "🟡 주의 (CAUTION)"
+        status_desc = f"위험 신호가 {active_conditions}개 켜졌습니다. (대피 기준선: {min_active_conditions_sell}개 만족시) 시장 관찰을 요합니다."
 
-with col1:
-    st.markdown(f"""
-    <div class='status-card {status_class}'>
-        <div class='card-title'>실시간 시장 종합 진단</div>
-        <div class='card-value'>{status_text}</div>
-        <div class='card-desc'>{status_desc}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # 1행: 종합 진단, 조건 A, 조건 B
+    col1, col2, col3 = st.columns(3)
 
-with col2:
-    st.markdown(f"""
-    <div class='status-card' style='background-color:#111827;'>
-        <div class='card-title'>조건 A: 시장폭 내부 균열</div>
-        <div class='card-value' style='color:{"#f87171" if cond_a_active else "#34d399"};'>{"위험" if cond_a_active else "정상"}</div>
-        <div class='card-desc'>신고가: {latest_row["New_Highs_Pct"]*100:.2f}% | 신저가: {latest_row["New_Lows_Pct"]*100:.2f}% (기준선: {hl_threshold_pct_sell}%)</div>
-    </div>
-    """, unsafe_allow_html=True)
+    with col1:
+        st.markdown(f"""
+        <div class='status-card {status_class}'>
+            <div class='card-title'>실시간 시장 종합 진단 (매도)</div>
+            <div class='card-value'>{status_text}</div>
+            <div class='card-desc'>{status_desc}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-with col3:
-    st.markdown(f"""
-    <div class='status-card' style='background-color:#111827;'>
-        <div class='card-title'>조건 B: 시장 수급 강도</div>
-        <div class='card-value' style='color:{"#f87171" if cond_b_active else "#34d399"};'>{"약세" if cond_b_active else "양호"}</div>
-        <div class='card-desc'>매클레런 지표: {latest_row["McClellan_Oscillator"]:.2f} (기준선: {mcclellan_threshold_sell:.1f})</div>
-    </div>
-    """, unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"""
+        <div class='status-card' style='background-color:#111827;'>
+            <div class='card-title'>조건 A: 시장폭 내부 균열</div>
+            <div class='card-value' style='color:{"#f87171" if cond_a_active else "#34d399"};'>{"위험" if cond_a_active else "정상"}</div>
+            <div class='card-desc'>신고가: {latest_row["New_Highs_Pct"]*100:.2f}% | 신저가: {latest_row["New_Lows_Pct"]*100:.2f}% (기준선: {hl_threshold_pct_sell}%)</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-# 2행: 조건 C, 조건 D, 조건 E
-col4, col5, col6 = st.columns(3)
+    with col3:
+        st.markdown(f"""
+        <div class='status-card' style='background-color:#111827;'>
+            <div class='card-title'>조건 B: 시장 수급 강도</div>
+            <div class='card-value' style='color:{"#f87171" if cond_b_active else "#34d399"};'>{"약세" if cond_b_active else "양호"}</div>
+            <div class='card-desc'>매클레런 지표: {latest_row["McClellan_Oscillator"]:.2f} (기준선: {mcclellan_threshold_sell:.1f})</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-with col4:
-    st.markdown(f"""
-    <div class='status-card' style='background-color:#111827;'>
-        <div class='card-title'>조건 C: 금리 변동성 충격</div>
-        <div class='card-value' style='color:{"#f87171" if cond_c_active else "#34d399"};'>{"충격" if cond_c_active else "안정"}</div>
-        <div class='card-desc'>국채 금리: {latest_row["TNX_Close"]:.2f}% (SMA20 대비: {(latest_row["TNX_Close"]/latest_row["TNX_Close_SMA20"] - 1)*100:+.2f}%)</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # 2행: 조건 C, 조건 D, 조건 E
+    col4, col5, col6 = st.columns(3)
 
-with col5:
-    st.markdown(f"""
-    <div class='status-card' style='background-color:#111827;'>
-        <div class='card-title'>조건 D: VIX 패닉 위험</div>
-        <div class='card-value' style='color:{"#f87171" if cond_d_active else "#34d399"};'>{"위험" if cond_d_active else "정상"}</div>
-        <div class='card-desc'>VIX 현/선물 비율: {latest_row["VIX_Spread_Ratio"]:.2f} (기준선: {vix_spread_threshold_sell:.2f})</div>
-    </div>
-    """, unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"""
+        <div class='status-card' style='background-color:#111827;'>
+            <div class='card-title'>조건 C: 금리 변동성 충격</div>
+            <div class='card-value' style='color:{"#f87171" if cond_c_active else "#34d399"};'>{"충격" if cond_c_active else "안정"}</div>
+            <div class='card-desc'>국채 금리: {latest_row["TNX_Close"]:.2f}% (SMA20 대비: {(latest_row["TNX_Close"]/latest_row["TNX_Close_SMA20"] - 1)*100:+.2f}%)</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-with col6:
-    st.markdown(f"""
-    <div class='status-card' style='background-color:#111827;'>
-        <div class='card-title'>조건 E: 신용 시장 경색</div>
-        <div class='card-value' style='color:{"#f87171" if cond_e_active else "#34d399"};'>{"위험" if cond_e_active else "정상"}</div>
-        <div class='card-desc'>하이일드 OAS: {latest_row["OAS_Close"]:.2f}% (기준선: {oas_threshold_sell:.2f}%)</div>
-    </div>
-    """, unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"""
+        <div class='status-card' style='background-color:#111827;'>
+            <div class='card-title'>조건 D: VIX 패닉 위험</div>
+            <div class='card-value' style='color:{"#f87171" if cond_d_active else "#34d399"};'>{"위험" if cond_d_active else "정상"}</div>
+            <div class='card-desc'>VIX 현/선물 비율: {latest_row["VIX_Spread_Ratio"]:.2f} (기준선: {vix_spread_threshold_sell:.2f})</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col6:
+        st.markdown(f"""
+        <div class='status-card' style='background-color:#111827;'>
+            <div class='card-title'>조건 E: 신용 시장 경색</div>
+            <div class='card-value' style='color:{"#f87171" if cond_e_active else "#34d399"};'>{"위험" if cond_e_active else "정상"}</div>
+            <div class='card-desc'>하이일드 OAS: {latest_row["OAS_Close"]:.2f}% (기준선: {oas_threshold_sell:.2f}%)</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+with tab_buy_kpi:
+    # 실시간 매수(재진입) 조건 개별 및 종합 연산
+    buy_cond_a = latest_row["New_Lows_Pct"] <= hl_threshold_buy
+    buy_cond_b = latest_row["McClellan_Oscillator"] > mcclellan_threshold_buy
+    buy_cond_c = latest_row["TNX_Close"] <= (tnx_sma_factor_buy * latest_row["TNX_Close_SMA20"])
+    buy_cond_d = latest_row["VIX_Spread_Ratio"] <= vix_spread_threshold_buy
+    buy_cond_e = latest_row["OAS_Close"] <= oas_threshold_buy
+
+    buy_active_count = int(buy_cond_a) + int(buy_cond_b) + int(buy_cond_c) + int(buy_cond_d) + int(buy_cond_e)
+
+    # 선택된 재진입 전략별 실시간 매수 충족 상태 판정
+    strategy_buy_ok = False
+    strategy_buy_desc = ""
+    asset_close_val = latest_row[f"{selected_asset}_Close"]
+
+    if reentry_strategy == "lockout":
+        strategy_buy_ok = True
+        strategy_buy_desc = "의무 안전 대기기간 종료 후 즉시 매수 가능"
+    elif reentry_strategy == "sma50":
+        sma50_val = latest_row[f"{selected_asset}_SMA50"]
+        threshold_v = sma50_val * (1 + sma_pct_buy / 100.0)
+        strategy_buy_ok = asset_close_val > threshold_v
+        strategy_buy_desc = f"{selected_asset} 지수({asset_close_val:.1f}) > 50일 이평선 기준({threshold_v:.1f})"
+    elif reentry_strategy == "sma20":
+        sma20_val = latest_row[f"{selected_asset}_SMA20"]
+        threshold_v = sma20_val * (1 + sma_pct_buy / 100.0)
+        strategy_buy_ok = asset_close_val > threshold_v
+        strategy_buy_desc = f"{selected_asset} 지수({asset_close_val:.1f}) > 20일 이평선 기준({threshold_v:.1f})"
+    elif reentry_strategy == "mcclellan":
+        strategy_buy_ok = buy_cond_b
+        strategy_buy_desc = f"매클레런 오실레이터({latest_row['McClellan_Oscillator']:.2f}) > 매수 기준선({mcclellan_threshold_buy:.1f})"
+    elif reentry_strategy == "multi_cond":
+        strategy_buy_ok = (buy_active_count == 5)
+        strategy_buy_desc = f"5대 매수 조건 전원 충족 (현재 {buy_active_count}/5개 충족)"
+
+    if strategy_buy_ok:
+        buy_status_class = "status-safe"
+        buy_status_text = "🟢 매수 가능 (READY)"
+        buy_status_desc = f"현재 선택된 필터({reentry_strategy}) 기준 매수 진입 조건을 만족합니다. ({strategy_buy_desc})"
+    else:
+        buy_status_class = "status-warning"
+        buy_status_text = "🟡 매수 대기 (WAITING)"
+        buy_status_desc = f"현재 선택된 필터({reentry_strategy}) 기준 매수 조건 미충족 상태입니다. ({strategy_buy_desc})"
+
+    # 1행: 매수 종합 진단, 조건 A, 조건 B
+    b_col1, b_col2, b_col3 = st.columns(3)
+
+    with b_col1:
+        st.markdown(f"""
+        <div class='status-card {buy_status_class}'>
+            <div class='card-title'>실시간 시장 종합 진단 (매수)</div>
+            <div class='card-value'>{buy_status_text}</div>
+            <div class='card-desc'>{buy_status_desc}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with b_col2:
+        st.markdown(f"""
+        <div class='status-card' style='background-color:#111827;'>
+            <div class='card-title'>매수 조건 A: 52주 신저가 비율</div>
+            <div class='card-value' style='color:{"#34d399" if buy_cond_a else "#f87171"};'>{"충족 (안정)" if buy_cond_a else "미충족"}</div>
+            <div class='card-desc'>신저가 종목 비율: {latest_row["New_Lows_Pct"]*100:.2f}% (상한선: {hl_threshold_pct_buy:.2f}%)</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with b_col3:
+        st.markdown(f"""
+        <div class='status-card' style='background-color:#111827;'>
+            <div class='card-title'>매수 조건 B: 시장 수급 반등</div>
+            <div class='card-value' style='color:{"#34d399" if buy_cond_b else "#f87171"};'>{"충족 (반등)" if buy_cond_b else "미충족"}</div>
+            <div class='card-desc'>매클레런 지표: {latest_row["McClellan_Oscillator"]:.2f} (하한선: {mcclellan_threshold_buy:.1f})</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # 2행: 조건 C, 조건 D, 조건 E
+    b_col4, b_col5, b_col6 = st.columns(3)
+
+    with b_col4:
+        st.markdown(f"""
+        <div class='status-card' style='background-color:#111827;'>
+            <div class='card-title'>매수 조건 C: 국채 금리 안정</div>
+            <div class='card-value' style='color:{"#34d399" if buy_cond_c else "#f87171"};'>{"충족 (안정)" if buy_cond_c else "미충족"}</div>
+            <div class='card-desc'>국채 금리: {latest_row["TNX_Close"]:.2f}% (SMA20 대비: {(latest_row["TNX_Close"]/latest_row["TNX_Close_SMA20"] - 1)*100:+.2f}%)</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with b_col5:
+        st.markdown(f"""
+        <div class='status-card' style='background-color:#111827;'>
+            <div class='card-title'>매수 조건 D: VIX 패닉 해제</div>
+            <div class='card-value' style='color:{"#34d399" if buy_cond_d else "#f87171"};'>{"충족 (정상)" if buy_cond_d else "미충족"}</div>
+            <div class='card-desc'>VIX 현/선물 비율: {latest_row["VIX_Spread_Ratio"]:.2f} (상한선: {vix_spread_threshold_buy:.2f})</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with b_col6:
+        st.markdown(f"""
+        <div class='status-card' style='background-color:#111827;'>
+            <div class='card-title'>매수 조건 E: 신용 시장 안정</div>
+            <div class='card-value' style='color:{"#34d399" if buy_cond_e else "#f87171"};'>{"충족 (안정)" if buy_cond_e else "미충족"}</div>
+            <div class='card-desc'>하이일드 OAS: {latest_row["OAS_Close"]:.2f}% (상한선: {oas_threshold_buy:.2f}%)</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # 9. 메인 멀티 플롯 시각화 개선 (휠 줌 scrollZoom 및 렌더링 고속화 다운샘플링 적용)

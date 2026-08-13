@@ -1,9 +1,9 @@
 {
-    "selected_asset": "TQQQ",
+    "selected_asset": "QQQ",
     "settings": {
         "QQQ": {
             "start_date": "2020-03-01",
-            "end_date": "2026-06-23",
+            "end_date": "2026-08-12",
             "hl_threshold_pct_sell": 4.0,
             "mcclellan_threshold_sell": 10.0,
             "tnx_sma_factor_sell": 1.01,
@@ -38,8 +38,8 @@
             "oas_threshold_buy": 3.0
         },
         "TQQQ": {
-            "start_date": "2026-01-01",
-            "end_date": "2026-06-23",
+            "start_date": "2011-01-01",
+            "end_date": "2026-08-04",
             "hl_threshold_pct_sell": 4.0,
             "mcclellan_threshold_sell": 10.0,
             "tnx_sma_factor_sell": 1.01,
