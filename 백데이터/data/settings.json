@@ -3,7 +3,7 @@
     "settings": {
         "QQQ": {
             "start_date": "2020-03-01",
-            "end_date": "2026-08-12",
+            "end_date": "2026-08-17",
             "hl_threshold_pct_sell": 4.0,
             "mcclellan_threshold_sell": 10.0,
             "tnx_sma_factor_sell": 1.01,
