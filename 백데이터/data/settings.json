@@ -2,22 +2,22 @@
     "selected_asset": "QQQ",
     "settings": {
         "QQQ": {
-            "start_date": "2020-03-01",
-            "end_date": "2026-08-17",
-            "hl_threshold_pct_sell": 4.0,
-            "mcclellan_threshold_sell": 10.0,
-            "tnx_sma_factor_sell": 1.01,
-            "vix_spread_threshold_sell": 0.95,
-            "oas_threshold_sell": 3.0,
-            "min_active_conditions_sell": 3,
+            "start_date": "2010-03-02",
+            "end_date": "2026-08-24",
+            "hl_threshold_pct_sell": 3.5,
+            "mcclellan_threshold_sell": -20.0,
+            "tnx_sma_factor_sell": 1.04,
+            "vix_spread_threshold_sell": 0.85,
+            "oas_threshold_sell": 1.5,
+            "min_active_conditions_sell": 5,
             "reentry_strategy": "multi_cond",
             "lockout_days": 20,
             "sma_pct_buy": -1.0,
             "hl_threshold_pct_buy": 1.5,
-            "mcclellan_threshold_buy": 30.0,
+            "mcclellan_threshold_buy": 25.0,
             "tnx_sma_factor_buy": 0.98,
-            "vix_spread_threshold_buy": 0.95,
-            "oas_threshold_buy": 3.0
+            "vix_spread_threshold_buy": 0.9,
+            "oas_threshold_buy": 2.0
         },
         "NDX": {
             "start_date": "1990-09-01",
@@ -38,7 +38,7 @@
             "oas_threshold_buy": 3.0
         },
         "TQQQ": {
-            "start_date": "2011-01-01",
+            "start_date": "2020-01-01",
             "end_date": "2026-08-04",
             "hl_threshold_pct_sell": 4.0,
             "mcclellan_threshold_sell": 10.0,

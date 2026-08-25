@@ -972,43 +972,62 @@ filtered_df = valid_asset_data.loc[pd.Timestamp(start_date_val):pd.Timestamp(end
 
 # ── 자동 민감도 튜닝 ────────────────────────────────────────
 st.sidebar.markdown("---")
-st.sidebar.subheader("🤖 자동 민감도 튜닝")
+st.sidebar.subheader("🤖 초고속 병렬 자동 튜닝")
 
-from functools import partial
-backtest_func_bound = partial(backtest_alarm_strategy, selected_asset=selected_asset)
+# 전수조사 탐색 그리드 정의
+sell_grid = {
+    "hl_threshold_pct_sell": np.arange(0.5, 5.5, 0.5),
+    "mcclellan_threshold_sell": np.arange(-20, 21, 5),
+    "tnx_sma_factor_sell": np.arange(1.00, 1.10, 0.01),
+    "vix_spread_threshold_sell": np.arange(0.85, 1.20, 0.05),
+    "oas_threshold_sell": np.arange(1.5, 4.5, 0.5),
+    "min_active_conditions_sell": (1, 2, 3, 4, 5),
+}
 
-if st.sidebar.button("🚀 매도 시그널 자동 최적화"):
+buy_grid = {
+    "hl_threshold_pct_buy": np.arange(0.5, 3.5, 0.5),
+    "mcclellan_threshold_buy": np.arange(-10, 31, 5),
+    "tnx_sma_factor_buy": np.arange(0.95, 1.06, 0.01),
+    "vix_spread_threshold_buy": np.arange(0.85, 1.20, 0.05),
+    "oas_threshold_buy": np.arange(1.5, 4.5, 0.5),
+    "sma_pct_buy": np.arange(-1.0, 3.1, 0.5),
+}
+
+current_buy_tuple = (
+    float(hl_threshold_pct_buy),
+    float(mcclellan_threshold_buy),
+    float(tnx_sma_factor_buy),
+    float(vix_spread_threshold_buy),
+    float(oas_threshold_buy),
+    float(sma_pct_buy)
+)
+
+current_sell_tuple = (
+    float(hl_threshold_pct_sell),
+    float(mcclellan_threshold_sell),
+    float(tnx_sma_factor_sell),
+    float(vix_spread_threshold_sell),
+    float(oas_threshold_sell),
+    int(min_active_conditions_sell)
+)
+
+# 1. 원클릭 매도+매수 통합 전수조사 최적화
+if st.sidebar.button("🔥 [원클릭] 매도+매수 통합 전수조사", type="primary", use_container_width=True):
     progress_bar = st.sidebar.progress(0.0)
     progress_text = st.sidebar.empty()
     
-    def update_progress(pct: float):
-        progress_bar.progress(pct)
-        progress_text.markdown(f"**🔍 최적화 진행률: {pct * 100:.1f}%**")
+    def update_progress(pct: float, msg: str = ""):
+        progress_bar.progress(min(max(pct, 0.0), 1.0))
+        progress_text.markdown(f"**⚡ {msg}**")
         
-    sell_grid = {
-        "hl_threshold_pct_sell": np.arange(0.5, 5.5, 0.5),
-        "mcclellan_threshold_sell": np.arange(-20, 21, 5),
-        "tnx_sma_factor_sell": np.arange(1.00, 1.10, 0.01),
-        "vix_spread_threshold_sell": np.arange(0.85, 1.20, 0.05),
-        "oas_threshold_sell": np.arange(1.5, 4.5, 0.5),
-        "min_active_conditions_sell": (1, 2, 3, 4, 5),
-    }
-    buy_grid = {
-        "hl_threshold_pct_buy": (hl_threshold_pct_buy,),
-        "mcclellan_threshold_buy": (mcclellan_threshold_buy,),
-        "tnx_sma_factor_buy": (tnx_sma_factor_buy,),
-        "vix_spread_threshold_buy": (vix_spread_threshold_buy,),
-        "oas_threshold_buy": (oas_threshold_buy,),
-        "sma_pct_buy": (sma_pct_buy,),
-    }
-    
-    sell_opt, _ = tuner.grid_search(
+    best_sell, best_buy = tuner.optimize_all_signals(
         df=filtered_df,
+        selected_asset=selected_asset,
         reentry_strategy=reentry_strategy,
         lockout_days=lockout_days,
         sell_grid=sell_grid,
         buy_grid=buy_grid,
-        backtest_func=backtest_func_bound,
+        buy_defaults_tuple=current_buy_tuple,
         progress_callback=update_progress
     )
     
@@ -1016,56 +1035,72 @@ if st.sidebar.button("🚀 매도 시그널 자동 최적화"):
     progress_text.empty()
     
     optimized_settings = get_current_settings()
-    optimized_settings.update(sell_opt)
+    optimized_settings.update(best_sell)
+    optimized_settings.update(best_buy)
     st.session_state.user_settings["settings"][selected_asset] = optimized_settings
     save_user_settings(st.session_state.user_settings)
-    st.success("매도 파라미터 최적화 완료 🎉")
+    st.sidebar.success("🎯 매도 & 매수 파라미터 통합 전수조사 완료!")
     st.rerun()
 
-if st.sidebar.button("🚀 매수 시그널 자동 최적화"):
-    progress_bar = st.sidebar.progress(0.0)
-    progress_text = st.sidebar.empty()
-    
-    def update_progress(pct: float):
-        progress_bar.progress(pct)
-        progress_text.markdown(f"**🔍 최적화 진행률: {pct * 100:.1f}%**")
+col_tune_1, col_tune_2 = st.sidebar.columns(2)
+
+with col_tune_1:
+    if st.button("🚀 매도만 최적화", use_container_width=True):
+        progress_bar = st.sidebar.progress(0.0)
+        progress_text = st.sidebar.empty()
         
-    sell_grid = {
-        "hl_threshold_pct_sell": (hl_threshold_pct_sell,),
-        "mcclellan_threshold_sell": (mcclellan_threshold_sell,),
-        "tnx_sma_factor_sell": (tnx_sma_factor_sell,),
-        "vix_spread_threshold_sell": (vix_spread_threshold_sell,),
-        "oas_threshold_sell": (oas_threshold_sell,),
-        "min_active_conditions_sell": (min_active_conditions_sell,),
-    }
-    buy_grid = {
-        "hl_threshold_pct_buy": np.arange(0.5, 3.5, 0.5),
-        "mcclellan_threshold_buy": np.arange(-10, 31, 5),
-        "tnx_sma_factor_buy": np.arange(0.95, 1.06, 0.01),
-        "vix_spread_threshold_buy": np.arange(0.85, 1.20, 0.05),
-        "oas_threshold_buy": np.arange(1.5, 4.5, 0.5),
-        "sma_pct_buy": np.arange(-1.0, 3.1, 0.5),
-    }
-    
-    _, buy_opt = tuner.grid_search(
-        df=filtered_df,
-        reentry_strategy=reentry_strategy,
-        lockout_days=lockout_days,
-        sell_grid=sell_grid,
-        buy_grid=buy_grid,
-        backtest_func=backtest_func_bound,
-        progress_callback=update_progress
-    )
-    
-    progress_bar.empty()
-    progress_text.empty()
-    
-    optimized_settings = get_current_settings()
-    optimized_settings.update(buy_opt)
-    st.session_state.user_settings["settings"][selected_asset] = optimized_settings
-    save_user_settings(st.session_state.user_settings)
-    st.success("매수 파라미터 최적화 완료 🎉")
-    st.rerun()
+        def update_progress(pct: float):
+            progress_bar.progress(min(max(pct, 0.0), 1.0))
+            progress_text.markdown(f"**⚡ 매도 탐색 중: {pct * 100:.1f}%**")
+            
+        fast_data = tuner.prepare_fast_data(filtered_df, selected_asset)
+        sell_opt = tuner.parallel_grid_search_sell(
+            fast_data=fast_data,
+            reentry_strategy=reentry_strategy,
+            lockout_days=lockout_days,
+            sell_grid=sell_grid,
+            buy_defaults=current_buy_tuple,
+            progress_callback=update_progress
+        )
+        
+        progress_bar.empty()
+        progress_text.empty()
+        
+        optimized_settings = get_current_settings()
+        optimized_settings.update(sell_opt)
+        st.session_state.user_settings["settings"][selected_asset] = optimized_settings
+        save_user_settings(st.session_state.user_settings)
+        st.sidebar.success("매도 파라미터 최적화 완료!")
+        st.rerun()
+
+with col_tune_2:
+    if st.button("🚀 매수만 최적화", use_container_width=True):
+        progress_bar = st.sidebar.progress(0.0)
+        progress_text = st.sidebar.empty()
+        
+        def update_progress(pct: float):
+            progress_bar.progress(min(max(pct, 0.0), 1.0))
+            progress_text.markdown(f"**⚡ 매수 탐색 중: {pct * 100:.1f}%**")
+            
+        fast_data = tuner.prepare_fast_data(filtered_df, selected_asset)
+        buy_opt = tuner.parallel_grid_search_buy(
+            fast_data=fast_data,
+            reentry_strategy=reentry_strategy,
+            lockout_days=lockout_days,
+            buy_grid=buy_grid,
+            sell_best_tuple=current_sell_tuple,
+            progress_callback=update_progress
+        )
+        
+        progress_bar.empty()
+        progress_text.empty()
+        
+        optimized_settings = get_current_settings()
+        optimized_settings.update(buy_opt)
+        st.session_state.user_settings["settings"][selected_asset] = optimized_settings
+        save_user_settings(st.session_state.user_settings)
+        st.sidebar.success("매수 파라미터 최적화 완료!")
+        st.rerun()
 
 # -----------------------------------------------------------------------------
 # 사용자 설정 실시간 파일 저장
