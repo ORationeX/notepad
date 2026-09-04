@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>대시보드</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>대시보드</h1>
+    <p class="lead">왼쪽 폴더 메뉴를 누르면 해당 HTML 화면으로 이동합니다. 도구를 추가할 때는 폴더에 파일을 넣고 <code>assets/js/menu.js</code>에 같은 경로를 등록하면 됩니다.</p>
+    <div id="list"></div>
+  </div>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+  <script>
+    const root = document.getElementById("list");
+    const groups = {};
+    eachMenuPage(function (folder, item, path) {
+      if (!groups[folder]) groups[folder] = [];
+      groups[folder].push({ item: item, path: path });
+    });
+    Object.keys(groups).forEach(function (folder) {
+      const h = document.createElement("h2");
+      h.className = "section-title";
+      h.textContent = folder;
+      root.appendChild(h);
+
+      const grid = document.createElement("div");
+      grid.className = "cards";
+      groups[folder].forEach(function (entry) {
+        const a = document.createElement("a");
+        a.className = "tool-card";
+        a.href = "../" + entry.path;
+        a.innerHTML =
+          '<div class="folder-name">' + folder + "</div>" +
+          "<strong>" + entry.item.name + "</strong>" +
+          "<p>" + (entry.item.desc || "") + "</p>";
+        grid.appendChild(a);
+      });
+      root.appendChild(grid);
+    });
+  </script>
+</body>
+</html>

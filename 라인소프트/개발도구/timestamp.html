@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>타임스탬프</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>타임스탬프</h1>
+    <p class="lead">Unix 초/밀리초와 날짜를 서로 바꿉니다. 표시는 브라우저 로컬 시간입니다.</p>
+    <div class="card" style="margin-top:18px">
+      <div class="row">
+        <label for="unix">Unix</label>
+        <input id="unix" type="text" placeholder="초 또는 밀리초">
+      </div>
+      <div class="row">
+        <label for="dt">날짜</label>
+        <input id="dt" type="datetime-local" step="1">
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary" id="toDate" type="button">Unix → 날짜</button>
+        <button class="btn" id="toUnix" type="button">날짜 → Unix</button>
+        <button class="btn" id="now" type="button">지금</button>
+      </div>
+      <p class="msg" id="msg"></p>
+    </div>
+  </div>
+  <script>
+    const unix = document.getElementById("unix");
+    const dt = document.getElementById("dt");
+    const msg = document.getElementById("msg");
+
+    function toLocalInput(d) {
+      const p = function (n) { return String(n).padStart(2, "0"); };
+      return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+        "T" + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+    }
+
+    document.getElementById("toDate").onclick = function () {
+      let n = Number(String(unix.value).trim());
+      if (!Number.isFinite(n)) {
+        msg.className = "msg err";
+        msg.textContent = "숫자를 입력하세요.";
+        return;
+      }
+      if (n < 1e12) n *= 1000;
+      const d = new Date(n);
+      dt.value = toLocalInput(d);
+      msg.className = "msg ok";
+      msg.textContent = d.toString();
+    };
+
+    document.getElementById("toUnix").onclick = function () {
+      if (!dt.value) {
+        msg.className = "msg err";
+        msg.textContent = "날짜를 선택하세요.";
+        return;
+      }
+      const ms = new Date(dt.value).getTime();
+      unix.value = String(Math.floor(ms / 1000));
+      msg.className = "msg ok";
+      msg.textContent = "초: " + unix.value + " / 밀리초: " + ms;
+    };
+
+    document.getElementById("now").onclick = function () {
+      const d = new Date();
+      unix.value = String(Math.floor(d.getTime() / 1000));
+      dt.value = toLocalInput(d);
+      msg.className = "msg ok";
+      msg.textContent = "현재 시각을 넣었습니다.";
+    };
+
+    document.getElementById("now").click();
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

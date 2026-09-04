@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>글자수</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>글자수</h1>
+    <p class="lead">입력하는 즉시 글자 수, 공백 제외, 단어, 줄 수를 셉니다.</p>
+    <textarea id="src" style="margin-top:18px" placeholder="텍스트를 입력하세요"></textarea>
+    <div class="stats">
+      <div class="stat">글자<b id="c1">0</b></div>
+      <div class="stat">공백 제외<b id="c2">0</b></div>
+      <div class="stat">단어<b id="c3">0</b></div>
+      <div class="stat">줄<b id="c4">0</b></div>
+      <div class="stat">바이트(UTF-8)<b id="c5">0</b></div>
+    </div>
+  </div>
+  <script>
+    const src = document.getElementById("src");
+    function count() {
+      const t = src.value;
+      document.getElementById("c1").textContent = Array.from(t).length;
+      document.getElementById("c2").textContent = Array.from(t.replace(/\s/g, "")).length;
+      document.getElementById("c3").textContent = t.trim() ? t.trim().split(/\s+/).length : 0;
+      document.getElementById("c4").textContent = t ? t.split(/\n/).length : 0;
+      document.getElementById("c5").textContent = new TextEncoder().encode(t).length;
+    }
+    src.addEventListener("input", count);
+    count();
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

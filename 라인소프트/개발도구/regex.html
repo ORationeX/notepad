@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>정규식 테스트</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>정규식 테스트</h1>
+    <p class="lead">패턴과 플래그를 넣고 본문에서 맞는 부분을 확인합니다.</p>
+    <div class="card" style="margin-top:18px">
+      <div class="row">
+        <label for="pat">패턴</label>
+        <input id="pat" type="text" placeholder="예: [0-9]+">
+      </div>
+      <div class="row">
+        <label for="flags">플래그</label>
+        <input id="flags" type="text" value="g" placeholder="g, i, m, s, u">
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="run" type="button">테스트</button>
+    </div>
+    <textarea id="src" placeholder="테스트할 텍스트"></textarea>
+    <p class="msg" id="msg"></p>
+    <div class="card" style="margin-top:12px">
+      <h2>하이라이트</h2>
+      <div id="view" style="min-height:80px;font-family:var(--mono);font-size:13px;line-height:1.6;white-space:pre-wrap"></div>
+    </div>
+  </div>
+  <script>
+    const pat = document.getElementById("pat");
+    const flags = document.getElementById("flags");
+    const src = document.getElementById("src");
+    const msg = document.getElementById("msg");
+    const view = document.getElementById("view");
+
+    document.getElementById("run").onclick = function () {
+      const text = src.value;
+      try {
+        const re = new RegExp(pat.value, flags.value);
+        const parts = [];
+        let last = 0;
+        let count = 0;
+        if (pat.value === "") {
+          view.textContent = text;
+          msg.className = "msg";
+          msg.textContent = "패턴을 입력하세요.";
+          return;
+        }
+        if (!re.global) {
+          const m = re.exec(text);
+          if (!m) {
+            view.textContent = text;
+            msg.className = "msg";
+            msg.textContent = "일치 없음";
+            return;
+          }
+          view.innerHTML =
+            escapeHtml(text.slice(0, m.index)) +
+            '<mark class="hl">' + escapeHtml(m[0]) + "</mark>" +
+            escapeHtml(text.slice(m.index + m[0].length));
+          msg.className = "msg ok";
+          msg.textContent = "1건 일치";
+          return;
+        }
+        text.replace(re, function (match, offset) {
+          parts.push(escapeHtml(text.slice(last, offset)));
+          parts.push('<mark class="hl">' + escapeHtml(match) + "</mark>");
+          last = offset + match.length;
+          count += 1;
+          return match;
+        });
+        parts.push(escapeHtml(text.slice(last)));
+        view.innerHTML = parts.join("") || "&nbsp;";
+        msg.className = count ? "msg ok" : "msg";
+        msg.textContent = count ? count + "건 일치" : "일치 없음";
+      } catch (e) {
+        msg.className = "msg err";
+        msg.textContent = e.message;
+      }
+    };
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c];
+      });
+    }
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

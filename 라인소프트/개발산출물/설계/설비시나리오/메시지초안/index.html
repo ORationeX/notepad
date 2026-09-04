@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>설비 메시지 정의서</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../../../../assets/css/app.css">
+  <link rel="stylesheet" href="../../../../assets/css/page.css">
+  <link rel="stylesheet" href="draft.css">
+</head>
+<body>
+  <div class="page msg-app">
+    <h1>설비 메시지 정의서</h1>
+    <p class="lead">제품명 → 공정 명 → 이벤트 기준으로 메시지를 관리하고, CISCO V4 양식의 엑셀 파일을 생성합니다. 이벤트 종류는 기준정보로 공통 관리하고, 항목은 이벤트마다 편집할 수 있습니다. 편집 내용은 JSON 저장·열기에 그대로 유지됩니다.</p>
+    <div class="msg-toolbar toolbar">
+      <button class="btn btn-primary" type="button" id="btn-xlsx-out">엑셀 생성</button>
+      <button class="btn" type="button" id="btn-xlsx-sel">선택 엑셀 생성</button>
+      <label class="btn file-btn">엑셀 열기<input type="file" id="file-xlsx-in" accept=".xlsx"></label>
+      <button class="btn" type="button" id="btn-json-out">정의서 JSON 저장</button>
+      <label class="btn file-btn">정의서 JSON 열기<input type="file" id="file-json-in" accept="application/json"></label>
+      <button class="btn" type="button" id="btn-sample">샘플 불러오기</button>
+      <button class="btn" type="button" id="btn-toc">목차 순서</button>
+      <button class="btn" type="button" id="btn-master">기준정보</button>
+      <button class="btn btn-ghost" type="button" id="btn-clear">비우기</button>
+    </div>
+    <p class="msg" id="app-msg"></p>
+    <div class="msg-work">
+      <aside class="tree-pane" id="tree"></aside>
+      <div class="editor-pane" id="editor"></div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="data/sectors.js"></script>
+  <script src="data/sample.js"></script>
+  <script src="model.js"></script>
+  <script src="excel.js"></script>
+  <script src="app.js"></script>
+  <script src="../../../../assets/js/menu.js"></script>
+  <script src="../../../../assets/js/layout.js"></script>
+</body>
+</html>

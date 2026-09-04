@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL 정리</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>SQL 정리</h1>
+    <p class="lead">보이지 않는 문자(ZWSP, BOM, NBSP 등)를 찾고, 공백을 정리합니다. 복붙한 쿼리가 실행이 안 될 때 먼저 여기 넣어보세요.</p>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="clean" type="button">정리</button>
+      <button class="btn" id="scan" type="button">숨은 문자만 찾기</button>
+      <button class="btn" id="copy" type="button">복사</button>
+    </div>
+    <textarea id="src" placeholder="SQL을 붙여넣으세요"></textarea>
+    <p class="msg" id="msg"></p>
+  </div>
+  <script>
+    const src = document.getElementById("src");
+    const msg = document.getElementById("msg");
+    const hidden = /[\u00A0\u1680\u2000-\u200F\u2028-\u202F\u205F\u3000\uFEFF\u200B-\u200D]/g;
+
+    function names(ch) {
+      const code = ch.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
+      return "U+" + code;
+    }
+
+    document.getElementById("scan").onclick = function () {
+      const found = src.value.match(hidden) || [];
+      if (!found.length) {
+        msg.className = "msg ok";
+        msg.textContent = "숨은 문자가 없습니다.";
+        return;
+      }
+      const uniq = Array.from(new Set(found)).map(names).join(", ");
+      msg.className = "msg err";
+      msg.textContent = found.length + "개 발견: " + uniq;
+    };
+
+    document.getElementById("clean").onclick = function () {
+      let t = src.value.replace(hidden, " ");
+      t = t.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      t = t.replace(/[ \t]+\n/g, "\n");
+      t = t.replace(/\n{3,}/g, "\n\n");
+      t = t.replace(/[ \t]{2,}/g, " ");
+      src.value = t.trim() + (t.trim() ? "\n" : "");
+      msg.className = "msg ok";
+      msg.textContent = "정리했습니다.";
+    };
+
+    document.getElementById("copy").onclick = function () {
+      navigator.clipboard.writeText(src.value).then(function () {
+        msg.className = "msg ok";
+        msg.textContent = "복사했습니다.";
+      });
+    };
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

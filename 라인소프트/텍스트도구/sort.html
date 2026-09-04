@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>줄 정렬</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>줄 정렬</h1>
+    <p class="lead">줄을 정렬하고, 빈 줄을 빼고, 중복을 제거합니다.</p>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="asc" type="button">오름차순</button>
+      <button class="btn" id="desc" type="button">내림차순</button>
+      <button class="btn" id="uniq" type="button">중복 제거</button>
+      <button class="btn" id="blank" type="button">빈 줄 제거</button>
+      <button class="btn" id="copy" type="button">복사</button>
+    </div>
+    <textarea id="src"></textarea>
+    <p class="msg" id="msg"></p>
+  </div>
+  <script>
+    const src = document.getElementById("src");
+    const msg = document.getElementById("msg");
+
+    function getLines() {
+      return src.value.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    }
+    function setLines(arr) {
+      src.value = arr.join("\n");
+    }
+
+    document.getElementById("asc").onclick = function () {
+      const lines = getLines();
+      lines.sort(function (a, b) { return a.localeCompare(b, "ko"); });
+      setLines(lines);
+      msg.className = "msg ok";
+      msg.textContent = "오름차순 정렬했습니다.";
+    };
+    document.getElementById("desc").onclick = function () {
+      const lines = getLines();
+      lines.sort(function (a, b) { return b.localeCompare(a, "ko"); });
+      setLines(lines);
+      msg.className = "msg ok";
+      msg.textContent = "내림차순 정렬했습니다.";
+    };
+    document.getElementById("uniq").onclick = function () {
+      setLines(Array.from(new Set(getLines())));
+      msg.className = "msg ok";
+      msg.textContent = "중복을 제거했습니다.";
+    };
+    document.getElementById("blank").onclick = function () {
+      setLines(getLines().filter(function (l) { return l.trim() !== ""; }));
+      msg.className = "msg ok";
+      msg.textContent = "빈 줄을 제거했습니다.";
+    };
+    document.getElementById("copy").onclick = function () {
+      navigator.clipboard.writeText(src.value).then(function () {
+        msg.className = "msg ok";
+        msg.textContent = "복사했습니다.";
+      });
+    };
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

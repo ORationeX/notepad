@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL 인코딩</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>URL 인코딩</h1>
+    <p class="lead">encodeURIComponent 기준으로 변환합니다. 쿼리 값에 한글·공백이 들어갈 때 사용합니다.</p>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="enc" type="button">인코딩</button>
+      <button class="btn" id="dec" type="button">디코딩</button>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h2>입력</h2>
+        <textarea id="src"></textarea>
+      </div>
+      <div class="card">
+        <h2>결과</h2>
+        <textarea id="out"></textarea>
+      </div>
+    </div>
+    <p class="msg" id="msg"></p>
+  </div>
+  <script>
+    const src = document.getElementById("src");
+    const out = document.getElementById("out");
+    const msg = document.getElementById("msg");
+
+    document.getElementById("enc").onclick = function () {
+      out.value = encodeURIComponent(src.value);
+      msg.className = "msg ok";
+      msg.textContent = "인코딩했습니다.";
+    };
+    document.getElementById("dec").onclick = function () {
+      try {
+        out.value = decodeURIComponent(src.value.replace(/\+/g, " "));
+        msg.className = "msg ok";
+        msg.textContent = "디코딩했습니다.";
+      } catch (e) {
+        msg.className = "msg err";
+        msg.textContent = "디코딩할 수 없습니다.";
+      }
+    };
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

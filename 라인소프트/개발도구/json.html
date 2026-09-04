@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON 포맷터</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>JSON 포맷터</h1>
+    <p class="lead">붙여넣은 JSON을 들여쓰기하거나 한 줄로 압축하고, 문법 오류를 확인합니다.</p>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="fmt" type="button">정리</button>
+      <button class="btn" id="min" type="button">압축</button>
+      <button class="btn" id="copy" type="button">복사</button>
+      <button class="btn btn-ghost" id="clear" type="button">지우기</button>
+    </div>
+    <textarea id="src" placeholder='{"name":"라인소프트"}'></textarea>
+    <p class="msg" id="msg"></p>
+  </div>
+  <script>
+    const src = document.getElementById("src");
+    const msg = document.getElementById("msg");
+
+    function parse() {
+      return JSON.parse(src.value);
+    }
+
+    document.getElementById("fmt").onclick = function () {
+      try {
+        src.value = JSON.stringify(parse(), null, 2);
+        msg.className = "msg ok";
+        msg.textContent = "정리했습니다.";
+      } catch (e) {
+        msg.className = "msg err";
+        msg.textContent = e.message;
+      }
+    };
+
+    document.getElementById("min").onclick = function () {
+      try {
+        src.value = JSON.stringify(parse());
+        msg.className = "msg ok";
+        msg.textContent = "압축했습니다.";
+      } catch (e) {
+        msg.className = "msg err";
+        msg.textContent = e.message;
+      }
+    };
+
+    document.getElementById("copy").onclick = function () {
+      navigator.clipboard.writeText(src.value).then(function () {
+        msg.className = "msg ok";
+        msg.textContent = "복사했습니다.";
+      });
+    };
+
+    document.getElementById("clear").onclick = function () {
+      src.value = "";
+      msg.textContent = "";
+    };
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

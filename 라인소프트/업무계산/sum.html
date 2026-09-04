@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>숫자 합계</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>숫자 합계</h1>
+    <p class="lead">텍스트에서 숫자를 모두 찾아 더합니다. 쉼표가 있는 금액도 인식합니다.</p>
+    <textarea id="src" style="margin-top:18px" placeholder="예: 1,200원, -30, 4.5"></textarea>
+    <div class="stats">
+      <div class="stat">개수<b id="cnt">0</b></div>
+      <div class="stat">합계<b id="sum">0</b></div>
+      <div class="stat">평균<b id="avg">0</b></div>
+    </div>
+    <p class="msg" id="msg"></p>
+  </div>
+  <script>
+    const src = document.getElementById("src");
+    const re = /-?\d{1,3}(?:,\d{3})+(?:\.\d+)?|-?\d+(?:\.\d+)?/g;
+
+    function parseNum(s) {
+      return Number(s.replace(/,/g, ""));
+    }
+
+    function run() {
+      const found = src.value.match(re) || [];
+      const nums = found.map(parseNum).filter(Number.isFinite);
+      const sum = nums.reduce(function (a, b) { return a + b; }, 0);
+      document.getElementById("cnt").textContent = nums.length;
+      document.getElementById("sum").textContent = format(sum);
+      document.getElementById("avg").textContent = nums.length ? format(sum / nums.length) : "0";
+      document.getElementById("msg").textContent = nums.length ? nums.join(" + ") : "";
+    }
+
+    function format(n) {
+      return Number.isInteger(n) ? String(n) : String(Math.round(n * 10000) / 10000);
+    }
+
+    src.addEventListener("input", run);
+    run();
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Base64 변환</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>Base64 변환</h1>
+    <p class="lead">UTF-8 문자열을 Base64로 인코딩하거나 디코딩합니다.</p>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="enc" type="button">인코딩</button>
+      <button class="btn" id="dec" type="button">디코딩</button>
+      <button class="btn" id="swap" type="button">위아래 바꾸기</button>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h2>입력</h2>
+        <textarea id="src" placeholder="원문"></textarea>
+      </div>
+      <div class="card">
+        <h2>결과</h2>
+        <textarea id="out" placeholder="결과"></textarea>
+      </div>
+    </div>
+    <p class="msg" id="msg"></p>
+  </div>
+  <script>
+    const src = document.getElementById("src");
+    const out = document.getElementById("out");
+    const msg = document.getElementById("msg");
+
+    function toB64(text) {
+      return btoa(unescape(encodeURIComponent(text)));
+    }
+    function fromB64(text) {
+      return decodeURIComponent(escape(atob(text.replace(/\s/g, ""))));
+    }
+
+    document.getElementById("enc").onclick = function () {
+      try {
+        out.value = toB64(src.value);
+        msg.className = "msg ok";
+        msg.textContent = "인코딩했습니다.";
+      } catch (e) {
+        msg.className = "msg err";
+        msg.textContent = e.message;
+      }
+    };
+    document.getElementById("dec").onclick = function () {
+      try {
+        out.value = fromB64(src.value);
+        msg.className = "msg ok";
+        msg.textContent = "디코딩했습니다.";
+      } catch (e) {
+        msg.className = "msg err";
+        msg.textContent = "올바른 Base64가 아닙니다.";
+      }
+    };
+    document.getElementById("swap").onclick = function () {
+      const t = src.value;
+      src.value = out.value;
+      out.value = t;
+    };
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

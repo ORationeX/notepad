@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>날짜 계산</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>날짜 계산</h1>
+    <p class="lead">두 날짜의 차이를 구하거나, 기준일에서 며칠을 더하고 뺍니다.</p>
+
+    <div class="card" style="margin-top:18px">
+      <h2>기간</h2>
+      <div class="row">
+        <label for="from">시작</label>
+        <input id="from" type="date">
+      </div>
+      <div class="row">
+        <label for="to">종료</label>
+        <input id="to" type="date">
+      </div>
+      <p class="msg" id="diff"></p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>날짜 더하기</h2>
+      <div class="row">
+        <label for="base">기준일</label>
+        <input id="base" type="date">
+      </div>
+      <div class="row">
+        <label for="days">일수</label>
+        <input id="days" type="number" value="7">
+      </div>
+      <p class="msg" id="added"></p>
+    </div>
+  </div>
+  <script>
+    function today() {
+      return new Date().toISOString().slice(0, 10);
+    }
+    function parse(s) {
+      const [y, m, d] = s.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    document.getElementById("from").value = today();
+    document.getElementById("to").value = today();
+    document.getElementById("base").value = today();
+
+    function calcDiff() {
+      const a = parse(document.getElementById("from").value);
+      const b = parse(document.getElementById("to").value);
+      const days = Math.round((b - a) / 86400000);
+      const el = document.getElementById("diff");
+      el.className = "msg";
+      if (days === 0) el.textContent = "같은 날입니다.";
+      else if (days > 0) el.textContent = days + "일 후입니다. (D-" + days + ")";
+      else el.textContent = Math.abs(days) + "일 전입니다. (D+" + Math.abs(days) + ")";
+    }
+
+    function calcAdd() {
+      const d = parse(document.getElementById("base").value);
+      const n = Number(document.getElementById("days").value) || 0;
+      d.setDate(d.getDate() + n);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const week = ["일", "월", "화", "수", "목", "금", "토"][d.getDay()];
+      document.getElementById("added").className = "msg ok";
+      document.getElementById("added").textContent = y + "-" + m + "-" + day + " (" + week + ")";
+    }
+
+    ["from", "to"].forEach(function (id) {
+      document.getElementById(id).addEventListener("change", calcDiff);
+    });
+    ["base", "days"].forEach(function (id) {
+      document.getElementById(id).addEventListener("input", calcAdd);
+    });
+    calcDiff();
+    calcAdd();
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

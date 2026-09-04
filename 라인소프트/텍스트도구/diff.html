@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>텍스트 비교</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+</head>
+<body>
+  <div class="page">
+    <h1>텍스트 비교</h1>
+    <p class="lead">두 텍스트를 줄 단위로 비교합니다. 추가·삭제된 줄만 강조합니다.</p>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="run" type="button">비교</button>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h2>왼쪽 (이전)</h2>
+        <textarea id="a"></textarea>
+      </div>
+      <div class="card">
+        <h2>오른쪽 (이후)</h2>
+        <textarea id="b"></textarea>
+      </div>
+    </div>
+    <p class="msg" id="msg"></p>
+    <div class="card" style="margin-top:12px" id="out"></div>
+  </div>
+  <script>
+    function lines(s) {
+      return s.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    }
+
+    function lcs(a, b) {
+      const n = a.length, m = b.length;
+      const dp = Array.from({ length: n + 1 }, function () { return new Array(m + 1).fill(0); });
+      for (let i = n - 1; i >= 0; i--) {
+        for (let j = m - 1; j >= 0; j--) {
+          dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
+      const ops = [];
+      let i = 0, j = 0;
+      while (i < n && j < m) {
+        if (a[i] === b[j]) {
+          ops.push({ t: "same", v: a[i] });
+          i++; j++;
+        } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+          ops.push({ t: "del", v: a[i++] });
+        } else {
+          ops.push({ t: "add", v: b[j++] });
+        }
+      }
+      while (i < n) ops.push({ t: "del", v: a[i++] });
+      while (j < m) ops.push({ t: "add", v: b[j++] });
+      return ops;
+    }
+
+    document.getElementById("run").onclick = function () {
+      const a = lines(document.getElementById("a").value);
+      const b = lines(document.getElementById("b").value);
+      const ops = lcs(a, b);
+      const out = document.getElementById("out");
+      out.innerHTML = ops.map(function (op) {
+        const cls = op.t === "add" ? "diff-add" : op.t === "del" ? "diff-del" : "diff-same";
+        const mark = op.t === "add" ? "+" : op.t === "del" ? "-" : " ";
+        return '<div class="diff-line ' + cls + '">' + mark + " " + escapeHtml(op.v) + "</div>";
+      }).join("");
+      const add = ops.filter(function (o) { return o.t === "add"; }).length;
+      const del = ops.filter(function (o) { return o.t === "del"; }).length;
+      const msg = document.getElementById("msg");
+      msg.className = "msg";
+      msg.textContent = "추가 " + add + "줄 · 삭제 " + del + "줄";
+    };
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c];
+      });
+    }
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>
