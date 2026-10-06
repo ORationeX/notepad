@@ -1,0 +1,23 @@
+[theme]
+base = "dark"
+primaryColor = "#3b82f6"
+backgroundColor = "#0b0f19"
+secondaryBackgroundColor = "#111827"
+textColor = "#e2e8f0"
+borderColor = "#243044"
+showWidgetBorder = true
+baseRadius = "medium"
+font = "sans-serif"
+chartCategoricalColors = ["#60a5fa", "#94a3b8", "#fbbf24", "#c084fc", "#34d399"]
+
+[theme.sidebar]
+backgroundColor = "#0b0f19"
+secondaryBackgroundColor = "#111827"
+borderColor = "#243044"
+
+[server]
+port = 8510
+fileWatcherType = "poll"
+
+[browser]
+gatherUsageStats = false

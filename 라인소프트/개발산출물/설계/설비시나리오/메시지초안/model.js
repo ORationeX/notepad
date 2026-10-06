@@ -440,6 +440,201 @@
     return true;
   }
 
+  function uniqueSectorId(sectors, name, fallback) {
+    const map = sectors.sectors || {};
+    let base = String(name || "").replace(/\s+/g, "_").replace(/[^\w가-힣\-]/g, "");
+    if (!base) base = fallback || "sector";
+    let id = base;
+    let n = 2;
+    while (map[id]) {
+      id = base + "_" + n;
+      n += 1;
+    }
+    return id;
+  }
+
+  function emptySector(id, kind, title) {
+    const sector = { id: id, kind: kind, title: title || id };
+    if (kind === "object") {
+      sector.columns = ["name", "type", "description", "detail"];
+      sector.fields = [];
+    } else if (kind === "kv") {
+      sector.fields = [
+        { key: "endPoint", label: "EndPoint" },
+        { key: "method", label: "Method" },
+        { key: "description", label: "설명" }
+      ];
+    } else if (kind === "rows") {
+      sector.columns = [
+        { key: "item", header: "item" },
+        { key: "site", header: "site" },
+        { key: "desc", header: "설명" }
+      ];
+      sector.defaultRows = [];
+    } else if (kind === "example") {
+      sector.requestSector = "";
+      sector.responseSector = "";
+      sector.itemListFrom = "";
+    }
+    return sector;
+  }
+
+  function createSector(sectors, kind, title) {
+    if (!sectors.sectors) sectors.sectors = {};
+    const id = uniqueSectorId(sectors, title, kind);
+    const sector = emptySector(id, kind, title || id);
+    sectors.sectors[id] = sector;
+    return sector;
+  }
+
+  function cloneSector(sectors, sid, opts) {
+    const src = sectorOf(sectors, sid);
+    if (!src) return null;
+    if (!sectors.sectors) sectors.sectors = {};
+    const copy = clone(src);
+    copy.id = uniqueSectorId(sectors, (src.id || "sector") + "_copy");
+    copy.title = (opts && opts.keepTitle) ? (src.title || src.id) : ((src.title || src.id) + " 복사");
+    sectors.sectors[copy.id] = copy;
+    return copy;
+  }
+
+  function countSectorUsage(sectors, sid) {
+    let n = 0;
+    (sectors.events || []).forEach(function (ev) {
+      if ((ev.sectors || []).indexOf(sid) >= 0) n += 1;
+    });
+    return n;
+  }
+
+  function remapEventSectorKeys(doc, oldId, newId) {
+    (doc.products || []).forEach(function (product) {
+      (product.processes || []).forEach(function (process) {
+        (process.events || []).forEach(function (event) {
+          ["items", "rows", "values", "nestedItems"].forEach(function (bag) {
+            if (event[bag] && event[bag][oldId] !== undefined) {
+              event[bag][newId] = event[bag][oldId];
+              delete event[bag][oldId];
+            }
+          });
+        });
+      });
+    });
+  }
+
+  function renameSectorId(doc, sectors, oldId, newId) {
+    const src = sectorOf(sectors, oldId);
+    if (!src || !newId || oldId === newId) return false;
+    if (sectorOf(sectors, newId)) return false;
+    src.id = newId;
+    if (!sectors.sectors) sectors.sectors = {};
+    sectors.sectors[newId] = src;
+    delete sectors.sectors[oldId];
+    (sectors.events || []).forEach(function (ev) {
+      ev.sectors = (ev.sectors || []).map(function (id) { return id === oldId ? newId : id; });
+    });
+    Object.keys(sectors.sectors).forEach(function (id) {
+      const s = sectors.sectors[id];
+      if (!s) return;
+      if (s.requestSector === oldId) s.requestSector = newId;
+      if (s.responseSector === oldId) s.responseSector = newId;
+      if (s.itemListFrom === oldId) s.itemListFrom = newId;
+    });
+    remapEventSectorKeys(doc, oldId, newId);
+    return true;
+  }
+
+  function removeSector(sectors, sid) {
+    (sectors.events || []).forEach(function (ev) {
+      ev.sectors = (ev.sectors || []).filter(function (id) { return id !== sid; });
+    });
+    Object.keys(sectors.sectors || {}).forEach(function (id) {
+      const s = sectors.sectors[id];
+      if (!s) return;
+      if (s.requestSector === sid) s.requestSector = "";
+      if (s.responseSector === sid) s.responseSector = "";
+      if (s.itemListFrom === sid) s.itemListFrom = "";
+    });
+    delete sectors.sectors[sid];
+    return true;
+  }
+
+  function attachSector(eventType, sid) {
+    if (!eventType.sectors) eventType.sectors = [];
+    if (eventType.sectors.indexOf(sid) >= 0) return false;
+    eventType.sectors.push(sid);
+    return true;
+  }
+
+  function detachSector(eventType, sid) {
+    const list = eventType.sectors || [];
+    const i = list.indexOf(sid);
+    if (i < 0) return false;
+    list.splice(i, 1);
+    return true;
+  }
+
+  function moveAttachedSector(eventType, sid, dir) {
+    const list = eventType.sectors || [];
+    const i = list.indexOf(sid);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return false;
+    const other = list[j];
+    list[j] = sid;
+    list[i] = other;
+    return true;
+  }
+
+  function inferSheetKind(eventType, sectors) {
+    const ids = eventType.sectors || [];
+    if (!ids.length) return eventType.generateSheet ? "api" : "none";
+    let hasRows = false;
+    let hasApi = false;
+    ids.forEach(function (sid) {
+      const s = sectorOf(sectors, sid);
+      if (!s) return;
+      if (s.kind === "rows") hasRows = true;
+      if (s.kind === "object" || s.kind === "kv" || s.kind === "example") hasApi = true;
+    });
+    if (hasApi) return "api";
+    if (hasRows) return "table";
+    return "api";
+  }
+
+  function syncSheetKind(eventType, sectors) {
+    if (!eventType.generateSheet) {
+      eventType.sheetKind = "none";
+      return eventType.sheetKind;
+    }
+    eventType.sheetKind = inferSheetKind(eventType, sectors);
+    return eventType.sheetKind;
+  }
+
+  function copyEventLayout(sectors, fromType, toType, duplicate) {
+    if (!fromType || !toType) return;
+    toType.generateSheet = !!fromType.generateSheet;
+    toType.sheetKind = fromType.sheetKind || (toType.generateSheet ? "api" : "none");
+    toType.defaults = clone(fromType.defaults || {});
+    if (!duplicate) {
+      toType.sectors = clone(fromType.sectors || []);
+      return;
+    }
+    const map = {};
+    toType.sectors = [];
+    (fromType.sectors || []).forEach(function (sid) {
+      const copy = cloneSector(sectors, sid, { keepTitle: true });
+      if (!copy) return;
+      map[sid] = copy.id;
+      toType.sectors.push(copy.id);
+    });
+    toType.sectors.forEach(function (nid) {
+      const s = sectorOf(sectors, nid);
+      if (!s) return;
+      if (s.requestSector && map[s.requestSector]) s.requestSector = map[s.requestSector];
+      if (s.responseSector && map[s.responseSector]) s.responseSector = map[s.responseSector];
+      if (s.itemListFrom && map[s.itemListFrom]) s.itemListFrom = map[s.itemListFrom];
+    });
+  }
+
   function sheetPrefixOf(product, process) {
     if (process.sheetPrefix) return process.sheetPrefix;
     const p = String(product.name || "").replace(/\([^)]*\)/g, "").replace(/\s+/g, "");
@@ -581,6 +776,19 @@
     countEventTypeUsage: countEventTypeUsage,
     renameEventTypeId: renameEventTypeId,
     removeEventType: removeEventType,
+    uniqueSectorId: uniqueSectorId,
+    emptySector: emptySector,
+    createSector: createSector,
+    cloneSector: cloneSector,
+    countSectorUsage: countSectorUsage,
+    renameSectorId: renameSectorId,
+    removeSector: removeSector,
+    attachSector: attachSector,
+    detachSector: detachSector,
+    moveAttachedSector: moveAttachedSector,
+    inferSheetKind: inferSheetKind,
+    syncSheetKind: syncSheetKind,
+    copyEventLayout: copyEventLayout,
     sheetPrefixOf: sheetPrefixOf,
     sheetNameOf: sheetNameOf,
     fieldValue: fieldValue,

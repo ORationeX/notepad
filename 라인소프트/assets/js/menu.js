@@ -33,6 +33,12 @@ window.APP_MENU = [
     ]
   },
   {
+    folder: "로그도구",
+    children: [
+      { name: "로그 일자 분할", file: "split.html", desc: "통로그를 월 → 일 폴더로 나누고 ZIP 다운로드" }
+    ]
+  },
+  {
     folder: "업무계산",
     children: [
       { name: "숫자 합계", file: "sum.html", desc: "텍스트에서 숫자를 뽑아 합산" },

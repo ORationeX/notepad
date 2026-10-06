@@ -372,15 +372,64 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.inline-add input {
+.inline-add input,
+.inline-add select {
   flex: 1;
   min-width: 0;
 }
 
 .inline-add .btn {
   flex-shrink: 0;
+}
+
+.attach-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.attach-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.attach-row > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.attach-row small {
+  margin-left: 6px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.sector-def-block {
+  margin: 12px 0 4px;
+  padding: 12px 12px 8px;
+  border: 1px solid #c5d4e8;
+  border-radius: 10px;
+  background: #f5f8fc;
+}
+
+.sector-def-block h4 {
+  font-size: 13px;
+  color: #1d4f91;
+}
+
+.sector-def-block h4 small {
+  margin-left: 8px;
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .editor-head {

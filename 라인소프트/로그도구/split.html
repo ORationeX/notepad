@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로그 일자 분할</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/page.css">
+  <style>
+    .drop {
+      border: 1.5px dashed #c5d0de;
+      border-radius: 12px;
+      background: #f7f9fc;
+      padding: 28px 16px;
+      text-align: center;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .drop.over {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--text);
+    }
+    .drop strong { display: block; margin-bottom: 6px; color: var(--text); font-size: 15px; }
+    .drop span { font-size: 13px; }
+    .file-list { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .opts {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .chk {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      margin-top: 28px;
+    }
+    .chk input { width: auto; }
+    .chk label { margin: 0; }
+    .custom-row { margin-top: 12px; display: none; }
+    .custom-row.on { display: block; }
+    textarea { min-height: 160px; margin-top: 12px; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+    .tree {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.75;
+      max-height: 440px;
+      overflow: auto;
+      background: #f7f8fb;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px 14px;
+      white-space: pre;
+    }
+    .hint { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .hint.err { color: var(--danger); }
+    #file { display: none; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>로그 일자 분할</h1>
+    <p class="lead">통으로 된 로그를 일자별로 나누고, <b>월 → 일</b> 계단 폴더로 정돈합니다. 작은 파일은 ZIP으로, 수 GB 로그는 폴더로 직접 저장합니다. 처리는 브라우저에서만 하며 서버로 올라가지 않습니다.</p>
+
+    <div class="card" style="margin-top:18px">
+      <h2>로그 넣기</h2>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="로그 파일 선택">
+        <strong>로그 파일을 여기에 놓거나 클릭해서 선택</strong>
+        <span>.log · .txt · .out 등 여러 개 가능</span>
+      </div>
+      <input id="file" type="file" multiple accept=".log,.txt,.out,.csv,text/*">
+      <div class="file-list" id="fileList">선택된 파일 없음. 파일이 없으면 아래 텍스트를 사용합니다.</div>
+      <textarea id="src" placeholder="또는 로그를 여기에 붙여넣기"></textarea>
+      <p class="hint">라인소프트 EAP <code>[2026-03-01 20:33:16:1061]</code> 형식, logback 시작 로그, 스택 트레이스, JSON 본문을 지원합니다. 날짜는 줄 앞 타임스탬프만 사용합니다.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>분할 옵션</h2>
+      <div class="opts">
+        <div>
+          <label for="enc">인코딩</label>
+          <select id="enc">
+            <option value="utf-8">UTF-8</option>
+            <option value="euc-kr">EUC-KR</option>
+          </select>
+        </div>
+        <div>
+          <label for="pattern">날짜 형식</label>
+          <select id="pattern">
+            <option value="auto">자동 감지</option>
+            <option value="eap">라인소프트 EAP [yyyy-MM-dd HH:mm:ss:ms]</option>
+            <option value="iso">YYYY-MM-DD</option>
+            <option value="slash">YYYY/MM/DD</option>
+            <option value="dot">YYYY.MM.DD</option>
+            <option value="compact">YYYYMMDD</option>
+            <option value="apache">DD/MMM/YYYY (Apache)</option>
+            <option value="tomcat">DD-MMM-YYYY</option>
+            <option value="korean">YYYY년 M월 D일</option>
+            <option value="syslog">MMM DD (연도 없음)</option>
+            <option value="custom">직접 입력 (정규식)</option>
+          </select>
+        </div>
+        <div>
+          <label for="folders">폴더 이름</label>
+          <select id="folders">
+            <option value="kr">2026년 09월 / 07일</option>
+            <option value="iso">2026-09 / 07</option>
+          </select>
+        </div>
+        <div>
+          <label for="year">기본 연도</label>
+          <input id="year" type="number" min="1990" max="2100" title="syslog처럼 연도가 없을 때 사용">
+        </div>
+        <div class="chk">
+          <input id="carry" type="checkbox" checked>
+          <label for="carry">날짜 없는 줄은 앞뒤 일자에 이어 붙이기</label>
+        </div>
+      </div>
+      <div class="custom-row" id="customRow">
+        <label for="customRe">날짜 정규식 (연·월·일 캡처 그룹 3개)</label>
+        <input id="customRe" type="text" placeholder="(\d{4})-(\d{2})-(\d{2})" spellcheck="false">
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary" id="split" type="button">분할</button>
+        <button class="btn" id="saveDir" type="button">폴더로 저장</button>
+        <button class="btn" id="sample" type="button">샘플로 시험</button>
+        <button class="btn btn-ghost" id="clear" type="button">지우기</button>
+      </div>
+      <p class="msg" id="msg"></p>
+      <p class="hint">폴더로 저장할 때는 <b>빈 폴더를 새로 만들어</b> 고르세요. <code>C:\</code>, 사용자 홈, Windows, Program Files, 바탕화면은 Chrome이 시스템 폴더로 막습니다. 예: <code>D:\로그분할</code> 또는 다운로드 안의 새 폴더.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>정돈된 폴더</h2>
+      <div class="stats" id="stats"></div>
+      <div class="tree" id="tree">분할하면 월 → 일 폴더 구조가 여기에 보입니다.</div>
+      <div class="toolbar">
+        <button class="btn btn-primary" id="zip" type="button" disabled>ZIP 다운로드</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script>
+    const MONTHS = {
+      jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+      jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
+    };
+    const CHUNK = 8 * 1024 * 1024;
+    const MAX_ZIP_BYTES = 150 * 1024 * 1024;
+    const drop = document.getElementById("drop");
+    const fileInput = document.getElementById("file");
+    const fileList = document.getElementById("fileList");
+    const src = document.getElementById("src");
+    const patternEl = document.getElementById("pattern");
+    const customRow = document.getElementById("customRow");
+    const msg = document.getElementById("msg");
+    const statsEl = document.getElementById("stats");
+    const treeEl = document.getElementById("tree");
+    const zipBtn = document.getElementById("zip");
+    const yearEl = document.getElementById("year");
+    const splitBtn = document.getElementById("split");
+    const saveDirBtn = document.getElementById("saveDir");
+
+    let chosenFiles = [];
+    let splitResult = null;
+
+    yearEl.value = String(new Date().getFullYear());
+
+    patternEl.onchange = function () {
+      customRow.className = "custom-row" + (patternEl.value === "custom" ? " on" : "");
+      invalidate();
+    };
+    ["enc", "folders", "year", "carry", "customRe"].forEach(function (id) {
+      document.getElementById(id).addEventListener("change", invalidate);
+      document.getElementById(id).addEventListener("input", invalidate);
+    });
+    src.addEventListener("input", invalidate);
+
+    drop.onclick = function () { fileInput.click(); };
+    drop.onkeydown = function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+    };
+    drop.ondragover = function (e) { e.preventDefault(); drop.classList.add("over"); };
+    drop.ondragleave = function () { drop.classList.remove("over"); };
+    drop.ondrop = function (e) {
+      e.preventDefault();
+      drop.classList.remove("over");
+      setFiles(e.dataTransfer.files);
+    };
+    fileInput.onchange = function () { setFiles(fileInput.files); };
+
+    function setFiles(list) {
+      chosenFiles = Array.from(list || []);
+      if (!chosenFiles.length) {
+        fileList.textContent = "선택된 파일 없음. 파일이 없으면 아래 텍스트를 사용합니다.";
+        invalidate();
+        return;
+      }
+      const total = totalSize();
+      const names = chosenFiles.map(function (f) {
+        return f.name + " (" + formatSize(f.size) + ")";
+      }).join(" · ");
+      if (total > MAX_ZIP_BYTES) {
+        fileList.innerHTML = escapeHtml(names) +
+          '<p class="hint err">이 파일은 ' + formatSize(total) +
+          "라서 브라우저에 통째로 올릴 수 없습니다. 「폴더로 저장」을 쓰세요. EAP가 같은 파일을 쓰는 중이면 먼저 복사본을 만드세요.</p>";
+      } else {
+        fileList.textContent = names;
+      }
+      invalidate();
+    }
+
+    function totalSize() {
+      return chosenFiles.reduce(function (sum, f) { return sum + (f.size || 0); }, 0);
+    }
+
+    function isLarge() {
+      return totalSize() > MAX_ZIP_BYTES;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+      });
+    }
+
+    function formatSize(n) {
+      if (n < 1024) return n + " B";
+      if (n < 1048576) return (n / 1024).toFixed(1) + " KB";
+      if (n < 1073741824) return (n / 1048576).toFixed(1) + " MB";
+      return (n / 1073741824).toFixed(2) + " GB";
+    }
+
+    function setBusy(on) {
+      splitBtn.disabled = on;
+      saveDirBtn.disabled = on;
+      if (on) zipBtn.disabled = true;
+    }
+
+    function invalidate() {
+      splitResult = null;
+      zipBtn.disabled = true;
+    }
+
+    function pad(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    function validYmd(y, m, d) {
+      y = Number(y);
+      m = Number(m);
+      d = Number(d);
+      if (!y || y < 1990 || y > 2100) return null;
+      if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+      const dt = new Date(y, m - 1, d);
+      if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+      return { y: y, m: m, d: d };
+    }
+
+    function monthNum(name) {
+      return MONTHS[String(name || "").slice(0, 3).toLowerCase()] || 0;
+    }
+
+    function stripAnsi(line) {
+      return String(line || "").replace(/\u001b\[[0-9;]*[A-Za-z]/g, "");
+    }
+
+    function head(line) {
+      return stripAnsi(line).replace(/^\s+/, "");
+    }
+
+    function extractors() {
+      const yDef = Number(yearEl.value) || new Date().getFullYear();
+      return {
+        eap: function (line) {
+          const m = head(line).match(/^\[(\d{4})-(\d{2})-(\d{2})[ T]\d{2}:\d{2}:\d{2}[:.,]\d+\]/);
+          return m ? validYmd(m[1], m[2], m[3]) : null;
+        },
+        iso: function (line) {
+          const m = head(line).match(/^\[?(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]|$)/);
+          return m ? validYmd(m[1], m[2], m[3]) : null;
+        },
+        slash: function (line) {
+          const m = head(line).match(/^\[?(\d{4})\/(\d{1,2})\/(\d{1,2})(?:[ T]|$)/);
+          return m ? validYmd(m[1], m[2], m[3]) : null;
+        },
+        dot: function (line) {
+          const m = head(line).match(/^\[?(\d{4})\.(\d{1,2})\.(\d{1,2})(?:[ T]|$)/);
+          return m ? validYmd(m[1], m[2], m[3]) : null;
+        },
+        compact: function (line) {
+          const m = head(line).match(/^(\d{4})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?:[^\d]|$)/);
+          return m ? validYmd(m[1], m[2], m[3]) : null;
+        },
+        apache: function (line) {
+          const m = stripAnsi(line).match(/(\d{1,2})\/([A-Za-z]{3})\/(\d{4})/);
+          return m ? validYmd(m[3], monthNum(m[2]), m[1]) : null;
+        },
+        tomcat: function (line) {
+          const m = head(line).match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})/);
+          return m ? validYmd(m[3], monthNum(m[2]), m[1]) : null;
+        },
+        korean: function (line) {
+          const m = head(line).match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
+          return m ? validYmd(m[1], m[2], m[3]) : null;
+        },
+        syslog: function (line) {
+          const m = head(line).match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\b/i);
+          return m ? validYmd(yDef, monthNum(m[1]), m[2]) : null;
+        }
+      };
+    }
+
+    function customExtractor() {
+      const raw = document.getElementById("customRe").value.trim();
+      if (!raw) throw new Error("날짜 정규식을 입력하세요. 예: (\\d{4})-(\\d{2})-(\\d{2})");
+      const re = new RegExp(raw);
+      return function (line) {
+        const m = line.match(re);
+        return m && m[1] && m[2] && m[3] ? validYmd(m[1], m[2], m[3]) : null;
+      };
+    }
+
+    function pickExtractor(mode, sampleLines) {
+      const all = extractors();
+      if (mode === "custom") return customExtractor();
+      if (mode !== "auto") {
+        if (!all[mode]) throw new Error("알 수 없는 날짜 형식입니다.");
+        return all[mode];
+      }
+      const order = ["eap", "iso", "slash", "dot", "korean", "apache", "tomcat", "compact", "syslog"];
+      let best = order[0];
+      let bestCount = -1;
+      order.forEach(function (key) {
+        let n = 0;
+        for (let i = 0; i < sampleLines.length; i++) {
+          if (all[key](sampleLines[i])) n++;
+        }
+        if (n > bestCount) {
+          best = key;
+          bestCount = n;
+        }
+      });
+      return function (line) {
+        for (let i = 0; i < order.length; i++) {
+          const hit = all[order[i]](line);
+          if (hit) return hit;
+        }
+        return null;
+      };
+    }
+
+    function folderNames(ymd) {
+      const style = document.getElementById("folders").value;
+      if (!ymd) {
+        return style === "iso" ? { month: "_other", day: "undated" } : { month: "기타", day: "날짜없음" };
+      }
+      if (style === "iso") {
+        return { month: ymd.y + "-" + pad(ymd.m), day: pad(ymd.d) };
+      }
+      return { month: ymd.y + "년 " + pad(ymd.m) + "월", day: pad(ymd.d) + "일" };
+    }
+
+    function zipPath(ymd, fileName) {
+      const f = folderNames(ymd);
+      return f.month + "/" + f.day + "/" + fileName;
+    }
+
+    function ymdKey(ymd) {
+      return ymd ? ymd.y + "-" + pad(ymd.m) + "-" + pad(ymd.d) : "__none__";
+    }
+
+    function yieldUi() {
+      return new Promise(function (resolve) { setTimeout(resolve, 0); });
+    }
+
+    function friendlyReadError(e) {
+      const name = e && e.name ? e.name : "";
+      const text = e && e.message ? e.message : String(e);
+      if (name === "NotReadableError" || name === "NotFoundError" || /could not be read|permission/i.test(text)) {
+        return new Error("파일을 읽을 수 없습니다. 용량이 너무 크거나, EAP가 같은 파일을 쓰는 중이거나, 선택한 뒤 파일이 바뀌었습니다. 복사본을 만든 다음 「폴더로 저장」으로 다시 시도하세요.");
+      }
+      return e instanceof Error ? e : new Error(text);
+    }
+
+    async function readSlice(file, start, end) {
+      try {
+        return await file.slice(start, end).arrayBuffer();
+      } catch (e) {
+        throw friendlyReadError(e);
+      }
+    }
+
+    async function sampleFile(file, enc) {
+      const buf = await readSlice(file, 0, Math.min(512 * 1024, file.size));
+      let text = new TextDecoder(enc).decode(buf);
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+      const sample = [];
+      for (let i = 0; i < lines.length && sample.length < 200; i++) {
+        if (lines[i].trim()) sample.push(lines[i]);
+      }
+      return sample;
+    }
+
+    async function forEachLine(file, enc, onLine, onProgress) {
+      const decoder = new TextDecoder(enc);
+      let leftover = "";
+      let offset = 0;
+      let bomDone = false;
+      while (offset < file.size) {
+        const end = Math.min(offset + CHUNK, file.size);
+        const isLast = end >= file.size;
+        leftover += decoder.decode(await readSlice(file, offset, end), { stream: !isLast });
+        offset = end;
+        if (!bomDone) {
+          if (leftover.charCodeAt(0) === 0xFEFF) leftover = leftover.slice(1);
+          bomDone = true;
+        }
+        leftover = leftover.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        const parts = leftover.split("\n");
+        leftover = parts.pop();
+        for (let i = 0; i < parts.length; i++) {
+          const maybe = onLine(parts[i]);
+          if (maybe) await maybe;
+        }
+        if (onProgress) onProgress(offset, file.size);
+        await yieldUi();
+      }
+      if (leftover !== "") {
+        const maybe = onLine(leftover);
+        if (maybe) await maybe;
+      }
+    }
+
+    function uniquePath(used, path) {
+      if (!used[path]) {
+        used[path] = 1;
+        return path;
+      }
+      const i = path.lastIndexOf(".");
+      const slash = path.lastIndexOf("/");
+      const dot = i > slash ? i : -1;
+      const base = dot === -1 ? path : path.slice(0, dot);
+      const ext = dot === -1 ? "" : path.slice(dot);
+      let n = 2;
+      let cand = base + "_" + n + ext;
+      while (used[cand]) {
+        n++;
+        cand = base + "_" + n + ext;
+      }
+      used[cand] = 1;
+      return cand;
+    }
+
+    function memorySink(keepLines) {
+      return {
+        buckets: {},
+        usedPaths: {},
+        keepLines: keepLines,
+        write: function (path, key, line) {
+          let item = this.buckets[path];
+          if (!item) {
+            item = this.buckets[path] = { lines: keepLines ? [] : null, count: 0, nl: "\n", key: key };
+          }
+          item.count++;
+          if (keepLines) item.lines.push(line);
+        }
+      };
+    }
+
+    function directorySink(rootHandle) {
+      const FLUSH = 1024 * 1024;
+      const self = {
+        buckets: {},
+        usedPaths: {},
+        seen: {},
+        currentPath: null,
+        writable: null,
+        buf: [],
+        bufSize: 0,
+        write: function (path, key, line) {
+          let item = this.buckets[path];
+          if (!item) {
+            item = this.buckets[path] = { lines: null, count: 0, nl: "\n", key: key };
+          }
+          item.count++;
+          if (this.currentPath !== path || this.bufSize >= FLUSH) {
+            return this.writeSlow(path, line);
+          }
+          this.buf.push(line);
+          this.bufSize += line.length + 1;
+        },
+        writeSlow: async function (path, line) {
+          if (this.currentPath !== path) await this.rotate(path);
+          this.buf.push(line);
+          this.bufSize += line.length + 1;
+          if (this.bufSize >= FLUSH) await this.flush();
+        },
+        flush: async function () {
+          if (!this.writable || !this.buf.length) return;
+          await this.writable.write(this.buf.join("\n") + "\n");
+          this.buf = [];
+          this.bufSize = 0;
+        },
+        rotate: async function (path) {
+          await this.flush();
+          if (this.writable) {
+            await this.writable.close();
+            this.writable = null;
+          }
+          const parts = path.split("/");
+          let dir = rootHandle;
+          for (let i = 0; i < parts.length - 1; i++) {
+            dir = await dir.getDirectoryHandle(parts[i], { create: true });
+          }
+          const name = parts[parts.length - 1];
+          const fh = await dir.getFileHandle(name, { create: true });
+          if (!this.seen[path]) {
+            this.writable = await fh.createWritable();
+            this.seen[path] = 1;
+          } else {
+            const existing = await fh.getFile();
+            this.writable = await fh.createWritable({ keepExistingData: true });
+            await this.writable.seek(existing.size);
+          }
+          this.currentPath = path;
+        },
+        close: async function () {
+          await this.flush();
+          if (this.writable) {
+            await this.writable.close();
+            this.writable = null;
+          }
+        }
+      };
+      return self;
+    }
+
+    async function splitSource(source, fileName, extract, carry, sink) {
+      let last = null;
+      let dated = 0;
+      let undated = 0;
+      let total = 0;
+      const preamble = [];
+      let preambleDone = false;
+      const keyToPath = {};
+
+      function emit(ymd, line) {
+        const key = ymdKey(ymd);
+        if (!keyToPath[key]) keyToPath[key] = uniquePath(sink.usedPaths, zipPath(ymd, fileName));
+        return sink.write(keyToPath[key], key, line);
+      }
+
+      function handleLine(line) {
+        total++;
+        const ymd = extract(line);
+        if (ymd) {
+          dated++;
+          last = ymd;
+          if (!preambleDone && carry && preamble.length) {
+            const held = preamble.splice(0, preamble.length);
+            preambleDone = true;
+            let chain = Promise.resolve();
+            for (let i = 0; i < held.length; i++) {
+              chain = chain.then(function () { return emit(ymd, held[i]); });
+            }
+            return chain.then(function () { return emit(ymd, line); });
+          }
+          preambleDone = true;
+          return emit(ymd, line);
+        }
+        undated++;
+        if (carry && last) return emit(last, line);
+        if (carry && !preambleDone && preamble.length < 40000) {
+          preamble.push(line);
+          return;
+        }
+        return emit(null, line);
+      }
+
+      if (source.file) {
+        await forEachLine(source.file, source.enc, handleLine, source.onProgress);
+      } else {
+        const lines = source.text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+        for (let i = 0; i < lines.length; i++) {
+          const maybe = handleLine(lines[i]);
+          if (maybe) await maybe;
+        }
+      }
+      if (preamble.length) {
+        for (let i = 0; i < preamble.length; i++) {
+          const maybe = emit(null, preamble[i]);
+          if (maybe) await maybe;
+        }
+      }
+      return { lines: total, dated: dated, undated: undated };
+    }
+
+    function setMsg(kind, text) {
+      msg.className = "msg" + (kind ? " " + kind : "");
+      msg.textContent = text;
+    }
+
+    function renderResult(result) {
+      const paths = Object.keys(result.buckets).sort();
+      const months = {};
+      paths.forEach(function (path) {
+        const parts = path.split("/");
+        const month = parts[0];
+        const day = parts[1];
+        const file = parts.slice(2).join("/");
+        if (!months[month]) months[month] = {};
+        if (!months[month][day]) months[month][day] = [];
+          months[month][day].push({ file: file, count: result.buckets[path].count });
+      });
+
+      const monthNames = Object.keys(months).sort();
+      let out = "";
+      let dayFolders = 0;
+      monthNames.forEach(function (month) {
+        out += "📁 " + month + "\n";
+        Object.keys(months[month]).sort().forEach(function (day) {
+          dayFolders++;
+          out += "  📁 " + day + "\n";
+          months[month][day].forEach(function (item) {
+            out += "    📄 " + item.file + "   (" + item.count.toLocaleString() + "줄)\n";
+          });
+        });
+      });
+      treeEl.textContent = out || "생성할 파일이 없습니다.";
+
+      const realMonths = monthNames.filter(function (m) { return m !== "기타" && m !== "_other"; }).length;
+      statsEl.innerHTML =
+        '<div class="stat">파일<b>' + result.fileCount + "</b></div>" +
+        '<div class="stat">총 줄<b>' + result.totalLines.toLocaleString() + "</b></div>" +
+        '<div class="stat">월 폴더<b>' + realMonths + "</b></div>" +
+        '<div class="stat">일 폴더<b>' + dayFolders + "</b></div>" +
+        '<div class="stat">날짜 없는 줄<b>' + result.undated.toLocaleString() + "</b></div>";
+
+      zipBtn.disabled = !result.inMemory || !paths.length;
+    }
+
+    async function collectSources(enc) {
+      if (chosenFiles.length) {
+        const sample = [];
+        for (let i = 0; i < chosenFiles.length && sample.length < 200; i++) {
+          const part = await sampleFile(chosenFiles[i], enc);
+          for (let j = 0; j < part.length && sample.length < 200; j++) sample.push(part[j]);
+        }
+        return {
+          extract: pickExtractor(patternEl.value, sample),
+          items: chosenFiles.map(function (file) {
+            return { file: file, name: file.name };
+          })
+        };
+      }
+      if (!src.value.trim()) throw new Error("로그 파일을 선택하거나 텍스트를 붙여넣으세요.");
+      const lines = src.value.split(/\r\n|\n|\r/);
+      const sample = [];
+      for (let i = 0; i < lines.length && sample.length < 200; i++) {
+        if (lines[i].trim()) sample.push(lines[i]);
+      }
+      return {
+        extract: pickExtractor(patternEl.value, sample),
+        items: [{ text: src.value, name: "pasted.log" }]
+      };
+    }
+
+    async function runSplit(mode, rootHandle) {
+      zipBtn.disabled = true;
+      const enc = document.getElementById("enc").value;
+      const carry = document.getElementById("carry").checked;
+      const sources = await collectSources(enc);
+      const keepLines = mode === "memory";
+      const sink = mode === "directory" ? directorySink(rootHandle) : memorySink(keepLines);
+      let totalLines = 0;
+      let dated = 0;
+      let undated = 0;
+
+      for (let i = 0; i < sources.items.length; i++) {
+        const item = sources.items[i];
+        const info = await splitSource({
+          file: item.file,
+          text: item.text,
+          enc: enc,
+          onProgress: function (done, all) {
+            setMsg("", (mode === "directory" ? "저장 중 " : "처리 중 ") +
+              (all ? ((done / all) * 100).toFixed(1) + "% · " : "") +
+              (all ? formatSize(done) + " / " + formatSize(all) + " · " : "") +
+              item.name);
+          }
+        }, item.name, sources.extract, carry, sink);
+        totalLines += info.lines;
+        dated += info.dated;
+        undated += info.undated;
+      }
+      if (sink.close) await sink.close();
+
+      splitResult = {
+        buckets: sink.buckets,
+        totalLines: totalLines,
+        dated: dated,
+        undated: undated,
+        fileCount: sources.items.length,
+        inMemory: keepLines
+      };
+      renderResult(splitResult);
+      return splitResult;
+    }
+
+    async function pickDirectory() {
+      if (!window.showDirectoryPicker) {
+        throw new Error("폴더 저장은 Chrome 또는 Edge가 필요합니다. file:// 로 연 상태면 라인소프트\\시작.bat 으로 열어 주세요.");
+      }
+      try {
+        return await window.showDirectoryPicker({
+          id: "linesoft-log-split",
+          mode: "readwrite",
+          startIn: "downloads"
+        });
+      } catch (e) {
+        if (e && e.name === "AbortError") {
+          throw new Error("폴더 선택을 취소했습니다. C:\\, 사용자 폴더, Windows 폴더는 선택할 수 없습니다. 탐색기에서 D:\\로그분할 처럼 빈 폴더를 만든 뒤 그 폴더를 고르세요.");
+        }
+        const text = e && e.message ? e.message : String(e);
+        if (/system|보안|권한|permission|not allowed|security/i.test(text)) {
+          throw new Error("Chrome이 그 폴더를 시스템 폴더로 막았습니다. 탐색기에서 빈 폴더를 새로 만든 다음 그 폴더를 선택하세요. 예: D:\\로그분할");
+        }
+        throw e;
+      }
+    }
+
+    document.getElementById("split").onclick = async function () {
+      setBusy(true);
+      try {
+        if (chosenFiles.length && isLarge()) {
+          await runSplit("count");
+          setMsg("ok", "미리보기만 했습니다. " + formatSize(totalSize()) +
+            " 파일은 ZIP을 만들 수 없으니 「폴더로 저장」을 누르세요.");
+          return;
+        }
+        await runSplit("memory");
+        setMsg("ok", "분할했습니다. 월 → 일 폴더를 확인한 뒤 ZIP을 받으세요.");
+      } catch (e) {
+        setMsg("err", e.message || String(e));
+      } finally {
+        setBusy(false);
+        if (splitResult) renderResult(splitResult);
+      }
+    };
+
+    document.getElementById("saveDir").onclick = async function () {
+      try {
+        const root = await pickDirectory();
+        setBusy(true);
+        await runSplit("directory", root);
+        setMsg("ok", "선택한 폴더에 월 → 일 구조로 저장했습니다.");
+      } catch (e) {
+        setMsg("err", e.message || String(e));
+      } finally {
+        setBusy(false);
+        if (splitResult) renderResult(splitResult);
+      }
+    };
+
+    document.getElementById("zip").onclick = async function () {
+      if (!splitResult || !splitResult.inMemory || typeof JSZip === "undefined") {
+        setMsg("err", "ZIP은 작은 파일을 분할한 뒤에만 받을 수 있습니다. 큰 파일은 「폴더로 저장」을 사용하세요.");
+        return;
+      }
+      try {
+        zipBtn.disabled = true;
+        const zip = new JSZip();
+        Object.keys(splitResult.buckets).forEach(function (path) {
+          const item = splitResult.buckets[path];
+          zip.file(path, (item.lines || []).join(item.nl || "\n"));
+        });
+        const blob = await zip.generateAsync(
+          { type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } },
+          function (meta) {
+            setMsg("", "ZIP 만드는 중 " + Math.round(meta.percent) + "%");
+          }
+        );
+        const base = chosenFiles.length === 1
+          ? chosenFiles[0].name.replace(/\.[^.]+$/, "")
+          : chosenFiles.length > 1 ? "logs" : "pasted";
+        const a = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        a.href = url;
+        a.download = base + "_일자별로그.zip";
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+        setMsg("ok", "ZIP 다운로드를 시작했습니다.");
+      } catch (e) {
+        setMsg("err", e.message || String(e));
+      } finally {
+        zipBtn.disabled = !(splitResult && splitResult.inMemory);
+      }
+    };
+
+    document.getElementById("sample").onclick = function () {
+      chosenFiles = [];
+      fileInput.value = "";
+      fileList.textContent = "선택된 파일 없음. 샘플 텍스트를 사용합니다.";
+      src.value = [
+        "20:33:15,557 |-INFO in ch.qos.logback.classic.LoggerContext[default] - This is logback-classic version 1.4.14",
+        "20:33:16,240 |-INFO in c.q.l.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy - Setting initial period to 2026-02-28T23:53:51.631Z",
+        " :: Spring Boot ::                (v3.2.3)",
+        "[2026-03-01 20:33:16:1061] [main] INFO  - Starting LinesoftEapApplication v0.0.1-SNAPSHOT",
+        "[2026-03-01 20:33:20:4544] [main] INFO  - Started LinesoftEapApplication in 4.349 seconds",
+        "[2026-03-01 21:12:24:2349156] [http-nio-8086-exec-3] INFO  - Error parsing HTTP request header",
+        "java.lang.IllegalArgumentException: Invalid character found in method name",
+        "	at org.apache.coyote.http11.Http11InputBuffer.parseRequestLine(Http11InputBuffer.java:407)",
+        "[2026-03-02 06:45:40:36744488] [http-nio-8086-exec-10] INFO  - [EQP] -> [EAP] eapLoopBack",
+        "[2026-03-02 07:14:05:38449750] [http-nio-8086-exec-10] INFO  - Start :MTT08 , LOTID : B4ATFTT02C",
+        "[2026-03-02 07:14:05:38449753] [http-nio-8086-exec-10] INFO  - receiveData : ",
+        " {",
+        '  "factoryID" : "VTVP01",',
+        '  "equipmentID" : "MTT08",',
+        '  "lotID" : "B4ATFTT02C"',
+        " }",
+        "[2026-03-02 07:14:05:38450466] [http-nio-8086-exec-10] INFO  - End :MTT08 , LOTID : B4ATFTT02C"
+      ].join("\n");
+      invalidate();
+      setMsg("ok", "샘플을 넣었습니다. 분할을 눌러 보세요.");
+    };
+
+    document.getElementById("clear").onclick = function () {
+      chosenFiles = [];
+      fileInput.value = "";
+      src.value = "";
+      fileList.textContent = "선택된 파일 없음. 파일이 없으면 아래 텍스트를 사용합니다.";
+      statsEl.innerHTML = "";
+      treeEl.textContent = "분할하면 월 → 일 폴더 구조가 여기에 보입니다.";
+      invalidate();
+      setMsg("", "");
+    };
+  </script>
+  <script src="../assets/js/menu.js"></script>
+  <script src="../assets/js/layout.js"></script>
+</body>
+</html>

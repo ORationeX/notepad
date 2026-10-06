@@ -870,6 +870,107 @@
     render();
   }
 
+  function sectorKindLabel(kind) {
+    return ({ object: "요청/응답 필드", kv: "설명", rows: "표", example: "예시 JSON" })[kind] || kind;
+  }
+
+  function nestedTypeOptions(selected) {
+    let html = '<option value="">(없음)</option>';
+    Object.keys(state.sectors.nested || {}).forEach(function (id) {
+      html += '<option value="' + esc(id) + '"' + (selected === id ? " selected" : "") + ">" + esc(id) + "</option>";
+    });
+    return html;
+  }
+
+  function sectorSelectOptions(selected, kinds, emptyLabel, exclude) {
+    let html = emptyLabel != null ? '<option value="">' + esc(emptyLabel) + "</option>" : "";
+    Object.keys(state.sectors.sectors || {}).forEach(function (id) {
+      const s = state.sectors.sectors[id];
+      if (!s) return;
+      if (kinds && kinds.indexOf(s.kind) < 0) return;
+      if (exclude && exclude.indexOf(id) >= 0) return;
+      html += '<option value="' + esc(id) + '"' + (selected === id ? " selected" : "") + ">" + esc(s.title || id) + " · " + esc(id) + "</option>";
+    });
+    return html;
+  }
+
+  function renderObjectFieldsTable(sid, fields) {
+    if (!Array.isArray(fields)) fields = [];
+    let html = '<div class="table-wrap"><table class="grid"><thead><tr><th>이름</th><th>타입</th><th>중첩</th><th>설명</th><th>상세설명</th><th>예시값</th><th></th></tr></thead><tbody>';
+    fields.forEach(function (f, i) {
+      html += "<tr>";
+      html += '<td><input data-mf="' + esc(sid) + '" data-i="' + i + '" data-k="name" value="' + esc(f.name || "") + '"></td>';
+      html += '<td><input data-mf="' + esc(sid) + '" data-i="' + i + '" data-k="type" value="' + esc(f.type || "") + '"></td>';
+      html += '<td><select data-mf="' + esc(sid) + '" data-i="' + i + '" data-k="nested">' + nestedTypeOptions(f.nested || "") + "</select></td>";
+      html += '<td><input data-mf="' + esc(sid) + '" data-i="' + i + '" data-k="description" value="' + esc(f.description || "") + '"></td>';
+      html += '<td><input data-mf="' + esc(sid) + '" data-i="' + i + '" data-k="detail" value="' + esc(f.detail || "") + '"></td>';
+      html += '<td><input data-mf="' + esc(sid) + '" data-i="' + i + '" data-k="example" value="' + esc(f.example || "") + '"></td>';
+      html += '<td><button class="btn btn-ghost" type="button" data-del-field="' + esc(sid) + '" data-i="' + i + '">삭제</button></td></tr>';
+    });
+    if (!fields.length) html += '<tr><td colspan="7">필드가 없습니다.</td></tr>';
+    html += '</tbody></table></div><button class="btn" type="button" data-add-field="' + esc(sid) + '">필드 추가</button>';
+    return html;
+  }
+
+  function renderSectorDef(sector) {
+    const sid = sector.id;
+    let html = '<div class="sector-def-block"><div class="sector-head"><h4>' + esc(sector.title || sid) + " <small>" + esc(sid) + " · " + esc(sectorKindLabel(sector.kind)) + "</small></h4>";
+    html += '<div class="toolbar"><button class="btn" type="button" data-clone-sec="' + esc(sid) + '">복제</button>';
+    html += '<button class="btn btn-ghost" type="button" data-del-sec="' + esc(sid) + '">정의 삭제</button></div></div>';
+    html += '<div class="row"><label>표시 이름</label><input data-st="' + esc(sid) + '" data-sk="title" value="' + esc(sector.title || "") + '"></div>';
+    html += '<div class="row"><label>ID</label><input data-sec-id="' + esc(sid) + '" value="' + esc(sid) + '"></div>';
+    if (sector.kind === "object") {
+      if (!Array.isArray(sector.fields)) sector.fields = [];
+      html += renderObjectFieldsTable(sid, sector.fields);
+    } else if (sector.kind === "kv") {
+      if (!Array.isArray(sector.fields)) sector.fields = [];
+      html += '<div class="table-wrap"><table class="grid"><thead><tr><th>키</th><th>표시 이름</th><th></th></tr></thead><tbody>';
+      sector.fields.forEach(function (f, i) {
+        html += "<tr>";
+        html += '<td><input data-kv="' + esc(sid) + '" data-i="' + i + '" data-k="key" value="' + esc(f.key || "") + '"></td>';
+        html += '<td><input data-kv="' + esc(sid) + '" data-i="' + i + '" data-k="label" value="' + esc(f.label || "") + '"></td>';
+        html += '<td><button class="btn btn-ghost" type="button" data-del-kv="' + esc(sid) + '" data-i="' + i + '">삭제</button></td></tr>';
+      });
+      if (!sector.fields.length) html += '<tr><td colspan="3">항목이 없습니다.</td></tr>';
+      html += '</tbody></table></div><button class="btn" type="button" data-add-kv="' + esc(sid) + '">항목 추가</button>';
+    } else if (sector.kind === "rows") {
+      if (!Array.isArray(sector.columns)) sector.columns = [];
+      if (!Array.isArray(sector.defaultRows)) sector.defaultRows = [];
+      html += '<div class="row"><label>배치</label><label class="check-label"><input type="checkbox" data-place="' + esc(sid) + '"' + (sector.place === "side" ? " checked" : "") + "> 시트 오른쪽에 배치 (ITEM 설명)</label></div>";
+      html += '<div class="sector-head"><p>열</p><button class="btn" type="button" data-add-rcol="' + esc(sid) + '">열 추가</button></div>';
+      html += '<div class="table-wrap"><table class="grid"><thead><tr><th>키</th><th>헤더</th><th></th></tr></thead><tbody>';
+      sector.columns.forEach(function (col, i) {
+        html += "<tr>";
+        html += '<td><input data-rcol="' + esc(sid) + '" data-i="' + i + '" data-k="key" value="' + esc(col.key || "") + '"></td>';
+        html += '<td><input data-rcol="' + esc(sid) + '" data-i="' + i + '" data-k="header" value="' + esc(col.header || "") + '"></td>';
+        html += '<td><button class="btn btn-ghost" type="button" data-del-rcol="' + esc(sid) + '" data-i="' + i + '">삭제</button></td></tr>';
+      });
+      if (!sector.columns.length) html += '<tr><td colspan="3">열이 없습니다.</td></tr>';
+      html += "</tbody></table></div>";
+      html += '<div class="sector-head"><p>기본 항목</p><button class="btn" type="button" data-add-def-row="' + esc(sid) + '">항목 추가</button></div>';
+      html += '<div class="table-wrap"><table class="grid"><thead><tr>';
+      sector.columns.forEach(function (col) { html += "<th>" + esc(col.header || col.key) + "</th>"; });
+      html += "<th></th></tr></thead><tbody>";
+      sector.defaultRows.forEach(function (row, idx) {
+        html += "<tr>";
+        sector.columns.forEach(function (col) {
+          html += '<td><input data-def-row="' + esc(sid) + '" data-i="' + idx + '" data-k="' + esc(col.key) + '" value="' + esc(row[col.key] == null ? "" : row[col.key]) + '"></td>';
+        });
+        html += '<td><button class="btn btn-ghost" type="button" data-del-def-row="' + esc(sid) + '" data-i="' + idx + '">삭제</button></td></tr>';
+      });
+      if (!sector.defaultRows.length) {
+        html += '<tr><td colspan="' + (sector.columns.length + 1) + '">기본 항목이 없습니다.</td></tr>';
+      }
+      html += "</tbody></table></div>";
+    } else if (sector.kind === "example") {
+      html += '<div class="row"><label>요청 섹터</label><select data-ex="' + esc(sid) + '" data-ek="requestSector">' + sectorSelectOptions(sector.requestSector || "", ["object"], "(없음)") + "</select></div>";
+      html += '<div class="row"><label>응답 섹터</label><select data-ex="' + esc(sid) + '" data-ek="responseSector">' + sectorSelectOptions(sector.responseSector || "", ["object"], "(없음)") + "</select></div>";
+      html += '<div class="row"><label>ITEM 표</label><select data-ex="' + esc(sid) + '" data-ek="itemListFrom">' + sectorSelectOptions(sector.itemListFrom || "", ["rows"], "(없음)") + "</select></div>";
+    }
+    html += "</div>";
+    return html;
+  }
+
   function uniqueEventTypeId(name) {
     const base = String(name || "").replace(/\s+/g, "").replace(/[^\w가-힣\-]/g, "") || "ev";
     let id = base;
@@ -883,13 +984,25 @@
 
   function renderMaster() {
     const events = state.sectors.events || [];
+    if (!state.sectors.sectors) state.sectors.sectors = {};
     if (!state.masterEventId && events[0]) state.masterEventId = events[0].id;
     const current = M.findEventType(state.sectors, state.masterEventId) || events[0];
+    if (current && !current.defaults) current.defaults = {};
     let html = '<div class="editor-head"><h2>이벤트 기준정보</h2>';
     if (current) html += '<button class="btn btn-danger" type="button" id="del-event-type">이 종류 삭제</button>';
     html += "</div>";
-    html += '<p class="hint">이벤트 종류(STDTrackIn 등)는 기준정보로 공통 관리합니다. 이름을 직접 넣고 추가·수정·삭제할 수 있습니다. 요청/응답 필드 기본값은 여기서 고치고, 각 제품·공정 이벤트 화면에서 다시 편집할 수 있습니다.</p>';
+    html += '<p class="hint">이벤트 종류는 기준정보로 공통 관리합니다. 요청·응답·설명·예시는 아래 섹터 정의에서 만들고, 이벤트 종류에 연결합니다. 같은 섹터를 여러 종류가 공유하면 필드도 함께 바뀌므로, 독립적으로 쓰려면 복제하세요.</p>';
     html += '<div class="row"><label>새 이벤트</label><div class="inline-add"><input id="new-master-event-name" placeholder="이름 (예: STDTrackIn)"><button class="btn btn-primary" type="button" id="add-event-type">종류 추가</button></div></div>';
+    html += '<div class="row"><label>구성 템플릿</label><select id="new-master-event-tpl"><option value="">빈 종류 (섹터를 직접 연결)</option>';
+    html += '<optgroup label="섹터 공유">';
+    events.forEach(function (ev) {
+      html += '<option value="share:' + esc(ev.id) + '">' + esc(ev.name) + "과 같은 섹터 공유</option>";
+    });
+    html += '</optgroup><optgroup label="섹터 복제 (독립)">';
+    events.forEach(function (ev) {
+      html += '<option value="dup:' + esc(ev.id) + '">' + esc(ev.name) + " 섹터를 복제</option>";
+    });
+    html += "</optgroup></select></div>";
     html += '<div class="row"><label>이벤트 종류</label><select id="master-event">';
     events.forEach(function (ev) {
       html += '<option value="' + esc(ev.id) + '"' + (current && current.id === ev.id ? " selected" : "") + ">" + esc(ev.name) + "</option>";
@@ -899,49 +1012,50 @@
       html += inputRow("이름", current.name || "", 'id="master-event-name"');
       html += inputRow("ID", current.id || "", 'id="master-event-id"');
       html += '<div class="row"><label>시트 생성</label><label class="check-label"><input type="checkbox" id="master-gen-sheet"' + (current.generateSheet ? " checked" : "") + "> 엑셀 상세 시트 생성</label></div>";
+      if (current.generateSheet) {
+        html += '<div class="row"><label>시트 형식</label><select id="master-sheet-kind">';
+        html += '<option value="api"' + (current.sheetKind === "api" ? " selected" : "") + ">API 메시지</option>";
+        html += '<option value="table"' + (current.sheetKind === "table" ? " selected" : "") + ">표 (DB to DB)</option>";
+        html += "</select></div>";
+        html += inputRow("EndPoint", current.defaults.endPoint || "", 'id="master-ep"');
+        html += inputRow("Method", current.defaults.method || "", 'id="master-method"');
+        html += inputRow("설명", current.defaults.description || "", 'id="master-desc"');
+      }
       html += '<div class="stats"><span class="stat">시트 생성<b>' + (current.generateSheet ? "예" : "아니오") + "</b></span>";
       html += '<span class="stat">섹터<b>' + (current.sectors || []).length + "</b></span></div>";
+      html += '<section class="sector"><div class="sector-head"><h3>이 종류에 연결된 섹터</h3></div>';
+      html += '<p class="hint">시트에 들어갈 설명·요청·응답·예시 순서를 여기서 정합니다. 필드 내용은 아래 섹터 정의에서 고칩니다.</p>';
+      html += '<div class="attach-list">';
       (current.sectors || []).forEach(function (sid) {
         const sector = M.sectorOf(state.sectors, sid);
-        if (!sector) return;
-        html += '<section class="sector"><h3>' + esc(sector.title) + ' <small>' + esc(sector.kind) + "</small></h3>";
-        if (sector.kind === "object") {
-          html += '<div class="table-wrap"><table class="grid"><thead><tr><th>이름</th><th>타입</th><th>설명</th><th>상세설명</th><th>예시값</th><th></th></tr></thead><tbody>';
-          (sector.fields || []).forEach(function (f, i) {
-            html += "<tr>";
-            html += '<td><input data-mf="' + sid + '" data-i="' + i + '" data-k="name" value="' + esc(f.name) + '"></td>';
-            html += '<td><input data-mf="' + sid + '" data-i="' + i + '" data-k="type" value="' + esc(f.type || "") + '"></td>';
-            html += '<td><input data-mf="' + sid + '" data-i="' + i + '" data-k="description" value="' + esc(f.description || "") + '"></td>';
-            html += '<td><input data-mf="' + sid + '" data-i="' + i + '" data-k="detail" value="' + esc(f.detail || "") + '"></td>';
-            html += '<td><input data-mf="' + sid + '" data-i="' + i + '" data-k="example" value="' + esc(f.example || "") + '"></td>';
-            html += '<td><button class="btn btn-ghost" type="button" data-del-field="' + sid + '" data-i="' + i + '">삭제</button></td></tr>';
-          });
-          html += '</tbody></table></div><button class="btn" type="button" data-add-field="' + sid + '">필드 추가</button>';
-        } else if (sector.kind === "rows") {
-          if (!Array.isArray(sector.defaultRows)) sector.defaultRows = [];
-          html += '<div class="sector-head"><p>기본 항목</p><button class="btn" type="button" data-add-def-row="' + sid + '">항목 추가</button></div>';
-          html += '<div class="table-wrap"><table class="grid"><thead><tr>';
-          (sector.columns || []).forEach(function (col) { html += "<th>" + esc(col.header) + "</th>"; });
-          html += "<th></th></tr></thead><tbody>";
-          sector.defaultRows.forEach(function (row, idx) {
-            html += "<tr>";
-            (sector.columns || []).forEach(function (col) {
-              html += '<td><input data-def-row="' + sid + '" data-i="' + idx + '" data-k="' + col.key + '" value="' + esc(row[col.key] == null ? "" : row[col.key]) + '"></td>';
-            });
-            html += '<td><button class="btn btn-ghost" type="button" data-del-def-row="' + sid + '" data-i="' + idx + '">삭제</button></td></tr>';
-          });
-          if (!sector.defaultRows.length) {
-            html += '<tr><td colspan="' + ((sector.columns || []).length + 1) + '">기본 항목이 없습니다.</td></tr>';
-          }
-          html += "</tbody></table></div>";
-        } else if (sector.kind === "kv") {
-          html += "<p>항목: " + esc((sector.fields || []).map(function (f) { return f.label; }).join(", ")) + "</p>";
-        } else {
-          html += "<p>예시 JSON 섹터입니다.</p>";
-        }
-        html += "</section>";
+        html += '<div class="attach-row"><span>' + esc(sector ? sector.title : sid) + " <small>" + esc(sector ? sectorKindLabel(sector.kind) : "없음") + "</small></span>";
+        html += '<button class="btn btn-ghost" type="button" data-sec-up="' + esc(sid) + '">위</button>';
+        html += '<button class="btn btn-ghost" type="button" data-sec-down="' + esc(sid) + '">아래</button>';
+        html += '<button class="btn btn-ghost" type="button" data-sec-detach="' + esc(sid) + '">연결 해제</button></div>';
       });
+      if (!(current.sectors || []).length) {
+        html += '<div class="attach-row"><span>연결된 섹터가 없습니다. 아래 섹터 정의에서 만들거나, 기존 섹터를 연결하세요.</span></div>';
+      }
+      html += "</div>";
+      html += '<div class="row"><label>섹터 연결</label><div class="inline-add"><select id="attach-sector">' + sectorSelectOptions("", null, "연결할 섹터", current.sectors || []) + '</select><button class="btn" type="button" id="btn-attach-sector">연결</button></div></div>';
+      html += '<div class="row"><label>구성 복사</label><div class="inline-add"><select id="copy-from-event"><option value="">다른 이벤트 종류</option>';
+      events.forEach(function (ev) {
+        if (ev.id === current.id) return;
+        html += '<option value="' + esc(ev.id) + '">' + esc(ev.name) + "</option>";
+      });
+      html += '</select><button class="btn" type="button" id="btn-copy-share">연결만 복사</button><button class="btn" type="button" id="btn-copy-dup">복제해서 연결</button></div></div></section>';
     }
+    html += '<section class="sector"><div class="sector-head"><h3>섹터 정의</h3></div>';
+    html += '<p class="hint">배열/객체 정의와 같이 섹터를 추가·수정·삭제합니다. 새로 만든 섹터는 현재 보고 있는 이벤트 종류에 바로 연결됩니다.</p>';
+    html += '<div class="row"><label>새 섹터</label><div class="inline-add"><input id="new-sector-title" placeholder="표시 이름 (예: 2. 요청)">';
+    html += '<select id="new-sector-kind"><option value="object">요청/응답 필드</option><option value="kv">설명</option><option value="rows">표</option><option value="example">예시 JSON</option></select>';
+    html += '<button class="btn btn-primary" type="button" id="add-sector">섹터 추가</button></div></div>';
+    Object.keys(state.sectors.sectors).forEach(function (sid) {
+      const sector = state.sectors.sectors[sid];
+      if (sector) html += renderSectorDef(sector);
+    });
+    html += "</section>";
+
     html += '<section class="sector"><div class="sector-head"><h3>배열/객체 정의</h3><button class="btn" type="button" id="add-nested-type">정의 추가</button></div>';
     html += '<p class="hint">BulkConsumableList, ITEM, DATA처럼 배열·객체 내부 항목의 기준정보입니다. 이벤트 화면에서 배열을 추가하면 이 정의를 기본값으로 복사한 뒤, 해당 이벤트에서 다시 편집합니다.</p>';
     if (!state.sectors.nested) state.sectors.nested = {};
@@ -982,16 +1096,26 @@
       }
       if (!state.sectors.events) state.sectors.events = [];
       const id = uniqueEventTypeId(name);
-      state.sectors.events.push({
+      const created = {
         id: id,
         name: name,
         generateSheet: false,
         sheetKind: "none",
-        sectors: []
-      });
+        sectors: [],
+        defaults: {}
+      };
+      const tpl = (($("new-master-event-tpl") && $("new-master-event-tpl").value) || "");
+      if (tpl) {
+        const sep = tpl.indexOf(":");
+        const mode = tpl.slice(0, sep);
+        const fromId = tpl.slice(sep + 1);
+        const from = M.findEventType(state.sectors, fromId);
+        if (from) M.copyEventLayout(state.sectors, from, created, mode === "dup");
+      }
+      state.sectors.events.push(created);
       state.masterEventId = id;
       persist();
-      flash("이벤트 종류를 추가했습니다.", "ok");
+      flash(tpl ? "이벤트 종류를 추가하고 섹터를 구성했습니다." : "이벤트 종류를 추가했습니다. 섹터를 연결하세요.", "ok");
       render();
     };
     const newName = $("new-master-event-name");
@@ -1000,6 +1124,28 @@
         if (e.key === "Enter") {
           e.preventDefault();
           $("add-event-type").click();
+        }
+      };
+    }
+    $("add-sector").onclick = function () {
+      const title = (($("new-sector-title") && $("new-sector-title").value) || "").trim() || "새 섹터";
+      const kind = (($("new-sector-kind") && $("new-sector-kind").value) || "object");
+      const sector = M.createSector(state.sectors, kind, title);
+      if (current) {
+        M.attachSector(current, sector.id);
+        current.generateSheet = true;
+        M.syncSheetKind(current, state.sectors);
+      }
+      persist();
+      flash("섹터를 추가했습니다.", "ok");
+      render();
+    };
+    const newSecTitle = $("new-sector-title");
+    if (newSecTitle) {
+      newSecTitle.onkeydown = function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          $("add-sector").click();
         }
       };
     }
@@ -1034,10 +1180,59 @@
       if (genEl) {
         genEl.onchange = function () {
           current.generateSheet = this.checked;
-          current.sheetKind = this.checked ? (current.sheetKind === "none" ? "api" : current.sheetKind) : "none";
+          if (this.checked) M.syncSheetKind(current, state.sectors);
+          else current.sheetKind = "none";
+          persist();
+          render();
+        };
+      }
+      const kindEl = $("master-sheet-kind");
+      if (kindEl) {
+        kindEl.onchange = function () {
+          current.sheetKind = this.value;
           persist();
         };
       }
+      ["master-ep", "master-method", "master-desc"].forEach(function (fid, i) {
+        const el = $(fid);
+        const keys = ["endPoint", "method", "description"];
+        if (!el) return;
+        el.oninput = function () {
+          if (!current.defaults) current.defaults = {};
+          current.defaults[keys[i]] = this.value;
+          persist();
+        };
+      });
+      const attachBtn = $("btn-attach-sector");
+      if (attachBtn) {
+        attachBtn.onclick = function () {
+          const sid = ($("attach-sector") && $("attach-sector").value) || "";
+          if (!sid) { flash("연결할 섹터를 고르세요.", "err"); return; }
+          if (!M.attachSector(current, sid)) {
+            flash("이미 연결된 섹터입니다.", "err");
+            return;
+          }
+          current.generateSheet = true;
+          M.syncSheetKind(current, state.sectors);
+          persist();
+          flash("섹터를 연결했습니다.", "ok");
+          render();
+        };
+      }
+      function copyFromSelected(duplicate) {
+        const fromId = ($("copy-from-event") && $("copy-from-event").value) || "";
+        const from = M.findEventType(state.sectors, fromId);
+        if (!from) { flash("복사할 이벤트 종류를 고르세요.", "err"); return; }
+        if ((current.sectors || []).length && !confirm("지금 연결된 섹터를 바꿀까요?")) return;
+        M.copyEventLayout(state.sectors, from, current, duplicate);
+        persist();
+        flash(duplicate ? "섹터를 복제해서 연결했습니다." : "섹터 연결을 복사했습니다. 필드는 공유됩니다.", "ok");
+        render();
+      }
+      const copyShare = $("btn-copy-share");
+      if (copyShare) copyShare.onclick = function () { copyFromSelected(false); };
+      const copyDup = $("btn-copy-dup");
+      if (copyDup) copyDup.onclick = function () { copyFromSelected(true); };
       const delType = $("del-event-type");
       if (delType) {
         delType.onclick = function () {
@@ -1067,13 +1262,18 @@
       persist();
       render();
     };
-    $("editor").oninput = function (e) {
-      const t = e.target;
+    function saveMasterField(t) {
       if (t.dataset.mf) {
         const sector = M.sectorOf(state.sectors, t.dataset.mf);
         const field = sector && sector.fields[Number(t.dataset.i)];
         if (!field) return;
-        field[t.dataset.k] = t.value;
+        const key = t.dataset.k;
+        field[key] = t.value;
+        if (key === "nested" && !t.value) delete field.nested;
+        if (key === "type") {
+          const nid = M.nestedIdOf(field);
+          if (nid) field.nested = nid;
+        }
         persist();
       }
       if (t.dataset.defRow) {
@@ -1092,6 +1292,63 @@
         const field = def && def.fields[Number(t.dataset.i)];
         if (field) { field[t.dataset.k] = t.value; persist(); }
       }
+      if (t.dataset.st) {
+        const sector = M.sectorOf(state.sectors, t.dataset.st);
+        if (sector) { sector[t.dataset.sk] = t.value; persist(); }
+      }
+      if (t.dataset.kv) {
+        const sector = M.sectorOf(state.sectors, t.dataset.kv);
+        const field = sector && (sector.fields || [])[Number(t.dataset.i)];
+        if (field) { field[t.dataset.k] = t.value; persist(); }
+      }
+      if (t.dataset.rcol) {
+        const sector = M.sectorOf(state.sectors, t.dataset.rcol);
+        const col = sector && (sector.columns || [])[Number(t.dataset.i)];
+        if (!col) return;
+        const prev = col.key;
+        col[t.dataset.k] = t.value;
+        if (t.dataset.k === "key" && prev && prev !== t.value) {
+          (sector.defaultRows || []).forEach(function (row) {
+            if (row[prev] !== undefined && row[t.value] === undefined) {
+              row[t.value] = row[prev];
+              delete row[prev];
+            }
+          });
+        }
+        persist();
+      }
+      if (t.dataset.ex) {
+        const sector = M.sectorOf(state.sectors, t.dataset.ex);
+        if (sector) { sector[t.dataset.ek] = t.value; persist(); }
+      }
+    }
+    $("editor").oninput = function (e) { saveMasterField(e.target); };
+    $("editor").onchange = function (e) {
+      const t = e.target;
+      if (t.dataset.place) {
+        const sector = M.sectorOf(state.sectors, t.dataset.place);
+        if (sector) {
+          if (t.checked) sector.place = "side";
+          else delete sector.place;
+          persist();
+        }
+        return;
+      }
+      if (t.dataset.secId) {
+        const oldId = t.dataset.secId;
+        const next = t.value.trim();
+        if (!next || next === oldId) { t.value = oldId; return; }
+        if (M.sectorOf(state.sectors, next)) {
+          flash("이미 있는 섹터 ID입니다.", "err");
+          t.value = oldId;
+          return;
+        }
+        M.renameSectorId(state.doc, state.sectors, oldId, next);
+        persist();
+        render();
+        return;
+      }
+      saveMasterField(t);
     };
     $("editor").onclick = function (e) {
       const add = e.target.closest("[data-add-field]");
@@ -1101,9 +1358,18 @@
       const addNf = e.target.closest("[data-add-nfield]");
       const delNf = e.target.closest("[data-del-nfield]");
       const delNt = e.target.closest("[data-del-ntype]");
+      const addKv = e.target.closest("[data-add-kv]");
+      const delKv = e.target.closest("[data-del-kv]");
+      const addRcol = e.target.closest("[data-add-rcol]");
+      const delRcol = e.target.closest("[data-del-rcol]");
+      const cloneSec = e.target.closest("[data-clone-sec]");
+      const delSec = e.target.closest("[data-del-sec]");
+      const secUp = e.target.closest("[data-sec-up]");
+      const secDown = e.target.closest("[data-sec-down]");
+      const secDetach = e.target.closest("[data-sec-detach]");
       if (add) {
         const sector = M.sectorOf(state.sectors, add.dataset.addField);
-        sector.fields.push({ name: "newField", type: "String", description: "", detail: "", example: "" });
+        sector.fields.push({ name: "newField", type: "String", description: "", detail: "", example: "", nested: "" });
         persist();
         render();
       }
@@ -1149,7 +1415,78 @@
         persist();
         render();
       }
+      if (addKv) {
+        const sector = M.sectorOf(state.sectors, addKv.dataset.addKv);
+        if (!Array.isArray(sector.fields)) sector.fields = [];
+        sector.fields.push({ key: "newKey", label: "새 항목" });
+        persist();
+        render();
+      }
+      if (delKv) {
+        const sector = M.sectorOf(state.sectors, delKv.dataset.delKv);
+        (sector.fields || []).splice(Number(delKv.dataset.i), 1);
+        persist();
+        render();
+      }
+      if (addRcol) {
+        const sector = M.sectorOf(state.sectors, addRcol.dataset.addRcol);
+        if (!Array.isArray(sector.columns)) sector.columns = [];
+        let key = "col";
+        let n = 1;
+        while (sector.columns.some(function (c) { return c.key === key + n; })) n += 1;
+        key = key + n;
+        sector.columns.push({ key: key, header: "새 열" });
+        (sector.defaultRows || []).forEach(function (row) { if (row[key] == null) row[key] = ""; });
+        persist();
+        render();
+      }
+      if (delRcol) {
+        const sector = M.sectorOf(state.sectors, delRcol.dataset.delRcol);
+        const i = Number(delRcol.dataset.i);
+        const col = (sector.columns || [])[i];
+        if (col) {
+          (sector.defaultRows || []).forEach(function (row) { delete row[col.key]; });
+          sector.columns.splice(i, 1);
+        }
+        persist();
+        render();
+      }
+      if (cloneSec) {
+        M.cloneSector(state.sectors, cloneSec.dataset.cloneSec);
+        persist();
+        flash("섹터를 복제했습니다. 이벤트 종류에 연결하세요.", "ok");
+        render();
+      }
+      if (delSec) {
+        const sid = delSec.dataset.delSec;
+        const used = M.countSectorUsage(state.sectors, sid);
+        const msg = used
+          ? "이 섹터를 쓰는 이벤트 종류가 " + used + "개 있습니다. 연결을 끊고 정의를 삭제할까요?"
+          : "이 섹터 정의를 삭제할까요?";
+        if (!confirm(msg)) return;
+        M.removeSector(state.sectors, sid);
+        persist();
+        flash("섹터를 삭제했습니다.", "ok");
+        render();
+      }
+      if (secUp && current) {
+        M.moveAttachedSector(current, secUp.dataset.secUp, -1);
+        persist();
+        render();
+      }
+      if (secDown && current) {
+        M.moveAttachedSector(current, secDown.dataset.secDown, 1);
+        persist();
+        render();
+      }
+      if (secDetach && current) {
+        M.detachSector(current, secDetach.dataset.secDetach);
+        if (current.generateSheet) M.syncSheetKind(current, state.sectors);
+        persist();
+        render();
+      }
     };
+
     $("apply-json").onclick = function () {
       try {
         const parsed = JSON.parse($("master-json").value);
