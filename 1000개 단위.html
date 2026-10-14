@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>코드 500개씩 나누기</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --line: #d8dee6;
+      --text: #1c2430;
+      --muted: #5c6778;
+      --accent: #0f6b4c;
+      --accent-hover: #0c5640;
+      --ok: #0f6b4c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+      line-height: 1.45;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .lead {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--text);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .row label { margin: 0; }
+
+    input[type="number"] {
+      width: 88px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 14px;
+    }
+
+    .summary {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chunks {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .chunk {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .chunk-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafb;
+    }
+
+    .chunk-title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .chunk-meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 12px;
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--accent-hover); }
+
+    button.copied { background: #146c43; }
+
+    pre {
+      margin: 0;
+      padding: 12px;
+      max-height: 280px;
+      overflow: auto;
+      white-space: pre;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .empty {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>코드 묶어서 나누기</h1>
+    <p class="lead">한 줄에 코드 하나를 붙여넣으면 중복을 빼고 지정한 개수씩 아래 형식으로 나뉩니다. 각 묶음의 복사 버튼으로 그대로 가져갈 수 있습니다.</p>
+
+    <section class="panel">
+      <label for="src">코드 목록</label>
+      <textarea id="src" placeholder="한 줄에 하나씩 붙여넣으세요" spellcheck="false"></textarea>
+      <div class="row">
+        <label for="size">묶음 크기</label>
+        <input id="size" type="number" min="1" step="1" value="500">
+        <span class="summary" id="summary">0개</span>
+      </div>
+    </section>
+
+    <div id="out"></div>
+  </main>
+
+  <script>
+    const src = document.getElementById("src");
+    const sizeInput = document.getElementById("size");
+    const summary = document.getElementById("summary");
+    const out = document.getElementById("out");
+
+    function parseLines(text) {
+      return text.split(/\r?\n/).map(function (line) {
+        line = line.trim().replace(/^,+/, "").replace(/^\(+/, "").replace(/\)+$/, "").trim();
+        if ((line.startsWith("'") && line.endsWith("'")) || (line.startsWith('"') && line.endsWith('"'))) {
+          line = line.slice(1, -1);
+        }
+        return line.trim();
+      }).filter(Boolean);
+    }
+
+    function unique(items) {
+      const seen = new Set();
+      const result = [];
+      items.forEach(function (item) {
+        if (seen.has(item)) return;
+        seen.add(item);
+        result.push(item);
+      });
+      return result;
+    }
+
+    function formatChunk(items) {
+      return items.map(function (item, index) {
+        const quoted = "'" + item.replace(/'/g, "''") + "'";
+        if (items.length === 1) return "(" + quoted + ")";
+        if (index === 0) return "(" + quoted;
+        if (index === items.length - 1) return "," + quoted + ")";
+        return "," + quoted;
+      }).join("\n");
+    }
+
+    function chunkSize() {
+      const n = parseInt(sizeInput.value, 10);
+      return Number.isFinite(n) && n > 0 ? n : 500;
+    }
+
+    async function copyText(text, button) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        const area = document.createElement("textarea");
+        area.value = text;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      const prev = button.textContent;
+      button.textContent = "복사됨";
+      button.classList.add("copied");
+      setTimeout(function () {
+        button.textContent = prev;
+        button.classList.remove("copied");
+      }, 1200);
+    }
+
+    function render() {
+      const raw = parseLines(src.value);
+      const items = unique(raw);
+      const removed = raw.length - items.length;
+      const size = chunkSize();
+      const chunks = [];
+      for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+      }
+
+      if (!items.length) {
+        summary.textContent = "0개";
+      } else if (removed) {
+        summary.textContent = items.length + "개 · 중복 " + removed + "개 제외 · " + chunks.length + "묶음";
+      } else {
+        summary.textContent = items.length + "개 · " + chunks.length + "묶음";
+      }
+
+      out.replaceChildren();
+      if (!items.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "코드를 붙여넣으면 여기에 묶음이 나타납니다.";
+        out.appendChild(empty);
+        return;
+      }
+
+      const list = document.createElement("div");
+      list.className = "chunks";
+
+      chunks.forEach(function (chunk, index) {
+        const start = index * size + 1;
+        const end = start + chunk.length - 1;
+        const text = formatChunk(chunk);
+
+        const card = document.createElement("section");
+        card.className = "chunk";
+
+        const head = document.createElement("div");
+        head.className = "chunk-head";
+
+        const title = document.createElement("div");
+        title.className = "chunk-title";
+        title.textContent = "묶음 " + (index + 1);
+
+        const meta = document.createElement("div");
+        meta.className = "chunk-meta";
+        meta.textContent = start + "–" + end + " · " + chunk.length + "개";
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "복사";
+        button.style.marginLeft = "auto";
+        button.addEventListener("click", function () {
+          copyText(text, button);
+        });
+
+        const pre = document.createElement("pre");
+        pre.textContent = text;
+
+        head.append(title, meta, button);
+        card.append(head, pre);
+        list.appendChild(card);
+      });
+
+      out.appendChild(list);
+    }
+
+    src.addEventListener("input", render);
+    sizeInput.addEventListener("input", render);
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>학습 로드맵</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,650&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
+<style>
+
+  :root {
+    --bg: #e8e1d2;
+    --bg-2: #f7f3ea;
+    --ink: #1c1914;
+    --muted: #5f584c;
+    --line: #d9d0c0;
+    --card: #fffdf8;
+    --en: #0e5e56;
+    --en-soft: #e3f2ef;
+    --al: #8d3d16;
+    --al-soft: #f8ebe3;
+    --ma: #2a3878;
+    --ma-soft: #e7e9f6;
+    --accent: #1c1914;
+    --accent-soft: #efe8d8;
+    --good: #1c6b3c;
+    --shadow: 0 10px 30px rgba(48, 32, 8, 0.06);
+  }
+  body[data-track="en"] { --accent: var(--en); --accent-soft: var(--en-soft); }
+  body[data-track="al"] { --accent: var(--al); --accent-soft: var(--al-soft); }
+  body[data-track="ma"] { --accent: var(--ma); --accent-soft: var(--ma-soft); }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(900px 420px at 0% -10%, rgba(255, 250, 240, 0.9), transparent 55%),
+      var(--bg);
+    font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    word-break: keep-all;
+  }
+  button, input, summary { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  h1, h2, h3, p { margin: 0; }
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 18px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 22px;
+    background: #1c1914;
+    color: #f6f1e6;
+  }
+  .brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    text-align: left;
+  }
+  .brand-kicker {
+    font-family: Fraunces, "Times New Roman", serif;
+    letter-spacing: 0.16em;
+    font-size: 11px;
+    opacity: 0.72;
+  }
+  .brand-name { font-weight: 700; letter-spacing: -0.03em; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab, .ghost {
+    border: 1px solid transparent;
+    background: transparent;
+    color: inherit;
+    border-radius: 999px;
+    padding: 6px 12px;
+  }
+  .tab[aria-current="page"] {
+    background: #f6f1e6;
+    color: #1c1914;
+  }
+  .top-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .top-tools label { font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .top-tools input[type="date"] {
+    background: transparent;
+    color: inherit;
+    border: 1px solid rgba(246, 241, 230, 0.35);
+    border-radius: 8px;
+    padding: 4px 8px;
+  }
+  .statline { font-size: 13px; opacity: 0.85; }
+  .menu { position: relative; }
+  .menu summary {
+    list-style: none;
+    cursor: pointer;
+    border: 1px solid rgba(246, 241, 230, 0.35);
+    border-radius: 999px;
+    padding: 6px 12px;
+  }
+  .menu summary::-webkit-details-marker { display: none; }
+  .menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: var(--card);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    min-width: 180px;
+    box-shadow: var(--shadow);
+    padding: 6px;
+    z-index: 40;
+  }
+  .menu-panel button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    padding: 8px 10px;
+    border-radius: 8px;
+  }
+  .menu-panel button:hover { background: var(--accent-soft); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 20px 80px; }
+  .hero h1 {
+    font-family: "Noto Serif KR", Fraunces, serif;
+    font-size: clamp(32px, 5vw, 52px);
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+    max-width: 16em;
+  }
+  .lead { margin-top: 14px; max-width: 46em; color: var(--muted); }
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 22px 0 8px;
+  }
+  .hero-stats div, .card, .idea, .today, .dest, .prep, .phase-note {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+  }
+  .hero-stats div { padding: 14px 16px; }
+  .hero-stats b {
+    display: block;
+    font-family: Fraunces, serif;
+    font-size: 34px;
+    font-weight: 560;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .hero-stats span, .kicker, .muted { color: var(--muted); }
+  .kicker {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .section { margin-top: 34px; }
+  .section h2, .week-head h2 {
+    font-family: "Noto Serif KR", serif;
+    font-size: 28px;
+    letter-spacing: -0.03em;
+    margin-bottom: 8px;
+  }
+  .today-grid, .dest-grid, .ideas, .map {
+    display: grid;
+    gap: 12px;
+  }
+  .today-grid, .dest-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ideas { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 14px 0; }
+  .today, .dest, .prep { padding: 16px; }
+  .today { border-top: 4px solid var(--c, var(--accent)); }
+  .today h3, .dest h3 { font-size: 18px; margin: 4px 0 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .btn, .check, .tab-lite {
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    padding: 7px 12px;
+  }
+  .btn.primary, .check.on, .pass.on {
+    background: var(--accent);
+    color: #fffdf8;
+    border-color: transparent;
+  }
+  .map { grid-template-columns: 72px repeat(3, minmax(0, 1fr)); }
+  .map button, .qh {
+    text-align: left;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    padding: 12px;
+    min-height: 108px;
+  }
+  .qh {
+    display: flex;
+    align-items: flex-end;
+    font-family: Fraunces, serif;
+    background: transparent;
+    box-shadow: none;
+    min-height: 0;
+    border: 0;
+    padding: 8px;
+  }
+  .map button strong { display: block; }
+  .map button small, .meta small { color: var(--muted); display: block; margin-top: 4px; }
+  .map button em { font-style: normal; font-size: 12px; color: var(--accent); }
+  .principles { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; }
+  .principles article, .hour {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+  }
+  .hour ol, .blocks { margin: 8px 0 0; padding: 0; list-style: none; }
+  .hour li, .blocks li { display: grid; grid-template-columns: 52px 1fr; gap: 8px; padding: 5px 0; }
+  .min {
+    font-family: Fraunces, serif;
+    color: var(--accent);
+    font-size: 14px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 270px minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+  }
+  .side {
+    position: sticky;
+    top: 78px;
+    max-height: calc(100vh - 96px);
+    overflow: auto;
+    padding-right: 4px;
+  }
+  .side details { border-bottom: 1px solid var(--line); padding: 8px 0; }
+  .side summary { cursor: pointer; font-weight: 700; }
+  .weekbtns { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+  .wbtn {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    border-radius: 8px;
+    padding: 6px 8px;
+  }
+  .wbtn[aria-current="page"] { background: var(--accent-soft); }
+  .wbtn span { color: var(--muted); font-size: 12px; }
+  .search {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+  .week-head .goal { font-size: 18px; margin: 8px 0; }
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .meta div {
+    background: var(--bg-2);
+    border-radius: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+  }
+  .meta b { display: block; font-size: 13px; }
+  .idea { padding: 12px 14px; background: var(--accent-soft); }
+  .idea b { display: block; }
+  .day {
+    display: grid;
+    grid-template-columns: minmax(140px, 190px) minmax(0, 1fr);
+    gap: 8px 16px;
+    padding: 14px;
+    margin-top: 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+  }
+  .day.today { outline: 2px solid var(--accent); }
+  .day h3 { font-size: 17px; }
+  .when { color: var(--muted); font-size: 13px; }
+  .day-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .banner {
+    background: #fff6e8;
+    border: 1px solid #efd3a8;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin: 10px 0;
+  }
+  .index-list { display: flex; flex-direction: column; gap: 8px; }
+  .index-list button {
+    text-align: left;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+  .dock {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    z-index: 50;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: #1c1914;
+    color: #f6f1e6;
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.25);
+  }
+  .dock[hidden] { display: none; }
+  body.timing .wrap { padding-bottom: 168px; }
+  .clock {
+    font-family: Fraunces, serif;
+    font-size: 36px;
+    line-height: 1;
+    min-width: 5ch;
+  }
+  .bar { height: 4px; background: rgba(255,255,255,.2); border-radius: 99px; margin-top: 6px; }
+  .bar > i { display: block; height: 100%; background: #f3d7a1; border-radius: inherit; width: 0; }
+  .dock .btn { background: transparent; color: inherit; border-color: rgba(255,255,255,.3); }
+  .foot { margin-top: 28px; color: var(--muted); font-size: 13px; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  @media (max-width: 900px) {
+    .hero-stats, .today-grid, .dest-grid, .ideas, .meta, .principles { grid-template-columns: 1fr; }
+    .map { grid-template-columns: 1fr; }
+    .qh { display: none; }
+    .layout { grid-template-columns: 1fr; }
+    .side { position: static; max-height: none; }
+    .day { grid-template-columns: 1fr; }
+    .dock { flex-direction: column; align-items: stretch; }
+  }
+  @media print {
+    .top, .side, .dock, .day-actions, .noprint { display: none !important; }
+    body { background: white; }
+    .day, .idea, .meta div { break-inside: avoid; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+
+</style>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <button class="brand" data-act="home" type="button">
+    <span class="brand-kicker">LEARNING ROADMAP</span>
+    <span class="brand-name">학습 로드맵</span>
+  </button>
+  <nav class="tabs" id="trackNav" aria-label="도메인"></nav>
+  <div class="top-tools">
+    <label>시작일 <input type="date" id="startDate"></label>
+    <span class="statline" id="statLine"></span>
+    <details class="menu">
+      <summary>기록</summary>
+      <div class="menu-panel">
+        <button type="button" data-act="index">개념 색인</button>
+        <button type="button" data-act="export">기록 내보내기</button>
+        <button type="button" data-act="import">기록 가져오기</button>
+        <button type="button" data-act="reset">기록 초기화</button>
+      </div>
+    </details>
+    <input id="importFile" type="file" accept="application/json" hidden>
+  </div>
+</header>
+<main class="wrap" id="app"><p class="muted">커리큘럼을 읽는 중…</p></main>
+<div id="dock" class="dock" hidden>
+  <div>
+    <div id="dockLabel"></div>
+    <div class="bar" aria-hidden="true"><i id="dockBar"></i></div>
+  </div>
+  <div class="clock" id="dockClock">60:00</div>
+  <div class="row">
+    <button class="btn" type="button" data-act="timer-toggle">시작</button>
+    <button class="btn" type="button" data-act="timer-next">다음 블록</button>
+    <button class="btn" type="button" data-act="timer-close">닫기</button>
+  </div>
+</div>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
