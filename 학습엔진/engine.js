@@ -37,7 +37,7 @@
   }
   function blankState(start) {
     return {
-      v: 2,
+      v: 3,
       start: start,
       done: {},
       pass: {},

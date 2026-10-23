@@ -1,5 +1,6 @@
-const KEY = "roadmap-year-v2";
+const KEY = "roadmap-year-v3";
 const LEGACY = "roadmap-year-v1";
+const PREV = "roadmap-year-v2";
 const E = window.RoadmapEngine;
 
 let DATA = { tracks: [] };
@@ -19,7 +20,7 @@ function softOf(tr) {
 }
 function snapshot() {
   return {
-    v: 2,
+    v: 3,
     start: state.start,
     done: state.done,
     pass: state.pass,
@@ -49,15 +50,21 @@ function normalize(saved) {
   s.iq = saved.iq || "";
   return s;
 }
+function freshFrom(saved) {
+  const start = saved && typeof saved.start === "string" ? saved.start : todayISO();
+  return E.blankState(start);
+}
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) return normalize(JSON.parse(raw));
   } catch (err) { /* 새 기록 */ }
-  try {
-    const old = localStorage.getItem(LEGACY);
-    if (old) return E.migrateV1(JSON.parse(old), todayISO());
-  } catch (err) { /* 이전 기록 없음 */ }
+  for (const oldKey of [PREV, LEGACY]) {
+    try {
+      const old = localStorage.getItem(oldKey);
+      if (old) return freshFrom(JSON.parse(old));
+    } catch (err) { /* 이전 기록 없음 */ }
+  }
   return E.blankState(todayISO());
 }
 function needsRecord(tr) { return tr.confirm === "record"; }
@@ -190,7 +197,7 @@ function hourList(items) {
 }
 function blocksHTML(blocks, replaced) {
   return "<ol class=\"blocks\">" + blocks.map((b, i) => {
-    const text = i === 0 && replaced ? "이 10분은 위 복습 카드로 대체되어 있습니다. 노트 없이 말한 뒤 대조합니다." : b.t;
+    const text = i === 0 && replaced ? "이 " + b.m + "분은 위 복습 카드로 대체되어 있습니다. 노트 없이 말한 뒤 대조합니다." : b.t;
     return "<li><span class=\"min\">" + esc(b.m) + "분</span><span>" + esc(text) + "</span></li>";
   }).join("") + "</ol>";
 }
@@ -645,7 +652,7 @@ document.getElementById("importFile").addEventListener("change", (e) => {
     try {
       const data = JSON.parse(reader.result);
       if (!data || typeof data !== "object") throw new Error("형식");
-      state = data.v === 2 || data.cards ? normalize(data) : E.migrateV1(data, todayISO());
+      state = data.v === 3 ? normalize(data) : freshFrom(data);
       state.drafts = {};
       state.error = null;
       if (!trackById(state.track)) state.track = DATA.tracks[0].id;
