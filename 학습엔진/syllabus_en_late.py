@@ -1,18 +1,60 @@
 # -*- coding: utf-8 -*-
 from syllabus_util import E, phase
 
+_KIND = None
+SPEAK = {}
+WRITE = {}
+
+def kind(name):
+    global _KIND
+    _KIND = name
+    return name
+
+def fill(template, **kw):
+    out = template
+    for key, value in kw.items():
+        out = out.replace("{" + key + "}", value)
+    return out
+
 def W(title, lab2, lab3, model, pattern, trap):
-    return E(
-        title, lab2, lab3, model, pattern, trap,
-        "기준 문장을 넣어 60초 이상 말한다. " + model,
-        "기준 문장을 넣어 여섯 줄 안으로 쓴다. " + model,
-    )
+    if _KIND not in SPEAK or _KIND not in WRITE:
+        raise SystemExit(f"no english task for {_KIND}")
+    speak = fill(SPEAK[_KIND], title=title, model=model, pattern=pattern, trap=trap)
+    write = fill(WRITE[_KIND], title=title, model=model, pattern=pattern, trap=trap)
+    if speak == write or "기준 문장을 넣어 60초" in speak:
+        raise SystemExit(f"cloned task: {title}")
+    return E(title, lab2, lab3, model, pattern, trap, speak, write)
+
+SPEAK["설명문"] = "{pattern} 새 동료에게 절차를 60초 설명한다. 첫 문장: {model}"
+WRITE["설명문"] = "{trap} 독자가 따라 할 단계만 여섯 줄로 쓴다. 남길 문장: {model}"
+SPEAK["문장 길이"] = "{pattern} 일을 하나씩 끊어 60초 읽는다. 자를 문장: {model}"
+WRITE["문장 길이"] = "{trap} 일이 하나인 문장 네 개로 다시 쓴다. 재료: {model}"
+SPEAK["단락 순서"] = "{pattern} 단락의 순서를 60초 말한다. 이번 단락: {model}"
+WRITE["단락 순서"] = "{trap} 개요 순서대로 단락 네 개의 첫 문장만 쓴다. 기준: {model}"
+SPEAK["장면 단락"] = "{pattern} 책상 한 자리를 60초 말한다. 장면 문장: {model}"
+WRITE["장면 단락"] = "{trap} 그 자리 안의 문장만 네 줄 남긴다. 남길 문장: {model}"
+SPEAK["목소리"] = "{pattern} Min의 말투로만 60초 읽는다. 문장: {model}"
+WRITE["목소리"] = "{trap} 다른 말투가 섞인 줄을 Min의 말로 고쳐 네 줄 쓴다. 기준: {model}"
+SPEAK["주장 글"] = "{pattern} 목요일 이전 주장 하나만 60초 말한다. 문장: {model}"
+WRITE["주장 글"] = "{trap} 주장, 이유 둘, 요청 하나를 여섯 줄로 쓴다. 주장: {model}"
+SPEAK["구체와 어조"] = "{pattern} 한 독자에게 한 높이로 60초 말한다. 문장: {model}"
+WRITE["구체와 어조"] = "{trap} 추상어를 이름과 숫자로 바꾼 네 줄을 쓴다. 고칠 문장: {model}"
+SPEAK["초고 고치기"] = "{pattern} 어제 초고에서 이 일만 60초 말한다. 문장: {model}"
+WRITE["초고 고치기"] = "{trap} 고친 문장과 그 이유를 네 줄로 적는다. 대상: {model}"
+SPEAK["책의 구조"] = "{pattern} 목차만 보고 질문의 순서를 60초 말한다. 문장: {model}"
+WRITE["책의 구조"] = "{trap} 장 순서의 이유를 구조 메모 여섯 줄로 쓴다. 기준: {model}"
+SPEAK["인물과 산문"] = "{pattern} Min이 원하는 것과 막힌 것을 60초 말한다. 문장: {model}"
+WRITE["인물과 산문"] = "{trap} 선택에서 끝나는 한 쪽의 첫 여섯 줄을 쓴다. 재료: {model}"
+SPEAK["세 편의 글"] = "{pattern} 세 편의 일이 어떻게 다른지 60초 말한다. 문장: {model}"
+WRITE["세 편의 글"] = "{trap} 고른 편 하나의 개요만 여섯 줄로 쓴다. 기준: {model}"
+SPEAK["글 포트폴리오"] = "{pattern} 구조 메모의 순서로 60초 말한다. 문장: {model}"
+WRITE["글 포트폴리오"] = "{trap} 질문 하나에 답하는 목차와 각 글의 일을 여섯 줄로 쓴다. 기준: {model}"
 
 NOTE = "녹음기. 자신이 쓴 초고. 카드에는 고친 문장만 남긴다."
 BOOK = "녹음기. 자신이 정한 짧은 글. 구조 메모는 이 단계의 노트에 남긴다."
 
 LATE = [
-phase("설명문", 209, 221, "위험 문장", "설명", "절차와 사실을 설명문으로 쓴 뒤에야 이야기 단락으로 넘어간다.", NOTE, [
+phase(kind("설명문"), 209, 221, "위험 문장", "설명", "절차와 사실을 설명문으로 쓴 뒤에야 이야기 단락으로 넘어간다.", NOTE, [
 W("설명문의 일", "절차", "독자", "This note tells a new teammate how to send the file.", "설명문은 독자와 할 일이 있다.", "설명문 없이 감상만 쓰면 독자가 무엇을 하는지 모른다."),
 W("독자와 목적", "who", "why", "The reader is Ana. The purpose is to show the step order.", "첫 두 문장은 독자와 목적이다.", "독자를 정하지 않으면 어느 말을 뺄지 모른다."),
 W("절차 설명문", "step", "동사", "Open the file. Check the date. Send it to Ana.", "절차 설명문은 동사로 시작하는 단계다.", "단계를 형용사로만 쓰면 행동이 없다."),
@@ -27,7 +69,7 @@ W("설명문 낭독", "소리", "단계", "First check the date. Then send the f
 W("설명문 고치기", "삭제", "목적", "Delete the sentence that does not help Ana send the file.", "목적 밖 문장을 지운다.", "좋은 문장이라도 목적 밖이면 남기지 않는다."),
 W("설명문 점검", "독자", "단계", "Ana can send the file by following three steps.", "독자가 단계만 따라 할 수 있으면 점검이 끝난다.", "단계가 하나 빠지면 설명문 점검이 아니다."),
 ]),
-phase("문장 길이", 222, 234, "설명문", "문장", "한 문장에 일이 하나이게 길이를 고친다.", NOTE, [
+phase(kind("문장 길이"), 222, 234, "설명문", "문장", "한 문장에 일이 하나이게 길이를 고친다.", NOTE, [
 W("문장 나누기", "둘", "마침표", "Min writes the report. Ana pays the fee.", "and가 두 일을 잇으면 마침표로 나눈다.", "한 문장에 일을 세 개 두면 주어를 잃는다."),
 W("문장 잇기", "because", "둘", "I waited because the file was late.", "너무 잘린 두 문장은 because로 이유를 잇는다.", "잇기만 하고 이유가 없으면 긴 문장이 된다."),
 W("주어 찾기", "누가", "동사", "Min sent the file.", "문장마다 누가 동사를 하는지 찾는다.", "주어가 없으면 누가 보냈는지 없다."),
@@ -42,7 +84,7 @@ W("소리로 길이", "숨", "쉼표", "I read one clause, then I breathe.", "�
 W("문단의 문장 수", "다섯", "이내", "A paragraph here holds at most five sentences.", "이 단계의 문단은 다섯 문장까지다.", "열 문장을 한 문단에 넣으면 일이 여러 개다."),
 W("길이 점검", "일", "하나", "Each sentence does one job.", "문장마다 일이 하나다.", "한 문장에 일이 둘이면 길이 점검이 아니다."),
 ]),
-phase("단락 순서", 235, 247, "문장", "단락", "단락의 순서를 시간, 중요도, 비교 중 하나로 정한다.", NOTE, [
+phase(kind("단락 순서"), 235, 247, "문장", "단락", "단락의 순서를 시간, 중요도, 비교 중 하나로 정한다.", NOTE, [
 W("단락의 일", "하나", "단락", "This paragraph only explains the date.", "단락은 일 하나만 맡는다.", "한 단락에 날짜와 수수료와 인사를 넣으면 일이 셋이다."),
 W("단락 첫 문장", "일", "먼저", "The date changed to 28 March.", "첫 문장이 그 단락의 일이다.", "첫 문장이 배경이면 일이 늦어진다."),
 W("뒷받침 둘", "둘", "까지만", "The old date was 21 March. The new date is 28 March.", "뒷받침은 두 문장까지다.", "뒷받침을 다섯 개 두면 단락이 목록이 된다."),
@@ -57,7 +99,7 @@ W("단락 끝 문장", "그래서", "결과", "So Ana can read the file on 28 Ma
 W("개요 여섯", "여섯", "일", "Date, fee, file, contact, review, close.", "개요는 단락의 일 여섯 개다.", "개요에 문장을 그대로 쓰면 개요가 아니라 초고다."),
 W("순서 점검", "일", "순서", "The six jobs appear in the order of the outline.", "단락 순서가 개요와 같다.", "개요에 없는 단락이 있으면 순서 점검이 아니다."),
 ]),
-phase("장면 단락", 248, 260, "단락", "장면", "설명문 다음에 한 자리의 장면을 쓴다.", NOTE, [
+phase(kind("장면 단락"), 248, 260, "단락", "장면", "설명문 다음에 한 자리의 장면을 쓴다.", NOTE, [
 W("장면 하나", "자리", "하나", "At the desk, Min closed the laptop.", "장면은 자리 하나와 행동 하나다.", "자리를 세 곳 쓰면 장면이 셋이다."),
 W("장면의 감각", "소리", "하나", "The fan hummed beside the desk.", "감각은 하나면 충분하다.", "감각을 다섯 개 나열하면 장면이 목록이 된다."),
 W("장면의 행동", "동사", "하나", "Min sent the file and waited.", "행동의 동사는 장면 안에서 끝난다.", "그 해의 인생을 요약하면 장면이 아니다."),
@@ -72,7 +114,7 @@ W("장면 고치기", "삭제", "자리", "Delete the sentence that leaves the d
 W("장면과 요약", "앞", "뒤", "The scene stays. The summary moves below it.", "장면 다음에 요약을 둔다.", "요약을 장면 앞에 두면 자리를 보기 전에 결론이 온다."),
 W("장면 점검", "자리", "행동", "One desk, one action, no second place.", "자리 하나와 행동 하나가 남는다.", "자리가 둘이면 장면 점검이 아니다."),
 ]),
-phase("목소리", 261, 273, "장면", "말투", "누가 말하는지 문장마다 같다.", NOTE, [
+phase(kind("목소리"), 261, 273, "장면", "말투", "누가 말하는지 문장마다 같다.", NOTE, [
 W("화자", "누가", "한 명", "Min tells the story. Ana does not narrate.", "화자는 한 명으로 정한다.", "문장마다 화자가 바뀌면 누가 보는지 모른다."),
 W("거리", "가깝다", "멀다", "Min stood at his own desk.", "거리는 화자가 얼마나 가까운지다.", "갑자기 하늘을 내려다보면 거리가 바뀐다."),
 W("말투의 높이", "표준", "한 결", "Min said the file was late, without slang.", "한 화자의 높이를 유지한다.", "한 문장만 속어면 다른 사람이 말한 것처럼 들린다."),
@@ -87,7 +129,7 @@ W("목소리 녹음", "소리", "화자", "Read Min's lines in one voice.", "한
 W("목소리 고치기", "한 줄", "화자", "Change the one line that is not Min.", "화자가 아닌 줄 하나만 고친다.", "단락 전체를 다시 쓰면 어디가 충돌이었는지 없다."),
 W("목소리 점검", "한 명", "끝", "Every narration line belongs to Min.", "서술 문장이 모두 한 화자다.", "한 줄이라도 다른 말투면 점검이 아니다."),
 ]),
-phase("주장 글", 274, 286, "말투", "주장", "주장 하나, 이유 둘, 반론 하나로 단락을 쓴다.", NOTE, [
+phase(kind("주장 글"), 274, 286, "말투", "주장", "주장 하나, 이유 둘, 반론 하나로 단락을 쓴다.", NOTE, [
 W("주장 문장", "하나", "문장", "The review should move to Thursday.", "주장은 한 문장으로 쓴다.", "주장을 두 개 넣으면 글이 둘이다."),
 W("이유 둘", "because", "둘", "The room is booked Wednesday. Ana is away Tuesday.", "이유는 두 개까지만 둔다.", "이유를 다섯 개 두면 주장이 묻힌다."),
 W("반론 문장", "although", "반대", "Although Friday is free, the file is due earlier.", "반론은 although로 반대 하나를 말한다.", "반론을 빼면 글이 광고처럼 들린다."),
@@ -102,7 +144,7 @@ W("주장 말하기", "60초", "하나", "Say the claim, two reasons, and one re
 W("주장 고치기", "하나", "남기기", "Delete the second recommendation.", "주장이 둘이면 하나를 지운다.", "둘 다 좋은 문장이라도 하나를 남긴다."),
 W("주장 점검", "요청", "하나", "The paragraph asks for Thursday and nothing else.", "요청이 주장과 같은 날이다.", "요청이 다른 날이면 점검이 아니다."),
 ]),
-phase("구체와 어조", 287, 299, "주장", "어조", "추상어를 구체로 바꾸고 독자에 맞게 어조를 맞춘다.", NOTE, [
+phase(kind("구체와 어조"), 287, 299, "주장", "어조", "추상어를 구체로 바꾸고 독자에 맞게 어조를 맞춘다.", NOTE, [
 W("추상어 바꾸기", "thing", "이름", "Replace the issue with the missing date.", "추상 명사는 셀 수 있는 이름으로 바꾼다.", "issue, thing, aspect를 두면 무엇이 빠졌는지 모른다."),
 W("숫자 넣기", "몇", "날짜", "The file is 12 pages and is due on 28 March.", "구체는 숫자와 날짜다.", "곧, 많이, 조금은 숫자가 아니다."),
 W("고유 이름", "이름", "파일", "March Review is late. The document is not a name.", "파일과 사람에게 고유 이름을 붙인다.", "the document만 반복하면 어느 파일인지 모른다."),
@@ -117,7 +159,7 @@ W("구체 고치기", "추상", "삭제", "Delete aspect and write the page coun
 W("어조 낭독", "소리", "높이", "Read the note and mark the one line that changes height.", "소리로 높이가 바뀌는 줄을 찾는다.", "눈으로만 보면 농담 한 줄을 지나친다."),
 W("어조 점검", "이름", "숫자", "Ana, the 12-page file, and Friday are all in the note.", "이름, 숫자, 기한이 한 어조 안에 있다.", "하나라도 추상어로 남으면 점검이 아니다."),
 ]),
-phase("초고 고치기", 300, 312, "어조", "교정", "하루 지난 초고를 구조부터 고친다.", NOTE, [
+phase(kind("초고 고치기"), 300, 312, "어조", "교정", "하루 지난 초고를 구조부터 고친다.", NOTE, [
 W("하루 거리", "어제", "다시", "Read yesterday's draft before changing a word.", "고치기 전에 하루 지난 초고를 읽는다.", "쓰자마자 고치면 방금의 의도가 글처럼 보인다."),
 W("구조 표시", "일", "여백", "Mark each paragraph with its job in the margin.", "단어보다 단락의 일을 먼저 표시한다.", "쉼표부터 고치면 구조가 남는다."),
 W("군더더기", "삭제", "목적", "Delete the sentence that does not serve the job.", "목적 밖 문장을 지운다.", "예쁜 문장을 남기는 것이 교정이 아니다."),
@@ -132,7 +174,7 @@ W("소리 교정", "낭독", "걸림", "Read aloud and mark the one place you st
 W("버전 둘", "v1", "v2", "Keep v1. Save the revision as v2.", "옛 버전을 지우지 않는다.", "덮어쓰면 무엇을 고쳤는지 비교할 수 없다."),
 W("교정 점검", "일", "끝", "The revised note states the date and asks for Friday.", "고친 글이 원래의 일을 한다.", "일이 바뀌었으면 교정이 아니라 다른 글이다."),
 ]),
-phase("책의 구조", 313, 325, "교정", "구조", "짧은 글의 장 순서와 구조 메모를 남긴다. 포트폴리오는 이 메모를 쓴다.", BOOK, [
+phase(kind("책의 구조"), 313, 325, "교정", "구조", "짧은 글의 장 순서와 구조 메모를 남긴다. 포트폴리오는 이 메모를 쓴다.", BOOK, [
 W("책의 질문", "하나", "질문", "The book asks how a late file gets to Ana.", "책의 질문은 하나만 둔다.", "질문이 둘이면 책이 둘이다."),
 W("장 제목", "일", "제목", "Chapter 1 is The missing date.", "장 제목은 그 장의 일이다.", "Chapter 1 Introduction은 일이 없다."),
 W("장의 일", "하나", "장", "This chapter only shows the missing date.", "장은 일 하나만 맡는다.", "한 장에 수수료와 여행을 넣으면 일이 둘이다."),
@@ -147,7 +189,7 @@ W("구조 메모", "메모", "이유", "Write why chapter 2 follows chapter 1.",
 W("장 옮기기", "질문", "순서", "Move the fee chapter after the date, because the question starts with the date.", "질문의 순서에 맞게 장을 옮긴다.", "쓴 순서를 지키려고 질문을 고치면 구조가 아니다."),
 W("구조 점검", "질문", "목차", "The table of contents answers one question in order.", "목차가 질문 하나에 답한다.", "목차에 다른 질문이 있으면 구조 점검이 아니다."),
 ]),
-phase("인물과 산문", 326, 338, "구조", "산문", "인물 하나의 원하는 것과 장애로 한 쪽을 쓴다.", NOTE, [
+phase(kind("인물과 산문"), 326, 338, "구조", "산문", "인물 하나의 원하는 것과 장애로 한 쪽을 쓴다.", NOTE, [
 W("인물 한 줄", "누구", "한 명", "Min is the person who has to send the file.", "인물은 한 줄로 누구인지 말한다.", "인물을 셋 소개하면 한 쪽의 인물이 아니다."),
 W("원하는 것", "want", "하나", "Min wants the file to reach Ana today.", "원하는 것은 하나만 둔다.", "원하는 것이 둘이면 이야기가 둘이다."),
 W("장애", "막힘", "하나", "The date on the file is wrong.", "장애는 원하는 것을 막는 하나다.", "장애를 성격 설명으로 바꾸면 막힘이 없다."),
@@ -162,7 +204,7 @@ W("산문 낭독", "10분", "쪽", "Read the page aloud in ten minutes or less."
 W("쪽 고치기", "장애", "하나", "Keep the wrong date and delete the second problem.", "장애가 둘이면 하나를 지운다.", "둘 다 재미있어도 한 쪽에는 하나를 남긴다."),
 W("산문 점검", "원함", "장애", "The page shows one want and one obstacle.", "원하는 것과 장애가 하나씩이다.", "둘 중 하나가 없으면 산문 점검이 아니다."),
 ]),
-phase("세 편의 글", 339, 351, "산문", "세 편", "서로 다른 일 세 편을 쓰고 한 편을 고른다.", NOTE, [
+phase(kind("세 편의 글"), 339, 351, "산문", "세 편", "서로 다른 일 세 편을 쓰고 한 편을 고른다.", NOTE, [
 W("글감 셋", "셋", "다름", "A date note, a desk scene, and a Thursday claim.", "세 글감은 일이 다르다.", "같은 일을 제목만 바꾸면 세 편이 아니다."),
 W("첫째 개요", "여섯", "일", "Reader, date, two facts, request, close.", "첫째 편의 개요는 일 여섯 개다.", "개요 없이 초고를 시작하면 일이 흔들린다."),
 W("첫째 초고", "한 장", "끝", "Finish a one-page draft of the date note.", "초고는 한 장에서 끝낸다.", "한 장 중간에 둘째 편으로 넘어가면 초고가 아니다."),
@@ -177,7 +219,7 @@ W("고른 편 늘리기", "두 배", "일", "Double the chosen piece without add
 W("세 편 낭독", "차례", "차이", "Read the openings and hear three different jobs.", "첫 문장만 읽어도 일이 다르게 들려야 한다.", "첫 문장이 같으면 차이가 없다."),
 W("세 편 점검", "고른편", "하나", "One piece is chosen, and the other two stay as they are.", "고른 편 하나만 늘린다.", "세 편을 모두 합치면 점검이 아니다."),
 ]),
-phase("글 포트폴리오", 352, 364, "세 편", "묶음", "책의 구조 단계에서 남긴 메모로 고른 글을 묶는다.", BOOK, [
+phase(kind("글 포트폴리오"), 352, 364, "세 편", "묶음", "책의 구조 단계에서 남긴 메모로 고른 글을 묶는다.", BOOK, [
 W("글 고르기", "기준", "질문", "Choose pieces that answer the book's one question.", "기준은 책의 질문이다.", "분량이 길다는 이유로 고르면 질문이 없다."),
 W("구조 메모 붙이기", "메모", "순서", "Attach the structure note that says why this piece is chapter 1.", "순서는 책의 구조 단계에서 남긴 메모를 따른다.", "메모 없이 쓴 순서로 묶으면 구조가 아니다."),
 W("묶음 순서", "질문", "앞뒤", "The date piece comes before the request.", "질문의 원인 다음에 요청을 둔다.", "가장 잘 쓴 글을 무조건 앞에 두면 질문이 끊긴다."),
