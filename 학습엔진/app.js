@@ -298,17 +298,17 @@ function renderHome() {
   return [
     "<section class=\"hero\">",
     "<p class=\"kicker\">오늘 위치 · " + esc(whereDetail) + "</p>",
-    "<h1>하루 한 시간씩, 세 번.</h1>",
-    "<p class=\"lead\">영어 7년, 수학 5년, 알고리즘 7년입니다. 하루 60분이고, 첫 10분은 기한이 된 복습입니다. 없으면 그 주에 적힌 어제 회상입니다. 세 도메인을 같은 날에 하면 하루 합계는 " + info.parallel + "시간입니다.</p>",
-    "<div class=\"hero-stats\"><div><b>" + esc(info.hours) + "</b><span>" + esc(info.hoursSub) + "</span></div><div><b>" + esc(info.parallel) + "</b><span>병렬이면 하루 시간</span></div><div><b>" + esc(info.weeks) + "</b><span>" + esc(info.weeksSub) + "</span></div><div><b>" + info.sessions.toLocaleString("ko-KR") + "</b><span>전체 세션</span></div></div>",
+    "<h1>하루 60분, 원리와 대조로 깊어지는 학습.</h1>",
+    "<p class=\"lead\">영어 7년, 알고리즘 7년, 수학 5년, 소프트웨어 설계 7년 과정입니다. 과목당 하루 60분이며, 첫 10분은 복습 주기가 돌아온 카드나 전날 핵심 문장을 노트를 덮고 인출하는 시간입니다. 네 도메인을 같은 날에 병행하면 하루 합계는 " + info.parallel + "시간입니다.</p>",
+    "<div class=\"hero-stats\"><div><b>" + esc(info.hours) + "</b><span>" + esc(info.hoursSub) + "</span></div><div><b>" + esc(info.parallel) + "</b><span>병행 시 하루 시간</span></div><div><b>" + esc(info.weeks) + "</b><span>" + esc(info.weeksSub) + "</span></div><div><b>" + info.sessions.toLocaleString("ko-KR") + "</b><span>전체 세션</span></div></div>",
     "</section>",
-    "<section class=\"section\"><h2>오늘</h2><p class=\"muted\">" + esc(where) + " · 복습은 답을 낸 뒤에만 맞음과 틀림이 열립니다. 한 도메인에는 서로 다른 주 두 장까지입니다.</p><div class=\"today-grid\">" + DATA.tracks.map(todayCard).join("") + "</div></section>",
-    "<section class=\"section\"><h2>전체 지도</h2><p class=\"muted\">칸을 누르면 그 단계의 첫 주로 갑니다. 1년 뒤에는 분기마다 한 칸입니다.</p>" + map + "</section>",
+    "<section class=\"section\"><h2>오늘</h2><p class=\"muted\">" + esc(where) + " · 복습 카드는 스스로 답을 말하거나 적은 뒤에만 정답 확인 버튼이 열립니다. 도메인마다 하루 최대 두 장까지 표시됩니다.</p><div class=\"today-grid\">" + DATA.tracks.map(todayCard).join("") + "</div></section>",
+    "<section class=\"section\"><h2>전체 지도</h2><p class=\"muted\">단계를 누르면 해당 단계의 첫 주로 이동합니다. 1년(52주)마다 네 단계(분기별 13주)로 구성됩니다.</p>" + map + "</section>",
     "<section class=\"section\"><h2>60분을 쓰는 방법</h2><div class=\"principles\">" + DATA.tracks.map((tr) => "<article class=\"hour\"><p class=\"kicker\" style=\"color:" + esc(tr.color) + "\">" + esc(tr.name) + "</p><h3>" + esc(tr.hourTitle) + "</h3>" + hourList(tr.hour) + "</article>").join("") + "</div></section>",
-    "<section class=\"section prep\"><h2>시작 전 60분</h2><p>노트 세 칸(영어·알고리즘·수학)과 녹음 앱을 준비합니다. 계산기, 파이썬, Anki는 1주차 지시가 나오기 전에 미리 깔아 두지 않아도 됩니다. 매일 같은 시각에 영어 60분, 수학 60분, 알고리즘 60분 순으로 캘린더에 넣고, 세션 사이에 10분 쉽니다. 말이 나오는 시간을 영어에 두는 편이 좋습니다.</p></section>",
+    "<section class=\"section prep\"><h2>시작 전 준비</h2><p>도메인별 노트(영어·알고리즘·수학·소프트웨어)와 녹음 앱을 준비합니다. 계산기, 프로그래밍 언어 환경은 1주차 과제를 수행할 때 준비해도 충분합니다. 매일 일정한 시각에 과목별로 60분씩 배정하고 세션 사이에 10분씩 휴식합니다. 소리 내어 말하기 좋은 시간대에 영어를 배치하는 편이 좋습니다.</p></section>",
     "<section class=\"section\"><h2>과정의 끝</h2><div class=\"dest-grid\">" + DATA.tracks.map((tr) => "<article class=\"dest\"><p class=\"kicker\" style=\"color:" + esc(tr.color) + "\">" + esc(tr.name) + "</p><h3>" + esc(tr.destination) + "</h3><p>" + esc(tr.limit) + "</p><p style=\"margin-top:8px\"><b>이후.</b> " + esc(tr.after) + "</p></article>").join("") + "</div></section>",
-    "<section class=\"section\"><h2>공통 규칙</h2><div class=\"principles\"><article><h3>통과해야 다음 주다</h3><p>이전 주가 통과되기 전에는 달력의 새 주 대신, 그 주의 아직 안 끝난 날을 합니다. 알고 넘어가기는 한 번 더 확인한 뒤 3일 간격의 복습으로 남습니다.</p></article><article><h3>산출이 있어야 진도다</h3><p>영상을 보는 것으로 60분을 채우지 않습니다. 영어는 녹음이나 초고, 알고리즘과 수학은 왜 맞는지 한 문장이 있어야 완료입니다.</p></article><article><h3>기록은 이 브라우저에</h3><p>완료, 통과, 복습 기한은 이 기기에 저장됩니다. 컴퓨터를 바꾸기 전에 기록 메뉴에서 내보내 두십시오.</p></article></div></section>",
-    "<p class=\"foot\">이 로드맵은 학습 계획입니다. 계약 영어는 문장을 읽고 고치는 언어 훈련이며 법률 자문이 아닙니다. 교재명은 그 책을 사야 한다는 뜻이 아니라, 그 주에 펼칠 출처입니다. 무료 자료를 우선 적었습니다.</p>"
+    "<section class=\"section\"><h2>공통 규칙</h2><div class=\"principles\"><article><h3>통과해야 다음 주로 넘어간다</h3><p>이전 주 통과 기준을 충족하기 전에는 달력상 다음 주로 넘어가지 않고, 이전 주의 남은 일차를 먼저 마칩니다. 이미 아는 주제를 '알고 넘어가기'로 처리하면 3일 뒤부터 간격 복습 카드로 검증합니다.</p></article><article><h3>직접 만든 산출물이 있어야 진도다</h3><p>강의나 교재를 수동적으로 읽는 것만으로는 60분을 채우지 않습니다. 영어는 녹음과 퇴고 문장, 수학·알고리즘은 백지 증명과 반례·코드, 소프트웨어는 상반된 설계 대안을 비교한 노트나 커밋이 남아야 완료입니다.</p></article><article><h3>기록은 브라우저에 저장된다</h3><p>학습 완료, 주차 통과, 복습 일정은 현재 브라우저에 저장됩니다. 기기를 옮기기 전에 상단 기록 메뉴에서 JSON 백업을 내보내 두세요.</p></article></div></section>",
+    "<p class=\"foot\">이 로드맵은 검증된 고전 교재와 표준 학부·실무 커리큘럼을 바탕으로 재구성한 자기주도 학습 계획입니다. 계약 영어는 문장의 조건과 모호성을 다루는 언어 훈련이며 법률 자문이 아닙니다. 제시된 교재는 해당 주제의 표준 참고 문헌입니다.</p>"
   ].join("");
 }
 
