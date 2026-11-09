@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>신용비율 표준화</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #09111a;
+      --card: #121b27;
+      --card-2: #182433;
+      --line: rgba(232, 220, 196, 0.14);
+      --text: #e8eef6;
+      --muted: #9aa8ba;
+      --kospi: #7eb6ff;
+      --kosdaq: #f0b429;
+      --safe: #3ecf8e;
+      --watch: #f0b429;
+      --hot: #ff6b7a;
+      --accent: #e7c27a;
+      --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "IBM Plex Sans KR", "Malgun Gothic", sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+      background:
+        radial-gradient(1000px 420px at 0% -10%, rgba(126, 182, 255, 0.16), transparent 55%),
+        radial-gradient(800px 380px at 100% 0%, rgba(231, 194, 122, 0.08), transparent 50%),
+        var(--bg);
+    }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    ::selection { background: rgba(231, 194, 122, 0.35); }
+    .num { font-family: "IBM Plex Sans", "IBM Plex Sans KR", sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+    .wrap { width: min(1240px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 64px; }
+    header.top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+    .brand { display: flex; gap: 12px; align-items: center; }
+    h1 { margin: 0; font-size: 28px; letter-spacing: -0.04em; line-height: 1.2; }
+    .sub { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+    .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 600; border: 1px solid var(--line); color: var(--muted); }
+    .badge.sample { color: #1c1408; background: var(--accent); border-color: transparent; }
+    .badge.user { color: #d7ecff; border-color: rgba(126, 182, 255, 0.45); }
+    .principle { margin: 0 0 14px; color: #d5deea; font-size: 14.5px; }
+    .formula-grid, .kpis, .split { display: grid; gap: 12px; }
+    .formula-grid { grid-template-columns: repeat(3, 1fr); margin-bottom: 16px; }
+    .kpis { grid-template-columns: repeat(5, 1fr); }
+    .split { grid-template-columns: 1fr 1fr; }
+    .card {
+      background: rgba(18, 27, 39, 0.92);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .formula, .kpi, .chart-card, .side-card, .table-card { padding: 14px 16px 16px; }
+    .formula .idx { margin: 0; color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; }
+    .formula h2, .chart-card h3, .side-card h2, .table-card h3 { margin: 4px 0 6px; font-size: 16px; letter-spacing: -0.03em; }
+    .eq { margin: 0 0 8px; color: #f3e2bc; font-size: 13px; }
+    .formula ul, .guide li { margin: 0; padding-left: 18px; }
+    .formula li, .muted, .chart-card p, .side-card p { color: var(--muted); font-size: 13px; }
+    .formula li + li { margin-top: 4px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+    .stack { display: grid; gap: 12px; }
+    .side { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; display: grid; gap: 12px; padding-right: 2px; }
+    .kpi-label { margin: 0; color: var(--muted); font-size: 12px; }
+    .kpi-value { margin: 6px 0 2px; font-size: 28px; font-weight: 600; letter-spacing: -0.04em; }
+    .kpi-zone { margin: 0; font-size: 13px; font-weight: 600; }
+    .kpi-delta, .kpi-sub { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .tone-safe { box-shadow: inset 3px 0 0 var(--safe); }
+    .tone-watch { box-shadow: inset 3px 0 0 var(--watch); }
+    .tone-hot { box-shadow: inset 3px 0 0 var(--hot); }
+    .tone-muted { box-shadow: inset 3px 0 0 rgba(154, 168, 186, 0.45); }
+    .tone-safe .kpi-zone { color: var(--safe); }
+    .tone-watch .kpi-zone { color: var(--watch); }
+    .tone-hot .kpi-zone { color: var(--hot); }
+    .up { color: var(--hot); }
+    .down { color: var(--safe); }
+    .card-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .card-head p { margin: 0; max-width: 62ch; }
+    .chart { height: 340px; position: relative; overflow: hidden; }
+    .split .chart { height: 320px; }
+    .seg { display: flex; padding: 3px; border-radius: 999px; background: #0d1520; border: 1px solid var(--line); }
+    .seg button, .btn, .btn-primary, .btn-ghost {
+      border-radius: 999px;
+      border: 1px solid transparent;
+      padding: 7px 12px;
+      background: transparent;
+    }
+    .seg button.on { background: var(--accent); color: #1c1408; font-weight: 700; }
+    .btn-primary { background: linear-gradient(180deg, #f3ddb0, #d7b36a); color: #1c1408; font-weight: 700; }
+    .btn-ghost { border-color: var(--line); background: #101924; }
+    .btn-row, .pager { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .drop {
+      border: 1px dashed rgba(231, 194, 122, 0.45);
+      border-radius: 12px;
+      padding: 14px;
+      background: rgba(231, 194, 122, 0.04);
+      text-align: center;
+    }
+    .drop.over { background: rgba(231, 194, 122, 0.12); }
+    .drop strong { display: block; margin-bottom: 4px; }
+    textarea, input, select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #0d1520;
+      padding: 8px 10px;
+    }
+    textarea { resize: vertical; min-height: 88px; }
+    label.field { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+    .manual-grid, .mapper-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .span-2 { grid-column: span 2; }
+    .notes { margin: 0; padding-left: 18px; color: #f0d7a2; font-size: 13px; }
+    .coverage { margin: 0; color: var(--muted); font-size: 12px; }
+    .table-wrap { overflow: auto; max-height: 460px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,.06); white-space: nowrap; text-align: right; }
+    th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: #14202e; }
+    th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: #1a2736; z-index: 1; }
+    tr.latest td { color: var(--accent); }
+    .mapper-scroll { overflow: auto; max-height: 240px; }
+    .suspect { color: var(--hot); font-weight: 600; }
+    .empty { padding: 28px 8px; color: var(--muted); }
+    .empty h2 { margin: 0 0 6px; color: var(--text); font-size: 20px; }
+    .guide { margin-top: 16px; padding: 8px 16px 16px; }
+    .guide summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
+    th:first-child { z-index: 3; }
+    .guide h3 { margin: 14px 0 6px; font-size: 15px; }
+    .guide p { margin: 0 0 8px; color: #d5deea; }
+    .toast {
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(12px);
+      background: #f3e6c8; color: #1c1408; padding: 10px 14px; border-radius: 999px;
+      font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none; transition: .2s ease;
+      max-width: min(560px, calc(100% - 24px));
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .warn { color: #ffd0d5; font-size: 13px; }
+    footer { margin-top: 18px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 1100px) {
+      .formula-grid, .kpis { grid-template-columns: 1fr 1fr; }
+      .layout { grid-template-columns: 1fr; }
+      .side { position: static; max-height: none; order: -1; }
+    }
+    @media (max-width: 720px) {
+      .formula-grid, .kpis, .split, .manual-grid, .mapper-top { grid-template-columns: 1fr; }
+      .span-2 { grid-column: auto; }
+      h1 { font-size: 24px; }
+      .kpi-value { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="2" y="18" width="7" height="11" rx="1.5" fill="#7eb6ff"/>
+          <rect x="12.5" y="10" width="7" height="19" rx="1.5" fill="#e7c27a"/>
+          <rect x="23" y="3" width="7" height="26" rx="1.5" fill="#ff6b7a"/>
+        </svg>
+        <div>
+          <h1>신용비율 표준화</h1>
+          <p class="sub">시가총액, 고객예탁금, 거래대금으로 나눈 빚투 체력</p>
+        </div>
+      </div>
+      <span id="badge" class="badge" hidden>내 데이터</span>
+    </header>
+
+    <p class="principle">신용융자 잔고의 원화 금액은 지수와 시가총액, 유동성이 커지면 같이 불어납니다. 15조가 20조가 되어도 시가총액이 더 크게 늘었다면 시장이 떠안은 레버리지 부담은 오히려 줄어든 것입니다. 금액 대신 아래 세 비율로 확인합니다.</p>
+
+    <section class="formula-grid">
+      <article class="card formula">
+        <p class="idx">01</p>
+        <h2>시가총액 대비 신용비율</h2>
+        <p class="eq">신용융자 잔고 ÷ 시장 시가총액 × 100</p>
+        <ul>
+          <li>코스피 0.4–0.6% 안정, 0.8% 이상 과열 경계</li>
+          <li>코스닥 2.0–2.5% 통상, 3.0% 이상 오버행</li>
+        </ul>
+      </article>
+      <article class="card formula">
+        <p class="idx">02</p>
+        <h2>예탁금 대비 신용비율</h2>
+        <p class="eq">신용융자 잔고 ÷ 고객예탁금 × 100</p>
+        <ul>
+          <li>35% 이하: 현금 버퍼가 충분한 구간</li>
+          <li>45% 이상: 담보부족이 이어지기 쉬운 위험 국면</li>
+        </ul>
+      </article>
+      <article class="card formula">
+        <p class="idx">03</p>
+        <h2>거래대금 대비 신용배수</h2>
+        <p class="eq">신용융자 잔고 ÷ 20거래일 평균 거래대금</p>
+        <ul>
+          <li>잔고가 평소 하루 거래대금의 몇 배인지</li>
+          <li>클수록 투매를 받아 줄 유동성이 얇음</li>
+        </ul>
+      </article>
+    </section>
+
+    <div class="layout">
+      <main class="stack">
+        <section class="card formula" id="narrative">
+          <p class="idx">진단</p>
+          <p id="narrative-text">파일을 불러오거나 예시를 열면 최근 영업일의 세 비율과 구간이 여기에 붙습니다.</p>
+          <p id="coverage" class="coverage"></p>
+        </section>
+        <ul id="notes" class="notes" hidden></ul>
+        <p id="cdn-warn" class="warn" hidden>차트를 그리는 라이브러리를 불러오지 못했습니다. 네트워크에 연결한 뒤 새로고침해 주세요. 표와 비율 계산은 그대로 쓸 수 있습니다.</p>
+
+        <section id="empty" class="card empty">
+          <h2>시계열을 올리면 비율이 그려집니다</h2>
+          <p>데이터 불러오기에서 CSV·엑셀을 올리거나, 예시 시계열로 화면이 어떻게 읽히는지 먼저 볼 수 있습니다. 예시는 저장되지 않으며 실제 잔고가 아닙니다. 실제 자료를 지운 뒤에는 새로고침하면 다시 열립니다.</p>
+          <div class="btn-row">
+            <button type="button" class="btn-primary" id="empty-sample">예시로 보기</button>
+            <button type="button" class="btn-ghost" id="empty-file">파일 불러오기</button>
+          </div>
+        </section>
+
+        <section id="viz" class="stack" hidden>
+          <section class="kpis" id="kpis">
+            <article class="card kpi tone-muted" id="kpi-kospi">
+              <p class="kpi-label">코스피 · 시총 대비</p>
+              <p class="kpi-value num">–</p>
+              <p class="kpi-zone">데이터 없음</p>
+              <p class="kpi-delta num"></p>
+              <p class="kpi-sub"></p>
+            </article>
+            <article class="card kpi tone-muted" id="kpi-kosdaq">
+              <p class="kpi-label">코스닥 · 시총 대비</p>
+              <p class="kpi-value num">–</p>
+              <p class="kpi-zone">데이터 없음</p>
+              <p class="kpi-delta num"></p>
+              <p class="kpi-sub"></p>
+            </article>
+            <article class="card kpi tone-muted" id="kpi-deposit">
+              <p class="kpi-label">예탁금 대비</p>
+              <p class="kpi-value num">–</p>
+              <p class="kpi-zone">데이터 없음</p>
+              <p class="kpi-delta num"></p>
+              <p class="kpi-sub"></p>
+            </article>
+            <article class="card kpi tone-muted" id="kpi-mult-k">
+              <p class="kpi-label">코스피 · 거래대금 배수</p>
+              <p class="kpi-value num">–</p>
+              <p class="kpi-zone">데이터 없음</p>
+              <p class="kpi-delta num"></p>
+              <p class="kpi-sub"></p>
+            </article>
+            <article class="card kpi tone-muted" id="kpi-mult-q">
+              <p class="kpi-label">코스닥 · 거래대금 배수</p>
+              <p class="kpi-value num">–</p>
+              <p class="kpi-zone">데이터 없음</p>
+              <p class="kpi-delta num"></p>
+              <p class="kpi-sub"></p>
+            </article>
+          </section>
+
+          <section class="card chart-card">
+            <div class="card-head">
+              <div>
+                <h3>금액과 비율의 착시</h3>
+                <p id="illusion-note">각 선은 자기 첫 값을 100으로 둔 지수입니다. 잔고 지수가 올라도 비율 지수가 내려가면, 시장 체급이 잔고 증가를 흡수한 것입니다.</p>
+              </div>
+              <div class="seg" id="illusion-seg">
+                <button type="button" data-market="kospi" class="on">코스피</button>
+                <button type="button" data-market="kosdaq">코스닥</button>
+              </div>
+            </div>
+            <div id="chart-illusion" class="chart"></div>
+          </section>
+
+          <div class="split">
+            <section class="card chart-card">
+              <h3>코스피 시총 대비 신용비율</h3>
+              <p>0.4–0.6% 안정, 0.8% 이상 과열 경계. 그 사이는 주의로 표시합니다.</p>
+              <div id="chart-kospi" class="chart"></div>
+            </section>
+            <section class="card chart-card">
+              <h3>코스닥 시총 대비 신용비율</h3>
+              <p>2.0–2.5% 통상, 3.0% 이상 오버행. 그 사이는 상단으로 표시합니다.</p>
+              <div id="chart-kosdaq" class="chart"></div>
+            </section>
+          </div>
+
+          <section class="card chart-card">
+            <h3>고객예탁금 대비 신용비율</h3>
+            <p id="deposit-basis">분자는 코스피 신용과 코스닥 신용의 합입니다. 전체 잔고만 있으면 그 값을 씁니다.</p>
+            <div id="chart-deposit" class="chart"></div>
+          </section>
+
+          <section class="card chart-card">
+            <h3>거래대금 대비 신용배수</h3>
+            <p>공식 과열선은 없습니다. 점선은 불러온 기간의 중앙값입니다. 툴팁의 10% 청산 비중은 배수에 10을 곱한 보조 읽기입니다.</p>
+            <div id="chart-multiple" class="chart"></div>
+          </section>
+
+          <section class="card table-card">
+            <div class="card-head">
+              <h3>계산 표</h3>
+              <div class="pager">
+                <button type="button" class="btn-ghost" id="page-prev">이전</button>
+                <span id="page-label" class="muted num"></span>
+                <button type="button" class="btn-ghost" id="page-next">다음</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>날짜</th>
+                    <th>코스피 비율</th>
+                    <th>코스닥 비율</th>
+                    <th>예탁금 비율</th>
+                    <th>코스피 배수</th>
+                    <th>코스닥 배수</th>
+                    <th>코스피 신용</th>
+                    <th>코스피 시총</th>
+                    <th>예탁금</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <aside class="side">
+        <section class="card side-card">
+          <h2>데이터 불러오기</h2>
+          <p>화면을 열면 FreeSIS 일별 통계가 먼저 나옵니다. 더 최근 파일을 올리면 같은 날짜의 값이 바뀝니다. 파일은 이 브라우저 안에만 있습니다.</p>
+          <div class="drop" id="drop" tabindex="0">
+            <strong>CSV 또는 엑셀을 놓으세요</strong>
+            <span class="muted">칸을 클릭하거나 아래 버튼으로 고릅니다</span>
+            <div class="btn-row" style="justify-content:center;margin-top:8px">
+              <button type="button" class="btn-primary" id="btn-file">파일 선택</button>
+              <button type="button" class="btn-ghost" id="btn-sample">예시로 보기</button>
+            </div>
+          </div>
+          <input id="file" type="file" accept=".csv,.txt,.tsv,.xlsx,.xls" hidden>
+          <label class="field" style="margin-top:10px">CSV 붙여넣기
+            <textarea id="paste" spellcheck="false" placeholder="단위:조원&#10;날짜,코스피신용잔고,코스피시가총액,고객예탁금,코스피거래대금&#10;2024-01-02,10,2000,50,10"></textarea>
+          </label>
+          <div class="btn-row">
+            <button type="button" class="btn-ghost" id="btn-paste">붙여넣기 해석</button>
+            <button type="button" class="btn-ghost" id="btn-template">템플릿 받기</button>
+          </div>
+        </section>
+
+        <section class="card side-card" id="mapper" hidden>
+          <h2>열 매핑</h2>
+          <p id="mapper-file"></p>
+          <div class="mapper-top">
+            <label class="field">금액 단위
+              <select id="mapper-unit">
+                <option value="won">원</option>
+                <option value="thousand">천원</option>
+                <option value="million">백만원</option>
+                <option value="eok">억원</option>
+                <option value="ship">십억원</option>
+                <option value="jo">조원</option>
+              </select>
+            </label>
+            <p id="mapper-unit-hint" class="muted"></p>
+          </div>
+          <div class="mapper-scroll">
+            <table>
+              <thead><tr><th>열</th><th>이름</th><th>첫 값</th><th>역할</th></tr></thead>
+              <tbody id="mapper-rows"></tbody>
+            </table>
+          </div>
+          <div id="mapper-preview"></div>
+          <div class="btn-row" style="margin-top:8px">
+            <button type="button" class="btn-primary" id="mapper-apply">이 파일 반영</button>
+            <button type="button" class="btn-ghost" id="mapper-cancel">닫기</button>
+          </div>
+        </section>
+
+        <section class="card side-card">
+          <h2>하루 직접 입력</h2>
+          <p>단위는 조 원입니다. 비워 둔 칸은 기존 값을 지우지 않습니다.</p>
+          <form id="manual" class="manual-grid">
+            <label class="field span-2">날짜<input name="date" type="date" required></label>
+            <label class="field">코스피 신용<input name="creditKospi" inputmode="decimal" placeholder="26.5"></label>
+            <label class="field">코스닥 신용<input name="creditKosdaq" inputmode="decimal" placeholder="8.2"></label>
+            <label class="field">코스피 시총<input name="mcapKospi" inputmode="decimal" placeholder="6600"></label>
+            <label class="field">코스닥 시총<input name="mcapKosdaq" inputmode="decimal" placeholder="490"></label>
+            <label class="field">고객예탁금<input name="deposit" inputmode="decimal" placeholder="130"></label>
+            <label class="field">코스피 거래대금<input name="turnoverKospi" inputmode="decimal" placeholder="26"></label>
+            <label class="field">코스닥 거래대금<input name="turnoverKosdaq" inputmode="decimal" placeholder="12"></label>
+            <div class="span-2 btn-row">
+              <button type="submit" class="btn-primary">이 날짜 반영</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="card side-card">
+          <h2>작업</h2>
+          <div class="btn-row">
+            <button type="button" class="btn-ghost" id="btn-export" disabled>계산 결과 받기</button>
+            <button type="button" class="btn-ghost" id="btn-undo" disabled>되돌리기</button>
+            <button type="button" class="btn-ghost" id="btn-clear">데이터 비우기</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <details class="card guide">
+      <summary>비율을 읽는 법과 FreeSIS에서 받는 경로</summary>
+      <h3>왜 잔고 금액만 보면 안 되나</h3>
+      <p>주가가 오르면 같은 담보로도 신용잔고 금액이 커지고, 시장에 돈이 풀리면 예탁금과 거래대금도 같이 커집니다. 잔고가 사상 최대라는 말만으로는 과열인지 알 수 없습니다. 분모를 시장 체력에 두면 금액 착시가 걷힙니다.</p>
+      <h3>세 비율</h3>
+      <p>시가총액 대비는 시장 전체 레버리지입니다. 코스피는 0.4–0.6%를 안정권, 0.8% 이상을 과열 경계로 봅니다. 코스닥은 개인 비중이 높아 2.0–2.5%가 통상 범위이고, 3.0%를 넘으면 투매에 취약한 오버행으로 해석합니다. 0.6–0.8%(코스피)와 2.5–3.0%(코스닥)은 기준 사이에 있는 구간이라 이 화면에서는 주의·상단으로만 표시합니다.</p>
+      <p>예탁금 대비는 개인의 현금 버퍼입니다. 고객예탁금은 증권 계좌에 들어온 대기 자금이고, 시장 전체 수치라 분자는 코스피·코스닥 신용을 더한 값입니다. 35% 이하는 급락이 나와도 반대매매로 번질 여지가 적은 구간, 45% 이상은 현금 대비 빚이 한계에 가까워 추가 하락 때 담보부족이 이어지기 쉬운 위험 국면입니다.</p>
+      <p>거래대금 배수는 신용잔고를 최근 20거래일 평균 거래대금으로 나눈 값입니다. 하루치 거래대금의 몇 배가 잠재 롱으로 걸려 있는지를 봅니다. 이 배수에는 통용되는 고정 컷오프가 없어, 차트에는 기간 중앙값만 점선으로 둡니다. 배수가 2라면 잔고의 10%를 청산하는 데 하루 거래대금의 20%가 필요합니다.</p>
+      <h3>받는 곳</h3>
+      <p>이 화면에 들어 있는 시계열은 금융투자협회 FreeSIS 일별 통계입니다. 신용잔고는 신용공여 잔고 추이의 신용거래융자(전체·유가증권·코스닥), 고객예탁금은 증시자금추이의 투자자예탁금(장내파생상품 거래예수금 제외), 시가총액과 거래대금은 유가증권시장·코스닥시장 통계입니다. 금액은 백만원 통계를 원으로 환산했고, 기준일은 오른쪽 위 배지에 있습니다.</p>
+      <ol>
+        <li>금융투자협회 종합통계포털(FreeSIS) 상단에서 주식 → 신용공여 → 신용융자 잔고 추이를 엽니다. 화면 이름은 신용공여 잔고 추이로 보일 수 있습니다.</li>
+        <li>같은 곳의 증시자금추이에서 고객예탁금과 신용융자 잔고를 엑셀 또는 CSV로 받습니다.</li>
+        <li>시가총액과 거래대금은 같은 포털의 유가증권시장·코스닥시장 화면에 있습니다. 더 최근 파일을 올리면 그 날짜의 값이 바뀝니다.</li>
+      </ol>
+      <p>파일을 나눠 받았으면 한 번씩 열 매핑 후 반영하면 날짜 기준으로 합쳐집니다. 나중에 올린 값 중 비어 있지 않은 칸만 같은 날짜의 기존 값을 바꿉니다. 신용거래대주·담보융자·신규·상환은 잔고가 아니므로 매핑하지 않습니다.</p>
+      <p>FreeSIS 엑셀은 백만원 단위인 경우가 많습니다. 반영 전 미리보기가 조 원으로 맞는지 확인하세요. 코스피 신용은 수십 조, 코스피 시가총액은 수천 조 수준인지가 단위 점검에 쓸모 있습니다. 분자와 분모를 같은 단위로 넣었다면 비율 자체는 단위와 무관합니다.</p>
+      <p>신용공여 화면의 유의사항을 함께 보세요. 자료는 결제일 기준인 경우가 많고, ETF 신용이 포함되는 기간이 있습니다. 시가총액도 그 범위와 맞추는 편이 비율이 덜 흔들립니다. 이 화면의 분자는 신용융자 잔고만입니다. 레버리지 ETF를 더하는 지표와는 다릅니다.</p>
+    </details>
+    <script src="actual-data.js"></script>
+    <footer>계산은 이 브라우저 안에서만 이루어집니다. 불러온 파일은 서버로 전송되지 않습니다.</footer>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+
+  <script>
+'use strict';
+
+const KEY = 'credit-ratio-standard-v1';
+const PAGE = 20;
+const FIELDS = ['creditKospi','creditKosdaq','creditTotal','mcapKospi','mcapKosdaq','deposit','turnoverKospi','turnoverKosdaq'];
+const UNITS = { won: 1, thousand: 1e3, million: 1e6, eok: 1e8, ship: 1e9, jo: 1e12 };
+const ROLES = [
+  { id: '', label: '사용 안 함' },
+  { id: 'date', label: '날짜' },
+  { id: 'creditKospi', label: '신용잔고 · 코스피' },
+  { id: 'creditKosdaq', label: '신용잔고 · 코스닥' },
+  { id: 'creditTotal', label: '신용잔고 · 전체' },
+  { id: 'mcapKospi', label: '시가총액 · 코스피' },
+  { id: 'mcapKosdaq', label: '시가총액 · 코스닥' },
+  { id: 'deposit', label: '고객예탁금' },
+  { id: 'turnoverKospi', label: '거래대금 · 코스피' },
+  { id: 'turnoverKosdaq', label: '거래대금 · 코스닥' }
+];
+const FIELD_LABEL = {
+  creditKospi: '코스피 신용',
+  creditKosdaq: '코스닥 신용',
+  creditTotal: '전체 신용',
+  mcapKospi: '코스피 시총',
+  mcapKosdaq: '코스닥 시총',
+  deposit: '예탁금',
+  turnoverKospi: '코스피 거래대금',
+  turnoverKosdaq: '코스닥 거래대금'
+};
+
+const state = { rows: [], source: 'empty', undo: null, page: 0, illusion: 'kospi' };
+let pending = null;
+const charts = {};
+let ro = null;
+let toastTimer = 0;
+
+function ymd(y, m, d) {
+  const yy = Number(y);
+  const mm = Number(m);
+  const dd = Number(d);
+  if (yy < 1990 || yy > 2100 || mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  return String(yy).padStart(4, '0') + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+}
+
+function parseDate(v) {
+  if (v == null || v === '') return null;
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return ymd(v.getFullYear(), v.getMonth() + 1, v.getDate());
+  }
+  if (typeof v === 'number' && v > 35000 && v < 60000 && Math.abs(v - Math.round(v)) < 1e-4) {
+    const utc = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000);
+    const iso = utc.toISOString().slice(0, 10);
+    const year = Number(iso.slice(0, 4));
+    if (year < 1995 || year > 2100) return null;
+    return iso;
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})/);
+  if (m) return ymd(m[1], m[2], m[3]);
+  m = s.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+  if (m) return ymd(m[1], m[2], m[3]);
+  m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) return ymd(m[1], m[2], m[3]);
+  return null;
+}
+
+function isExplicitDate(v) {
+  if (v instanceof Date) return !isNaN(v.getTime());
+  if (typeof v === 'number') return false;
+  const s = String(v ?? '').trim();
+  if (!s) return false;
+  return /^(\d{4})\s*년\s*\d{1,2}\s*월\s*\d{1,2}/.test(s)
+    || /^(\d{4})[.\-/]\d{1,2}[.\-/]\d{1,2}/.test(s)
+    || /^\d{8}$/.test(s);
+}
+
+function parseNumber(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  let s = String(v ?? '').trim();
+  if (!s || s === '-' || s === '–' || s === '—') return null;
+  s = s.replace(/[−–]/g, '-');
+  s = s.replace(/십억원?|백만원?|조원?|억원?|천원?|원/g, '');
+  s = s.replace(/[\s,\u00a0]/g, '');
+  s = s.replace(/%/g, '');
+  if (/^\(.*\)$/.test(s)) s = '-' + s.slice(1, -1);
+  if (!s || s === '-' || s === '.') return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseMoney(v, unitMul) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v * unitMul : null;
+  const raw = String(v).trim();
+  if (!raw || raw === '-' || raw === '–') return null;
+  let mul = unitMul;
+  if (/십억/.test(raw)) mul = 1e9;
+  else if (/백만/.test(raw)) mul = 1e6;
+  else if (/조/.test(raw)) mul = 1e12;
+  else if (/억/.test(raw)) mul = 1e8;
+  else if (/천원/.test(raw)) mul = 1e3;
+  const n = parseNumber(raw);
+  if (n == null) return null;
+  return n * mul;
+}
+
+function cellText(v) {
+  if (v == null) return '';
+  if (v instanceof Date && !isNaN(v.getTime())) return parseDate(v) || '';
+  return String(v).replace(/\s+/g, ' ').trim();
+}
+
+function parseDelimited(text) {
+  const src = String(text || '').replace(/^\uFEFF/, '');
+  const sample = src.slice(0, 4000);
+  const commas = (sample.match(/,/g) || []).length;
+  const tabs = (sample.match(/\t/g) || []).length;
+  const semis = (sample.match(/;/g) || []).length;
+  const delim = tabs > commas && tabs > semis ? '\t' : semis > commas ? ';' : ',';
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (quoted) {
+      if (c === '"') {
+        if (src[i + 1] === '"') { cell += '"'; i++; }
+        else quoted = false;
+      } else cell += c;
+    } else if (c === '"') quoted = true;
+    else if (c === delim) { row.push(cell); cell = ''; }
+    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (c !== '\r') cell += c;
+  }
+  if (cell.length || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+function findExplicitStart(matrix) {
+  for (let i = 0; i < matrix.length; i++) {
+    const row = matrix[i] || [];
+    if (!row.some(isExplicitDate)) continue;
+    if (i === matrix.length - 1) return i;
+    let ok = 0;
+    const end = Math.min(matrix.length - 1, i + 3);
+    for (let j = i + 1; j <= end; j++) {
+      if ((matrix[j] || []).some(isExplicitDate)) ok++;
+    }
+    if (ok >= 1) return i;
+  }
+  return -1;
+}
+
+function columnLooksLikeSerialDates(matrix, col, start) {
+  const vals = [];
+  for (let i = start; i < Math.min(matrix.length, start + 12); i++) {
+    const v = matrix[i] && matrix[i][col];
+    if (typeof v === 'number' && v > 35000 && v < 60000) vals.push(v);
+    else if (vals.length) break;
+  }
+  if (vals.length < 4) return false;
+  const gaps = [];
+  for (let i = 1; i < vals.length; i++) gaps.push(vals[i] - vals[i - 1]);
+  gaps.sort((a, b) => a - b);
+  const med = gaps[Math.floor(gaps.length / 2)];
+  return med >= 1 && med <= 5;
+}
+
+function findDataStart(matrix) {
+  const explicit = findExplicitStart(matrix);
+  if (explicit >= 0) return explicit;
+  const width = Math.max(1, ...matrix.map(r => (r || []).length));
+  for (let c = 0; c < Math.min(width, 8); c++) {
+    for (let i = 0; i < matrix.length; i++) {
+      if (columnLooksLikeSerialDates(matrix, c, i)) return i;
+    }
+  }
+  return -1;
+}
+
+function smartFill(cells, width) {
+  const row = Array.from({ length: width }, (_, i) => cells[i] || '');
+  const nonempty = row.filter(Boolean).length;
+  if (!nonempty || 1 - nonempty / width < 0.3) return row;
+  let prev = '';
+  return row.map(c => {
+    if (c) { prev = c; return c; }
+    return prev;
+  });
+}
+
+function joinParts(parts) {
+  const out = [];
+  parts.forEach(p => {
+    if (p && out[out.length - 1] !== p) out.push(p);
+  });
+  return out.join(' ');
+}
+
+function combineHeaders(matrix, dataStart) {
+  const rows = [];
+  for (let i = Math.max(0, dataStart - 3); i < dataStart; i++) {
+    const cells = (matrix[i] || []).map(cellText);
+    const first = cells.find(Boolean) || '';
+    if (/^단위\b|^단위[:：]/.test(first)) continue;
+    if (cells.filter(Boolean).length >= 2) rows.push(cells);
+  }
+  const use = rows.slice(-2);
+  if (!use.length) return [];
+  const width = Math.max(...use.map(r => r.length));
+  const filled = use.map(r => smartFill(r, width));
+  const headers = [];
+  for (let c = 0; c < width; c++) headers.push(joinParts(filled.map(r => r[c] || '')));
+  return headers;
+}
+
+function detectUnit(preambleRows) {
+  const text = preambleRows.flat().map(cellText).join('\n');
+  const m = text.match(/단위\s*[:：]?\s*(십억원|십억|백만원|백만|조원|조|억원|억|천원|원)/);
+  const token = m ? m[1] : '';
+  if (token.startsWith('십억')) return { unit: 'ship', unitFound: true };
+  if (token.startsWith('백만')) return { unit: 'million', unitFound: true };
+  if (token.startsWith('조')) return { unit: 'jo', unitFound: true };
+  if (token.startsWith('억')) return { unit: 'eok', unitFound: true };
+  if (token.startsWith('천')) return { unit: 'thousand', unitFound: true };
+  if (token === '원') return { unit: 'won', unitFound: true };
+  if (/십억원/.test(text)) return { unit: 'ship', unitFound: true };
+  if (/조원/.test(text)) return { unit: 'jo', unitFound: true };
+  if (/백만원/.test(text)) return { unit: 'million', unitFound: true };
+  if (/억원/.test(text)) return { unit: 'eok', unitFound: true };
+  return { unit: 'million', unitFound: false };
+}
+
+function interpretMatrix(matrix) {
+  if (!matrix || !matrix.length) throw new Error('빈 파일입니다.');
+  const clean = matrix
+    .map(row => Array.isArray(row) ? row : [row])
+    .filter(row => row.some(c => cellText(c) !== ''));
+  const dataStart = findDataStart(clean);
+  if (dataStart < 0) throw new Error('날짜를 찾지 못했습니다. YYYY-MM-DD, YYYY.MM.DD, YYYYMMDD를 지원합니다.');
+  let headers = combineHeaders(clean, dataStart);
+  const records = clean.slice(dataStart).filter(row => row.some(c => parseDate(c)));
+  if (!records.length) throw new Error('날짜가 있는 데이터 행이 없습니다.');
+  const width = Math.max(headers.length, ...records.map(r => r.length), 1);
+  while (headers.length < width) headers.push('열 ' + (headers.length + 1));
+  const unitInfo = detectUnit(clean.slice(0, dataStart));
+  return { headers, records, unit: unitInfo.unit, unitFound: unitInfo.unitFound };
+}
+
+function guessRole(name) {
+  const n = String(name || '').replace(/\s+/g, '').toLowerCase();
+  if (!n) return '';
+  if (/대주|담보융자|반대매매|상환|신규/.test(n)) return '';
+  if (/일자|날짜|기준일|date/.test(n) && !/업데이트/.test(n)) return 'date';
+  if (/예탁금|예수금/.test(n) && !/담보|회전/.test(n)) return 'deposit';
+  if (/거래대금|거래금액/.test(n)) {
+    if (/코스닥/.test(n)) return 'turnoverKosdaq';
+    if (/코스피|유가증권/.test(n)) return 'turnoverKospi';
+    return '';
+  }
+  if (/시가총액|시총/.test(n)) {
+    if (/코스닥/.test(n)) return 'mcapKosdaq';
+    if (/코스피|유가증권/.test(n)) return 'mcapKospi';
+    return '';
+  }
+  if (/신용|융자/.test(n)) {
+    if (/코스닥/.test(n)) return 'creditKosdaq';
+    if (/유가증권|코스피/.test(n)) return 'creditKospi';
+    if (/전체|합계/.test(n)) return 'creditTotal';
+    if (/잔고|잔액/.test(n)) return 'creditTotal';
+  }
+  return '';
+}
+
+function autoMap(headers, records) {
+  const mapping = headers.map(h => guessRole(h));
+  const used = new Set();
+  for (let i = 0; i < mapping.length; i++) {
+    if (!mapping[i]) continue;
+    if (used.has(mapping[i])) mapping[i] = '';
+    else used.add(mapping[i]);
+  }
+  if (!used.has('date') && records) {
+    let best = -1;
+    let bestScore = 0;
+    for (let c = 0; c < headers.length; c++) {
+      let score = 0;
+      for (let r = 0; r < Math.min(records.length, 20); r++) {
+        if (parseDate(records[r][c])) score++;
+      }
+      if (score > bestScore) { bestScore = score; best = c; }
+    }
+    if (best >= 0 && bestScore >= 2) mapping[best] = 'date';
+  }
+  return mapping;
+}
+
+function recordsToSeries(records, mapping, unit) {
+  const mul = UNITS[unit] || 1;
+  const dateIdx = mapping.indexOf('date');
+  if (dateIdx < 0) return [];
+  const map = new Map();
+  records.forEach(rec => {
+    const date = parseDate(rec[dateIdx]);
+    if (!date) return;
+    const row = map.get(date) || { date };
+    mapping.forEach((role, i) => {
+      if (!role || role === 'date') return;
+      const value = parseMoney(rec[i], mul);
+      if (value != null) row[role] = value;
+    });
+    map.set(date, row);
+  });
+  return [...map.values()].sort((a, b) => a.date < b.date ? -1 : 1);
+}
+
+function mergeRows(base, incoming) {
+  const map = new Map(base.map(r => [r.date, Object.assign({ date: r.date }, r)]));
+  incoming.forEach(row => {
+    const prev = map.get(row.date) || { date: row.date };
+    FIELDS.forEach(k => { if (row[k] != null) prev[k] = row[k]; });
+    map.set(row.date, prev);
+  });
+  return [...map.values()].sort((a, b) => a.date < b.date ? -1 : 1);
+}
+
+function finite(v) {
+  const n = typeof v === 'number' ? v : parseNumber(v);
+  return n != null && Number.isFinite(n) ? n : null;
+}
+
+function pct(a, b) {
+  if (a == null || b == null || b === 0) return null;
+  return (a / b) * 100;
+}
+
+function plainRatio(a, b) {
+  if (a == null || b == null || b === 0) return null;
+  return a / b;
+}
+
+function average(arr) {
+  if (!arr.length) return null;
+  return arr.reduce((s, v) => s + v, 0) / arr.length;
+}
+
+function computeSeries(rows) {
+  const sorted = [...rows].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const histK = [];
+  const histQ = [];
+  return sorted.map(r => {
+    const creditK = finite(r.creditKospi);
+    const creditQ = finite(r.creditKosdaq);
+    const creditTotal = finite(r.creditTotal);
+    let creditSum = null;
+    if (creditK != null && creditQ != null) creditSum = creditK + creditQ;
+    else if (creditTotal != null) creditSum = creditTotal;
+    else if (creditK != null || creditQ != null) creditSum = (creditK || 0) + (creditQ || 0);
+    const turnK = finite(r.turnoverKospi);
+    const turnQ = finite(r.turnoverKosdaq);
+    if (turnK != null && turnK > 0) histK.push(turnK);
+    if (turnQ != null && turnQ > 0) histQ.push(turnQ);
+    const sliceK = histK.slice(-20);
+    const sliceQ = histQ.slice(-20);
+    const maK = average(sliceK);
+    const maQ = average(sliceQ);
+    const mismatch = creditK != null && creditQ != null && creditTotal != null
+      && creditTotal !== 0 && Math.abs(creditK + creditQ - creditTotal) / Math.abs(creditTotal) > 0.01;
+    return {
+      date: r.date,
+      creditKospi: creditK,
+      creditKosdaq: creditQ,
+      creditTotal,
+      creditSum,
+      mcapKospi: finite(r.mcapKospi),
+      mcapKosdaq: finite(r.mcapKosdaq),
+      deposit: finite(r.deposit),
+      turnoverKospi: turnK,
+      turnoverKosdaq: turnQ,
+      mcapRatioK: pct(creditK, finite(r.mcapKospi)),
+      mcapRatioQ: pct(creditQ, finite(r.mcapKosdaq)),
+      depositRatio: pct(creditSum, finite(r.deposit)),
+      maK, maQ,
+      maCountK: sliceK.length,
+      maCountQ: sliceQ.length,
+      multK: plainRatio(creditK, maK),
+      multQ: plainRatio(creditQ, maQ),
+      totalMismatch: mismatch
+    };
+  });
+}
+
+function zoneKospi(p) {
+  if (p == null) return { label: '데이터 없음', tone: 'muted' };
+  if (p < 0) return { label: '값 이상', tone: 'muted' };
+  if (p >= 0.8) return { label: '과열 경계', tone: 'hot' };
+  if (p >= 0.6) return { label: '주의', tone: 'watch' };
+  if (p >= 0.4) return { label: '안정권', tone: 'safe' };
+  return { label: '레버리지 낮음', tone: 'safe' };
+}
+
+function zoneKosdaq(p) {
+  if (p == null) return { label: '데이터 없음', tone: 'muted' };
+  if (p < 0) return { label: '값 이상', tone: 'muted' };
+  if (p >= 3) return { label: '오버행', tone: 'hot' };
+  if (p >= 2.5) return { label: '통상 상단', tone: 'watch' };
+  if (p >= 2) return { label: '통상 범위', tone: 'safe' };
+  return { label: '레버리지 완화', tone: 'safe' };
+}
+
+function zoneDeposit(p) {
+  if (p == null) return { label: '데이터 없음', tone: 'muted' };
+  if (p < 0) return { label: '값 이상', tone: 'muted' };
+  if (p >= 45) return { label: '위험 국면', tone: 'hot' };
+  if (p > 35) return { label: '중립', tone: 'watch' };
+  return { label: '현금 버퍼 충분', tone: 'safe' };
+}
+
+function zoneMultiple(now, med) {
+  if (now == null) return { label: '데이터 없음', tone: 'muted' };
+  if (med == null) return { label: '기간 비교 불가', tone: 'muted' };
+  if (now > med * 1.5) return { label: '기간 중앙보다 큼', tone: 'watch' };
+  if (now < med * 0.75) return { label: '기간 중앙보다 작음', tone: 'safe' };
+  return { label: '기간 중앙 부근', tone: 'muted' };
+}
+
+function median(nums) {
+  const arr = nums.filter(v => v != null && Number.isFinite(v)).sort((a, b) => a - b);
+  if (!arr.length) return null;
+  const mid = Math.floor(arr.length / 2);
+  return arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+}
+
+function medianGapDays(dates) {
+  const ds = dates.map(d => Date.parse(d)).filter(v => Number.isFinite(v)).sort((a, b) => a - b);
+  if (ds.length < 5) return null;
+  const gaps = [];
+  for (let i = 1; i < ds.length; i++) gaps.push((ds[i] - ds[i - 1]) / 86400000);
+  gaps.sort((a, b) => a - b);
+  return gaps[Math.floor(gaps.length / 2)];
+}
+
+function lastPoint(series, key) {
+  for (let i = series.length - 1; i >= 0; i--) {
+    if (series[i][key] != null) return series[i];
+  }
+  return null;
+}
+
+function lookback(series, key, n) {
+  const idxs = [];
+  series.forEach((r, i) => { if (r[key] != null) idxs.push(i); });
+  if (idxs.length < 2) return null;
+  const lastI = idxs[idxs.length - 1];
+  const prevPos = Math.max(0, idxs.length - 1 - n);
+  return { last: series[lastI], prev: series[idxs[prevPos]], steps: idxs.length - 1 - prevPos };
+}
+
+function formatWon(n) {
+  if (n == null || !Number.isFinite(n)) return '–';
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+  if (abs >= 1e12) return sign + (abs / 1e12).toFixed(2) + '조';
+  if (abs >= 1e8) return sign + (abs / 1e8).toFixed(0) + '억';
+  if (abs >= 1e4) return sign + Math.round(abs).toLocaleString('ko-KR') + '원';
+  return sign + String(Math.round(abs)) + '원';
+}
+
+function formatSigned(n, digits, suffix) {
+  if (n == null || !Number.isFinite(n)) return '';
+  const rounded = Number(n.toFixed(digits));
+  if (rounded === 0) return '';
+  const sign = rounded > 0 ? '+' : '';
+  return sign + rounded.toFixed(digits) + suffix;
+}
+
+function deltaText(back, digits, suffix, read) {
+  if (!back) return { text: '', dir: '' };
+  const delta = read(back.last) - read(back.prev);
+  const text = formatSigned(delta, digits, suffix);
+  if (!text) return { text: '', dir: '' };
+  return { text: back.steps + '거래일 전 대비 ' + text, dir: delta > 0 ? 'up' : 'down' };
+}
+
+function pctChange(a, b) {
+  if (a == null || !a) return '–';
+  const p = ((b - a) / Math.abs(a)) * 100;
+  return (p > 0 ? '+' : '') + p.toFixed(0) + '%';
+}
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function buildSample() {
+  const rnd = mulberry32(20241105);
+  const knots = [
+    ['2024-01-02', 9.2, 2150, 7.4, 370, 54, 8.5, 7.2],
+    ['2024-08-01', 12.0, 2680, 8.6, 430, 70, 13, 9.5],
+    ['2025-03-03', 13.8, 2400, 9.4, 390, 58, 10, 8.0],
+    ['2025-08-01', 16.8, 1980, 11.4, 345, 41, 2.5, 2.0],
+    ['2026-02-02', 21.0, 4800, 9.2, 460, 100, 18, 10],
+    ['2026-10-30', 26.5, 6600, 8.2, 490, 130, 26, 12]
+  ].map(k => ({ t: new Date(k[0] + 'T00:00:00').getTime(), v: k.slice(1).map(Number) }));
+  const smooth = t => t * t * (3 - 2 * t);
+  function levels(time) {
+    if (time <= knots[0].t) return knots[0].v.slice();
+    const last = knots[knots.length - 1];
+    if (time >= last.t) return last.v.slice();
+    for (let i = 0; i < knots.length - 1; i++) {
+      if (time <= knots[i + 1].t) {
+        const u = (time - knots[i].t) / (knots[i + 1].t - knots[i].t);
+        const s = smooth(u);
+        return knots[i].v.map((v, idx) => v + (knots[i + 1].v[idx] - v) * s);
+      }
+    }
+    return last.v.slice();
+  }
+  const scales = [0.012, 0.008, 0.012, 0.01, 0.01, 0.06, 0.06];
+  const rows = [];
+  const cursor = new Date(2024, 0, 2);
+  const end = new Date(2026, 9, 30);
+  while (cursor <= end) {
+    const day = cursor.getDay();
+    if (day !== 0 && day !== 6) {
+      const jo = levels(cursor.getTime()).map((v, i) => v * (1 + (rnd() - 0.5) * 2 * scales[i]));
+      const iso = ymd(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate());
+      rows.push({
+        date: iso,
+        creditKospi: jo[0] * 1e12,
+        mcapKospi: jo[1] * 1e12,
+        creditKosdaq: jo[2] * 1e12,
+        mcapKosdaq: jo[3] * 1e12,
+        deposit: jo[4] * 1e12,
+        turnoverKospi: Math.max(0.3, jo[5]) * 1e12,
+        turnoverKosdaq: Math.max(0.2, jo[6]) * 1e12
+      });
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return rows;
+}
+
+function qualityNotes(series) {
+  const notes = [];
+  const gap = medianGapDays(series.map(r => r.date));
+  if (gap != null && gap >= 6) {
+    notes.push('날짜 간격의 중앙값이 ' + gap.toFixed(0) + '일입니다. 거래대금 배수는 일별 자료의 20거래일 평균을 전제로 하며, 지금은 최근 20개 관측의 평균으로 계산합니다.');
+  }
+  if (series.some(r => (r.mcapRatioK != null && r.mcapRatioK > 5) || (r.mcapRatioQ != null && r.mcapRatioQ > 15) || (r.depositRatio != null && r.depositRatio > 150))) {
+    notes.push('비율이 해석 범위를 크게 벗어났습니다. 파일마다 금액 단위가 맞는지 확인해 주세요.');
+  }
+  const maxK = Math.max(0, ...series.map(r => r.maCountK || 0));
+  const maxQ = Math.max(0, ...series.map(r => r.maCountQ || 0));
+  if ((series.some(r => r.turnoverKospi != null) && maxK < 20) || (series.some(r => r.turnoverKosdaq != null) && maxQ < 20)) {
+    notes.push('거래대금이 20거래일보다 짧습니다. 배수는 쌓인 날짜의 평균으로 계산했습니다.');
+  }
+  if (series.some(r => r.totalMismatch)) {
+    notes.push('코스피·코스닥 합과 전체 신용잔고가 1% 넘게 다른 날이 있습니다. 예탁금 대비 비율은 시장별 합계를 분자로 씁니다.');
+  }
+  if (series.some(r => r.deposit != null && r.creditTotal == null && ((r.creditKospi == null) !== (r.creditKosdaq == null)))) {
+    notes.push('예탁금 대비 비율은 양쪽 시장 신용의 합이 분자입니다. 한쪽만 있는 날은 그 시장 잔고만 쓰므로 비율이 낮아 보입니다.');
+  }
+  return notes;
+}
+
+function depositBasis(series) {
+  const both = series.some(r => r.creditKospi != null && r.creditKosdaq != null);
+  const totalOnly = !both && series.some(r => r.creditTotal != null && r.depositRatio != null);
+  if (both) return '분자는 코스피 신용과 코스닥 신용의 합입니다. 고객예탁금은 시장 전체 대기자금입니다.';
+  if (totalOnly) return '시장별 잔고가 없어 전체 신용잔고를 분자로 씁니다.';
+  return '입력된 신용잔고를 고객예탁금으로 나눕니다. 한쪽 시장만 있으면 비율이 낮아 보입니다.';
+}
+
+function coverageText(rows) {
+  return FIELDS.map(k => {
+    const n = rows.filter(r => finite(r[k]) != null).length;
+    return n ? FIELD_LABEL[k] + ' ' + n + '일' : '';
+  }).filter(Boolean).join(' · ');
+}
+
+function indexOfSeries(values) {
+  const first = values.find(v => v != null && v !== 0 && Number.isFinite(v));
+  if (first == null) return values.map(() => null);
+  return values.map(v => (v == null || !Number.isFinite(v)) ? null : (v / first) * 100);
+}
+
+function spanBoth(series, aKey, bKey) {
+  const hits = series.filter(r => r[aKey] != null && r[bKey] != null);
+  if (hits.length < 2) return null;
+  return { start: hits[0], end: hits[hits.length - 1] };
+}
+
+function illusionNote(series, market) {
+  const creditKey = market === 'kospi' ? 'creditKospi' : 'creditKosdaq';
+  const ratioKey = market === 'kospi' ? 'mcapRatioK' : 'mcapRatioQ';
+  const mcapKey = market === 'kospi' ? 'mcapKospi' : 'mcapKosdaq';
+  const name = market === 'kospi' ? '코스피' : '코스닥';
+  const span = spanBoth(series, creditKey, ratioKey);
+  if (!span) return name + ' 신용잔고와 시가총액이 같은 날짜에 있어야 금액과 비율을 비교할 수 있습니다.';
+  const a = span.start;
+  const b = span.end;
+  return name + ' ' + a.date + ' → ' + b.date
+    + ' · 신용잔고 ' + formatWon(a[creditKey]) + ' → ' + formatWon(b[creditKey]) + ' (' + pctChange(a[creditKey], b[creditKey]) + ')'
+    + ' · 시가총액 ' + formatWon(a[mcapKey]) + ' → ' + formatWon(b[mcapKey]) + ' (' + pctChange(a[mcapKey], b[mcapKey]) + ')'
+    + ' · 비율 ' + a[ratioKey].toFixed(2) + '% → ' + b[ratioKey].toFixed(2) + '% (' + formatSigned(b[ratioKey] - a[ratioKey], 2, '%p') + ')';
+}
+
+function narrative(series) {
+  if (!series.length) return '파일을 불러오거나 예시를 열면 최근 영업일의 세 비율과 구간이 여기에 붙습니다.';
+  const bits = [];
+  if (state.source === 'sample') bits.push('지금은 예시 시계열입니다. 실제 잔고가 아닙니다.');
+  const k = lastPoint(series, 'mcapRatioK');
+  const q = lastPoint(series, 'mcapRatioQ');
+  const d = lastPoint(series, 'depositRatio');
+  if (k) bits.push('코스피 시총 대비는 ' + k.date + ' 기준 ' + k.mcapRatioK.toFixed(2) + '%로 ' + zoneKospi(k.mcapRatioK).label + '입니다.');
+  if (q) bits.push('코스닥 시총 대비는 ' + q.date + ' 기준 ' + q.mcapRatioQ.toFixed(2) + '%로 ' + zoneKosdaq(q.mcapRatioQ).label + '입니다.');
+  if (d) bits.push('예탁금 대비는 ' + d.date + ' 기준 ' + d.depositRatio.toFixed(1) + '%로 ' + zoneDeposit(d.depositRatio).label + '입니다.');
+  if (bits.length === (state.source === 'sample' ? 1 : 0)) bits.push('비율을 계산할 분모가 없습니다. 시가총액, 예탁금, 거래대금 중 하나를 같은 날짜로 맞춰 주세요.');
+  return bits.join(' ');
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 4200);
+}
+
+function downloadText(filename, text) {
+  const blob = new Blob(['\uFEFF' + text], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function templateCsv() {
+  return [
+    '단위:조원',
+    '날짜,코스피신용잔고,코스닥신용잔고,코스피시가총액,코스닥시가총액,고객예탁금,코스피거래대금,코스닥거래대금',
+    '2024-01-02,9.2,7.4,2150,370,54,8.5,7.2',
+    '2024-01-03,9.3,7.4,2160,372,55,9.1,7.4',
+    '2024-01-04,9.4,7.5,2140,368,53,7.8,6.9'
+  ].join('\r\n');
+}
+
+function csvCell(v) {
+  if (v == null || v === '') return '';
+  const s = String(v);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function exportSeries(series) {
+  const headers = ['날짜','코스피신용잔고_원','코스닥신용잔고_원','전체신용잔고_원','합산신용잔고_원','코스피시가총액_원','코스닥시가총액_원','고객예탁금_원','코스피거래대금_원','코스닥거래대금_원','코스피_시총대비_%','코스닥_시총대비_%','예탁금대비_%','코스피_20일평균거래대금_원','코스닥_20일평균거래대금_원','코스피_거래대금배수','코스닥_거래대금배수'];
+  const num = v => v == null ? '' : String(Math.round(v));
+  const dec = (v, d) => v == null ? '' : v.toFixed(d);
+  const lines = [headers.join(',')];
+  series.forEach(r => {
+    lines.push([
+      r.date, num(r.creditKospi), num(r.creditKosdaq), num(r.creditTotal), num(r.creditSum),
+      num(r.mcapKospi), num(r.mcapKosdaq), num(r.deposit), num(r.turnoverKospi), num(r.turnoverKosdaq),
+      dec(r.mcapRatioK, 4), dec(r.mcapRatioQ, 4), dec(r.depositRatio, 4),
+      num(r.maK), num(r.maQ), dec(r.multK, 4), dec(r.multQ, 4)
+    ].map(csvCell).join(','));
+  });
+  downloadText('신용비율_계산결과.csv', lines.join('\r\n'));
+}
+
+function loadStorage() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (!raw || !Array.isArray(raw.rows)) return null;
+    raw.rows = raw.rows.filter(r => r && typeof r.date === 'string');
+    return raw.rows.length ? raw : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function persist() {
+  if (state.source !== 'user') return;
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ rows: state.rows }));
+  } catch (err) {
+    toast('브라우저 저장 공간이 부족합니다. 계산 결과 받기로 백업해 주세요.');
+  }
+}
+
+function pushUndo() {
+  state.undo = { rows: state.rows.map(r => Object.assign({}, r)), source: state.source };
+}
+
+function $(id) { return document.getElementById(id); }
+
+function setKpi(id, opts) {
+  const root = $(id);
+  root.classList.remove('tone-safe', 'tone-watch', 'tone-hot', 'tone-muted');
+  root.classList.add('tone-' + (opts.tone || 'muted'));
+  root.querySelector('.kpi-value').textContent = opts.value;
+  root.querySelector('.kpi-zone').textContent = opts.zone;
+  const delta = root.querySelector('.kpi-delta');
+  delta.textContent = opts.delta || '';
+  delta.classList.remove('up', 'down');
+  if (opts.dir) delta.classList.add(opts.dir);
+  root.querySelector('.kpi-sub').textContent = opts.sub || '';
+}
+
+function renderKpis(series) {
+  const k = lastPoint(series, 'mcapRatioK');
+  const kb = lookback(series, 'mcapRatioK', 20);
+  const kz = zoneKospi(k && k.mcapRatioK);
+  const kd = deltaText(kb, 2, '%p', r => r.mcapRatioK);
+  setKpi('kpi-kospi', k ? {
+    value: k.mcapRatioK.toFixed(2) + '%',
+    zone: kz.label,
+    tone: kz.tone,
+    delta: kd.text,
+    dir: kd.dir,
+    sub: k.date + ' · 잔고 ' + formatWon(k.creditKospi) + ' · 시총 ' + formatWon(k.mcapKospi)
+  } : { value: '–', zone: '데이터 없음', tone: 'muted', sub: '코스피 신용과 시가총액이 필요합니다' });
+
+  const q = lastPoint(series, 'mcapRatioQ');
+  const qb = lookback(series, 'mcapRatioQ', 20);
+  const qz = zoneKosdaq(q && q.mcapRatioQ);
+  const qd = deltaText(qb, 2, '%p', r => r.mcapRatioQ);
+  setKpi('kpi-kosdaq', q ? {
+    value: q.mcapRatioQ.toFixed(2) + '%',
+    zone: qz.label,
+    tone: qz.tone,
+    delta: qd.text,
+    dir: qd.dir,
+    sub: q.date + ' · 잔고 ' + formatWon(q.creditKosdaq) + ' · 시총 ' + formatWon(q.mcapKosdaq)
+  } : { value: '–', zone: '데이터 없음', tone: 'muted', sub: '코스닥 신용과 시가총액이 필요합니다' });
+
+  const d = lastPoint(series, 'depositRatio');
+  const db = lookback(series, 'depositRatio', 20);
+  const dz = zoneDeposit(d && d.depositRatio);
+  const dd = deltaText(db, 1, '%p', r => r.depositRatio);
+  setKpi('kpi-deposit', d ? {
+    value: d.depositRatio.toFixed(1) + '%',
+    zone: dz.label,
+    tone: dz.tone,
+    delta: dd.text,
+    dir: dd.dir,
+    sub: d.date + ' · 신용 ' + formatWon(d.creditSum) + ' · 예탁금 ' + formatWon(d.deposit)
+  } : { value: '–', zone: '데이터 없음', tone: 'muted', sub: '신용잔고와 고객예탁금이 필요합니다' });
+
+  renderMultipleKpi('kpi-mult-k', series, 'multK', 'maCountK', 'creditKospi');
+  renderMultipleKpi('kpi-mult-q', series, 'multQ', 'maCountQ', 'creditKosdaq');
+}
+
+function renderMultipleKpi(id, series, key, countKey, creditKey) {
+  const row = lastPoint(series, key);
+  const back = lookback(series, key, 20);
+  const med = median(series.map(r => r[key]));
+  const zone = zoneMultiple(row && row[key], med);
+  if (!row) {
+    setKpi(id, { value: '–', zone: '데이터 없음', tone: 'muted', sub: '신용잔고와 거래대금이 필요합니다' });
+    return;
+  }
+  const share = row[key] * 10;
+  const countNote = row[countKey] < 20 ? row[countKey] + '거래일 평균 · ' : '20거래일 평균 · ';
+  const md = deltaText(back, 2, '배', r => r[key]);
+  setKpi(id, {
+    value: row[key].toFixed(2) + '배',
+    zone: zone.label,
+    tone: zone.tone,
+    delta: md.text,
+    dir: md.dir,
+    sub: countNote + '잔고 10% 청산 시 하루치의 ' + share.toFixed(1) + '% · ' + formatWon(row[creditKey])
+  });
+}
+
+function axisDates(dates) {
+  return {
+    type: 'category',
+    data: dates,
+    axisLabel: {
+      color: '#9aa8ba',
+      hideOverlap: true,
+      formatter: v => String(v).slice(2).replace(/-/g, '.')
+    },
+    axisLine: { lineStyle: { color: 'rgba(255,255,255,.16)' } },
+    axisTick: { show: false }
+  };
+}
+
+function valueAxis(max) {
+  return {
+    type: 'value',
+    min: 0,
+    max,
+    axisLabel: { color: '#9aa8ba', formatter: formatTick },
+    splitLine: { lineStyle: { color: 'rgba(255,255,255,.06)' } },
+    splitNumber: 4
+  };
+}
+
+function niceCeil(raw) {
+  if (!Number.isFinite(raw) || raw <= 0) return 1;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  const steps = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  const n = raw / pow;
+  const step = steps.find(s => s + 1e-9 >= n) || 10;
+  return step * pow;
+}
+
+function yMax(values, floor) {
+  let peak = 0;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v != null && Number.isFinite(v) && v > peak) peak = v;
+  }
+  return niceCeil(Math.max(peak, floor, 0) * 1.05);
+}
+
+function formatTick(v) {
+  const abs = Math.abs(v);
+  if (abs >= 10) return String(Math.round(v));
+  const rounded = Math.round(v * 10) / 10;
+  return String(rounded);
+}
+
+function point(value, extra) {
+  if (value == null || !Number.isFinite(value)) return null;
+  return Object.assign({ value }, extra || {});
+}
+
+function tooltipBase() {
+  return {
+    trigger: 'axis',
+    confine: true,
+    backgroundColor: '#101820',
+    borderColor: 'rgba(231,194,122,.35)',
+    textStyle: { color: '#e8eef6', fontFamily: 'IBM Plex Sans KR, Malgun Gothic, sans-serif', fontSize: 12 }
+  };
+}
+
+function emptyTitle(text) {
+  return { text, left: 'center', top: 'middle', textStyle: { color: '#9aa8ba', fontSize: 14, fontWeight: 500, fontFamily: 'IBM Plex Sans KR, Malgun Gothic, sans-serif' } };
+}
+
+function ensureChart(id) {
+  if (!window.echarts) return null;
+  const el = $(id);
+  if (!charts[id]) {
+    charts[id] = echarts.init(el, null, { renderer: 'canvas' });
+    charts[id].group = 'credit';
+    if (ro) ro.observe(el);
+  }
+  return charts[id];
+}
+
+function renderIllusion(series) {
+  const chart = ensureChart('chart-illusion');
+  if (!chart) return;
+  const market = state.illusion;
+  const creditKey = market === 'kospi' ? 'creditKospi' : 'creditKosdaq';
+  const mcapKey = market === 'kospi' ? 'mcapKospi' : 'mcapKosdaq';
+  const ratioKey = market === 'kospi' ? 'mcapRatioK' : 'mcapRatioQ';
+  const dates = series.map(r => r.date);
+  const credit = series.map(r => r[creditKey]);
+  const mcap = series.map(r => r[mcapKey]);
+  const ratio = series.map(r => r[ratioKey]);
+  const has = credit.some(v => v != null) && mcap.some(v => v != null);
+  const idx = indexOfSeries;
+  chart.setOption({
+    backgroundColor: 'transparent',
+    title: has ? { show: false } : emptyTitle('신용잔고와 시가총액이 모두 있어야 합니다'),
+    grid: { left: 48, right: 18, top: 28, bottom: 52 },
+    legend: { top: 0, textStyle: { color: '#c5d0de' }, icon: 'roundRect' },
+    tooltip: Object.assign(tooltipBase(), {
+      formatter(params) {
+        const rows = params.filter(p => p.data != null);
+        if (!rows.length) return '';
+        const body = rows.map(p => {
+          const d = p.data;
+          const value = d && typeof d === 'object' ? d.value : d;
+          const raw = d && d.raw != null ? ' · 실제 ' + d.raw : '';
+          return p.marker + p.seriesName + ' <b>' + Number(value).toFixed(1) + '</b>' + raw;
+        }).join('<br>');
+        return rows[0].axisValue + '<br>' + body;
+      }
+    }),
+    xAxis: axisDates(dates),
+    yAxis: valueAxis(has ? yMax(idx(credit).concat(idx(mcap), idx(ratio)), 100) : 200),
+    dataZoom: [{ type: 'inside' }, { type: 'slider', height: 16, bottom: 8, borderColor: 'transparent', backgroundColor: '#0d1520', fillerColor: 'rgba(231,194,122,.25)', textStyle: { color: '#9aa8ba' } }],
+    series: has ? [
+      { name: '신용잔고', type: 'line', showSymbol: false, data: idx(credit).map((v, i) => point(v, { raw: formatWon(credit[i]) })), lineStyle: { width: 2, color: '#ff8b7b' }, itemStyle: { color: '#ff8b7b' }, markLine: { symbol: 'none', silent: true, lineStyle: { type: 'dashed', color: 'rgba(255,255,255,.28)' }, data: [{ yAxis: 100, label: { show: false } }] } },
+      { name: '시가총액', type: 'line', showSymbol: false, data: idx(mcap).map((v, i) => point(v, { raw: formatWon(mcap[i]) })), lineStyle: { width: 2, color: '#7eb6ff' }, itemStyle: { color: '#7eb6ff' } },
+      { name: '신용비율', type: 'line', showSymbol: false, data: idx(ratio).map((v, i) => point(v, { raw: ratio[i] == null ? '' : ratio[i].toFixed(2) + '%' })), lineStyle: { width: 2.4, color: '#e7c27a' }, itemStyle: { color: '#e7c27a' } }
+    ] : []
+  }, true);
+}
+
+function ratioChart(id, key, creditKey, baseKey, bands, lines, color, floor) {
+  const chart = ensureChart(id);
+  return { chart, key, creditKey, baseKey, bands, lines, color, floor };
+}
+
+function drawRatio(spec, series) {
+  if (!spec.chart) return;
+  const dates = series.map(r => r.date);
+  const values = series.map(r => r[spec.key]);
+  const has = values.some(v => v != null);
+  const max = yMax(values, spec.floor);
+  spec.chart.setOption({
+    backgroundColor: 'transparent',
+    title: has ? { show: false } : emptyTitle('필요한 열이 없습니다'),
+    grid: { left: 48, right: 16, top: 16, bottom: 52 },
+    tooltip: Object.assign(tooltipBase(), {
+      formatter(params) {
+        const p = params[0];
+        if (!p || p.data == null) return '';
+        const d = p.data;
+        return p.axisValue + '<br>' + p.marker + '<b>' + Number(d.value).toFixed(2) + '%</b><br>잔고 ' + formatWon(d.credit) + '<br>분모 ' + formatWon(d.base);
+      }
+    }),
+    xAxis: axisDates(dates),
+    yAxis: valueAxis(max),
+    dataZoom: [{ type: 'inside' }, { type: 'slider', height: 16, bottom: 8, borderColor: 'transparent', backgroundColor: '#0d1520', fillerColor: 'rgba(231,194,122,.25)', textStyle: { color: '#9aa8ba' } }],
+    series: has ? [{
+      name: '비율',
+      type: 'line',
+      showSymbol: false,
+      data: series.map(r => point(r[spec.key], { credit: r[spec.creditKey], base: r[spec.baseKey] })),
+      lineStyle: { width: 2, color: spec.color },
+      itemStyle: { color: spec.color },
+      areaStyle: { color: spec.area },
+      markArea: { silent: true, data: spec.bands.map(b => [{ yAxis: b[0], itemStyle: { color: b[2] } }, { yAxis: Math.min(b[1], max) }]) },
+      markLine: {
+        symbol: 'none',
+        silent: true,
+        data: spec.lines.map(line => ({
+          yAxis: line[0],
+          label: { formatter: line[1], color: line[2], position: 'insideEndTop' },
+          lineStyle: { color: line[2], type: 'dashed' }
+        }))
+      }
+    }] : []
+  }, true);
+}
+
+function renderMultiple(series) {
+  const chart = ensureChart('chart-multiple');
+  if (!chart) return;
+  const dates = series.map(r => r.date);
+  const has = series.some(r => r.multK != null || r.multQ != null);
+  const medK = median(series.map(r => r.multK));
+  const medQ = median(series.map(r => r.multQ));
+  const max = yMax(series.map(r => r.multK).concat(series.map(r => r.multQ)), 1);
+  const marks = [];
+  if (medK != null) marks.push({ yAxis: medK, label: { formatter: '코스피 중앙 ' + medK.toFixed(2), color: '#7eb6ff' }, lineStyle: { type: 'dashed', color: 'rgba(126,182,255,.7)' } });
+  if (medQ != null) marks.push({ yAxis: medQ, label: { formatter: '코스닥 중앙 ' + medQ.toFixed(2), color: '#f0b429' }, lineStyle: { type: 'dashed', color: 'rgba(240,180,41,.75)' } });
+  chart.setOption({
+    backgroundColor: 'transparent',
+    title: has ? { show: false } : emptyTitle('신용잔고와 거래대금이 있어야 합니다'),
+    grid: { left: 48, right: 16, top: 28, bottom: 52 },
+    legend: { top: 0, textStyle: { color: '#c5d0de' }, icon: 'roundRect' },
+    tooltip: Object.assign(tooltipBase(), {
+      formatter(params) {
+        const rows = params.filter(p => p.data != null);
+        if (!rows.length) return '';
+        const body = rows.map(p => {
+          const d = p.data;
+          const days = d.count < 20 ? d.count + '거래일 평균' : '20거래일 평균';
+          return p.marker + p.seriesName + ' <b>' + Number(d.value).toFixed(2) + '배</b> · ' + days + ' ' + formatWon(d.ma) + '<br>잔고 10% 청산 시 하루치의 ' + (d.value * 10).toFixed(1) + '%';
+        }).join('<br>');
+        return rows[0].axisValue + '<br>' + body;
+      }
+    }),
+    xAxis: axisDates(dates),
+    yAxis: valueAxis(max),
+    dataZoom: [{ type: 'inside' }, { type: 'slider', height: 16, bottom: 8, borderColor: 'transparent', backgroundColor: '#0d1520', fillerColor: 'rgba(231,194,122,.25)', textStyle: { color: '#9aa8ba' } }],
+    series: has ? [
+      { name: '코스피', type: 'line', showSymbol: false, data: series.map(r => point(r.multK, { ma: r.maK, count: r.maCountK })), lineStyle: { width: 2, color: '#7eb6ff' }, itemStyle: { color: '#7eb6ff' }, markLine: { symbol: 'none', silent: true, data: marks } },
+      { name: '코스닥', type: 'line', showSymbol: false, data: series.map(r => point(r.multQ, { ma: r.maQ, count: r.maCountQ })), lineStyle: { width: 2, color: '#f0b429' }, itemStyle: { color: '#f0b429' } }
+    ] : []
+  }, true);
+}
+
+const KOSPI_SPEC = {
+  id: 'chart-kospi',
+  key: 'mcapRatioK',
+  creditKey: 'creditKospi',
+  baseKey: 'mcapKospi',
+  color: '#7eb6ff',
+  floor: 0.9,
+  bands: [[0.4, 0.6, 'rgba(62,207,142,.13)'], [0.6, 0.8, 'rgba(240,180,41,.12)'], [0.8, 99, 'rgba(255,107,122,.12)']],
+  lines: [[0.4, '0.4', '#3ecf8e'], [0.6, '0.6', '#e7c27a'], [0.8, '0.8 과열', '#ff6b7a']],
+  area: 'rgba(126,182,255,.08)'
+};
+const KOSDAQ_SPEC = {
+  id: 'chart-kosdaq',
+  key: 'mcapRatioQ',
+  creditKey: 'creditKosdaq',
+  baseKey: 'mcapKosdaq',
+  color: '#f0b429',
+  floor: 3.3,
+  bands: [[2, 2.5, 'rgba(62,207,142,.13)'], [2.5, 3, 'rgba(240,180,41,.12)'], [3, 99, 'rgba(255,107,122,.12)']],
+  lines: [[2, '2.0', '#3ecf8e'], [2.5, '2.5', '#e7c27a'], [3, '3.0 오버행', '#ff6b7a']],
+  area: 'rgba(240,180,41,.10)'
+};
+const DEPOSIT_SPEC = {
+  id: 'chart-deposit',
+  key: 'depositRatio',
+  creditKey: 'creditSum',
+  baseKey: 'deposit',
+  color: '#c084fc',
+  floor: 55,
+  bands: [[0, 35, 'rgba(62,207,142,.10)'], [35, 45, 'rgba(240,180,41,.10)'], [45, 300, 'rgba(255,107,122,.12)']],
+  lines: [[35, '35 버퍼', '#3ecf8e'], [45, '45 위험', '#ff6b7a']],
+  area: 'rgba(192,132,252,.12)'
+};
+
+function renderCharts(series) {
+  if (!window.echarts) return;
+  renderIllusion(series);
+  [KOSPI_SPEC, KOSDAQ_SPEC, DEPOSIT_SPEC].forEach(spec => {
+    spec.chart = ensureChart(spec.id);
+    drawRatio(spec, series);
+  });
+  renderMultiple(series);
+  echarts.connect('credit');
+}
+
+function renderTable(series) {
+  const tbody = $('tbody');
+  tbody.replaceChildren();
+  const desc = [...series].reverse();
+  const pages = Math.max(1, Math.ceil(desc.length / PAGE));
+  state.page = Math.min(state.page, pages - 1);
+  const slice = desc.slice(state.page * PAGE, state.page * PAGE + PAGE);
+  const latest = series.length ? series[series.length - 1].date : '';
+  const cell = (text, cls) => {
+    const td = document.createElement('td');
+    if (cls) td.className = cls;
+    td.textContent = text;
+    return td;
+  };
+  const pctText = v => v == null ? '–' : v.toFixed(2) + '%';
+  const multText = v => v == null ? '–' : v.toFixed(2) + '배';
+  slice.forEach(r => {
+    const tr = document.createElement('tr');
+    if (r.date === latest) tr.className = 'latest';
+    tr.append(
+      cell(r.date),
+      cell(pctText(r.mcapRatioK), 'num'),
+      cell(pctText(r.mcapRatioQ), 'num'),
+      cell(r.depositRatio == null ? '–' : r.depositRatio.toFixed(1) + '%', 'num'),
+      cell(multText(r.multK), 'num'),
+      cell(multText(r.multQ), 'num'),
+      cell(formatWon(r.creditKospi), 'num'),
+      cell(formatWon(r.mcapKospi), 'num'),
+      cell(formatWon(r.deposit), 'num')
+    );
+    tbody.appendChild(tr);
+  });
+  $('page-label').textContent = (state.page + 1) + ' / ' + pages;
+  $('page-prev').disabled = state.page <= 0;
+  $('page-next').disabled = state.page >= pages - 1;
+}
+
+function renderNotes(series) {
+  const notes = qualityNotes(series);
+  const ul = $('notes');
+  ul.replaceChildren();
+  notes.forEach(text => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    ul.appendChild(li);
+  });
+  ul.hidden = notes.length === 0;
+}
+
+function refresh() {
+  const has = state.rows.length > 0;
+  $('empty').hidden = has;
+  $('viz').hidden = !has;
+  $('btn-export').disabled = !has;
+  $('btn-undo').disabled = !state.undo;
+  const badge = $('badge');
+  if (!has) {
+    badge.hidden = true;
+    $('narrative-text').textContent = narrative([]);
+    $('coverage').textContent = '';
+    $('notes').hidden = true;
+    return;
+  }
+  badge.hidden = false;
+  badge.className = state.source === 'sample' ? 'badge sample' : 'badge user';
+  if (state.source === 'sample') badge.textContent = '예시 데이터 · 저장 안 됨';
+  else if (state.source === 'actual') badge.textContent = '실제 자료 · ' + (state.asOf || '') + '까지';
+  else badge.textContent = '내 데이터 ' + state.rows.length + '일';
+  const series = computeSeries(state.rows);
+  $('narrative-text').textContent = narrative(series);
+  const cov = coverageText(state.rows);
+  $('coverage').textContent = state.source === 'actual' && state.note ? (cov ? cov + ' · ' + state.note : state.note) : cov;
+  $('deposit-basis').textContent = depositBasis(series);
+  $('illusion-note').textContent = illusionNote(series, state.illusion);
+  renderNotes(series);
+  renderKpis(series);
+  renderTable(series);
+  renderCharts(series);
+  requestAnimationFrame(() => Object.values(charts).forEach(c => c.resize()));
+}
+
+function ingestMatrix(matrix, filename) {
+  const parsed = interpretMatrix(matrix);
+  pending = {
+    filename: filename || '붙여넣기',
+    headers: parsed.headers,
+    records: parsed.records,
+    unit: parsed.unit,
+    unitFound: parsed.unitFound,
+    mapping: autoMap(parsed.headers, parsed.records)
+  };
+  renderMapper();
+  $('mapper').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function typicalRange(role, jo) {
+  const ranges = {
+    creditKospi: [0.3, 80],
+    creditKosdaq: [0.2, 40],
+    creditTotal: [0.5, 120],
+    mcapKospi: [200, 20000],
+    mcapKosdaq: [30, 3000],
+    deposit: [5, 500],
+    turnoverKospi: [0.3, 80],
+    turnoverKosdaq: [0.2, 40]
+  };
+  const band = ranges[role];
+  if (!band || jo == null) return true;
+  return jo >= band[0] && jo <= band[1];
+}
+
+function renderPreview() {
+  const host = $('mapper-preview');
+  host.replaceChildren();
+  if (!pending) return;
+  const dateIdx = pending.mapping.indexOf('date');
+  const hint = document.createElement('p');
+  hint.className = 'muted';
+  if (dateIdx < 0) {
+    hint.textContent = '날짜 열을 지정하면 조 원 환산 미리보기가 나옵니다.';
+    host.appendChild(hint);
+    return;
+  }
+  hint.textContent = '아래는 선택한 단위로 환산한 조 원입니다. 코스피 신용은 수십 조, 시가총액은 수천 조인지 확인하세요.';
+  host.appendChild(hint);
+  const roles = pending.mapping.map((role, i) => ({ role, i })).filter(x => x.role && x.role !== 'date');
+  const table = document.createElement('table');
+  const head = document.createElement('tr');
+  ['날짜'].concat(roles.map(x => ROLES.find(r => r.id === x.role).label)).forEach(label => {
+    const th = document.createElement('th');
+    th.textContent = label;
+    head.appendChild(th);
+  });
+  const thead = document.createElement('thead');
+  thead.appendChild(head);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  let suspect = false;
+  pending.records.slice(0, 3).forEach(rec => {
+    const tr = document.createElement('tr');
+    const dateCell = document.createElement('td');
+    dateCell.textContent = parseDate(rec[dateIdx]) || '–';
+    tr.appendChild(dateCell);
+    roles.forEach(x => {
+      const won = parseMoney(rec[x.i], UNITS[pending.unit] || 1);
+      const td = document.createElement('td');
+      td.className = 'num';
+      if (won == null) td.textContent = '–';
+      else {
+        const jo = won / 1e12;
+        td.textContent = jo.toFixed(2) + '조';
+        if (!typicalRange(x.role, jo)) { td.classList.add('suspect'); suspect = true; }
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  const wrap = document.createElement('div');
+  wrap.className = 'mapper-scroll';
+  wrap.appendChild(table);
+  host.appendChild(wrap);
+  if (suspect) {
+    const warn = document.createElement('p');
+    warn.className = 'warn';
+    warn.textContent = '붉은 값은 통상 범위 밖입니다. 단위가 한 단계 어긋난 경우가 많습니다.';
+    host.appendChild(warn);
+  }
+}
+
+function renderMapper() {
+  const box = $('mapper');
+  box.hidden = !pending;
+  if (!pending) return;
+  $('mapper-file').textContent = pending.filename + ' · ' + pending.records.length + '행';
+  $('mapper-unit').value = pending.unit;
+  $('mapper-unit-hint').textContent = pending.unitFound
+    ? '파일에서 단위를 찾았습니다. 환산값이 체감과 같은지 확인한 뒤 반영하세요.'
+    : '단위를 찾지 못했습니다. FreeSIS는 백만원인 경우가 많습니다. 반영 전에 환산값을 확인하세요.';
+  const body = $('mapper-rows');
+  body.innerHTML = pending.headers.map((header, i) => {
+    const sample = pending.records.slice(0, 8).map(r => r[i]).find(v => cellText(v) !== '');
+    const options = ROLES.map(role => '<option value="' + role.id + '"' + (pending.mapping[i] === role.id ? ' selected' : '') + '>' + role.label + '</option>').join('');
+    return '<tr><td>' + (i + 1) + '</td><td>' + esc(header || '(이름 없음)') + '</td><td class="num">' + esc(cellText(sample).slice(0, 24)) + '</td><td><select data-col="' + i + '">' + options + '</select></td></tr>';
+  }).join('');
+  renderPreview();
+}
+
+function applyPending() {
+  if (!pending) return;
+  if (!pending.mapping.includes('date')) { toast('날짜 열을 지정해 주세요.'); return; }
+  if (!pending.mapping.some(role => role && role !== 'date')) { toast('금액 열을 하나 이상 지정해 주세요.'); return; }
+  const incoming = recordsToSeries(pending.records, pending.mapping, pending.unit);
+  if (!incoming.length) { toast('날짜로 읽히는 행이 없습니다.'); return; }
+  pushUndo();
+  const base = state.source === 'sample' ? [] : state.rows;
+  state.rows = mergeRows(base, incoming);
+  state.source = 'user';
+  state.page = 0;
+  pending = null;
+  renderMapper();
+  persist();
+  refresh();
+  toast(incoming.length + '개 날짜를 반영했습니다.');
+  $('narrative').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function readTextFile(file) {
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) return new TextDecoder('utf-16le').decode(buf);
+  if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) return new TextDecoder('utf-16be').decode(buf);
+  return new TextDecoder('utf-8').decode(buf);
+}
+
+async function readMatrixFromFile(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    if (!window.XLSX) throw new Error('엑셀을 읽으려면 네트워크 연결이 필요합니다. CSV로 저장해 불러올 수도 있습니다.');
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '', blankrows: false });
+  }
+  return parseDelimited(await readTextFile(file));
+}
+
+function useSample() {
+  if (state.source === 'user' && state.rows.length) {
+    if (!confirm('화면만 예시로 바꿉니다. 브라우저에 저장된 내 데이터는 유지됩니다.')) return;
+  }
+  pushUndo();
+  state.rows = buildSample();
+  state.source = 'sample';
+  state.page = 0;
+  refresh();
+}
+
+function undo() {
+  if (!state.undo) return;
+  state.rows = state.undo.rows;
+  state.source = state.undo.source;
+  state.undo = null;
+  state.page = 0;
+  if (state.source === 'user') persist();
+  refresh();
+}
+
+function clearData() {
+  const viewingSample = state.source === 'sample';
+  const viewingActual = state.source === 'actual';
+  const message = viewingSample
+    ? '화면의 예시를 지웁니다. 저장해 둔 내 데이터는 새로고침하면 다시 열립니다.'
+    : viewingActual
+      ? '화면의 실제 자료를 지웁니다. 새로고침하면 다시 열립니다.'
+      : '화면의 데이터를 지우고, 브라우저에 저장된 내 데이터도 삭제합니다.';
+  if (!confirm(message)) return;
+  const wasUser = state.source === 'user';
+  state.rows = [];
+  state.source = 'empty';
+  state.undo = null;
+  state.page = 0;
+  pending = null;
+  renderMapper();
+  if (wasUser) localStorage.removeItem(KEY);
+  refresh();
+}
+
+function boot() {
+  ro = new ResizeObserver(() => Object.values(charts).forEach(c => c.resize()));
+  if (!window.echarts) $('cdn-warn').hidden = false;
+  const saved = loadStorage();
+  const pack = window.ACTUAL_CREDIT;
+  if (saved) {
+    state.rows = saved.rows;
+    state.source = 'user';
+  } else if (pack && Array.isArray(pack.rows) && pack.rows.length) {
+    state.rows = pack.rows;
+    state.source = 'actual';
+    state.asOf = pack.asOf || pack.rows[pack.rows.length - 1].date;
+    state.note = pack.note || '';
+  }
+  const manualDate = $('manual').elements.date;
+  const now = new Date();
+  manualDate.value = ymd(now.getFullYear(), now.getMonth() + 1, now.getDate());
+
+  $('btn-sample').addEventListener('click', useSample);
+  $('empty-sample').addEventListener('click', useSample);
+  $('btn-file').addEventListener('click', e => { e.stopPropagation(); $('file').click(); });
+  $('empty-file').addEventListener('click', () => $('file').click());
+  $('drop').addEventListener('click', e => { if (e.target.closest('button')) return; $('file').click(); });
+  $('drop').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') $('file').click(); });
+  ['dragenter', 'dragover'].forEach(name => $('drop').addEventListener(name, e => { e.preventDefault(); $('drop').classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(name => $('drop').addEventListener(name, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
+  $('drop').addEventListener('drop', async e => {
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    try { ingestMatrix(await readMatrixFromFile(file), file.name); }
+    catch (err) { toast(err.message || '파일을 읽지 못했습니다.'); }
+  });
+  $('file').addEventListener('change', async () => {
+    const file = $('file').files && $('file').files[0];
+    $('file').value = '';
+    if (!file) return;
+    try { ingestMatrix(await readMatrixFromFile(file), file.name); }
+    catch (err) { toast(err.message || '파일을 읽지 못했습니다.'); }
+  });
+  $('btn-paste').addEventListener('click', () => {
+    const text = $('paste').value.trim();
+    if (!text) { toast('붙여넣을 CSV가 비어 있습니다.'); return; }
+    try { ingestMatrix(parseDelimited(text), '붙여넣기'); }
+    catch (err) { toast(err.message || '붙여넣기를 해석하지 못했습니다.'); }
+  });
+  $('btn-template').addEventListener('click', () => downloadText('신용비율_입력템플릿.csv', templateCsv()));
+  $('mapper-unit').addEventListener('change', () => {
+    if (!pending) return;
+    pending.unit = $('mapper-unit').value;
+    pending.unitFound = true;
+    renderPreview();
+  });
+  $('mapper-rows').addEventListener('change', e => {
+    const sel = e.target.closest('select[data-col]');
+    if (!sel || !pending) return;
+    const idx = Number(sel.dataset.col);
+    const role = sel.value;
+    pending.mapping[idx] = role;
+    if (role) {
+      pending.mapping.forEach((current, i) => {
+        if (i !== idx && current === role) {
+          pending.mapping[i] = '';
+          const other = document.querySelector('#mapper-rows select[data-col="' + i + '"]');
+          if (other) other.value = '';
+        }
+      });
+    }
+    renderPreview();
+  });
+  $('mapper-apply').addEventListener('click', applyPending);
+  $('mapper-cancel').addEventListener('click', () => { pending = null; renderMapper(); });
+  $('manual').addEventListener('submit', e => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    const date = data.get('date');
+    if (!date) return;
+    const row = { date };
+    let any = false;
+    FIELDS.forEach(k => {
+      if (k === 'creditTotal') return;
+      const raw = String(data.get(k) || '').trim();
+      if (!raw) return;
+      const n = parseNumber(raw);
+      if (n == null) return;
+      row[k] = n * 1e12;
+      any = true;
+    });
+    if (!any) { toast('금액 칸을 하나 이상 입력해 주세요.'); return; }
+    pushUndo();
+    const fromSample = state.source === 'sample';
+    const base = fromSample ? [] : state.rows;
+    state.rows = mergeRows(base, [row]);
+    state.source = 'user';
+    state.page = 0;
+    persist();
+    refresh();
+    toast((fromSample ? '예시 대신 ' : '') + date + ' 데이터를 반영했습니다.');
+  });
+  $('btn-export').addEventListener('click', () => exportSeries(computeSeries(state.rows)));
+  $('btn-undo').addEventListener('click', undo);
+  $('btn-clear').addEventListener('click', clearData);
+  $('page-prev').addEventListener('click', () => { state.page -= 1; renderTable(computeSeries(state.rows)); });
+  $('page-next').addEventListener('click', () => { state.page += 1; renderTable(computeSeries(state.rows)); });
+  $('illusion-seg').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-market]');
+    if (!btn) return;
+    state.illusion = btn.dataset.market;
+    document.querySelectorAll('#illusion-seg button').forEach(b => b.classList.toggle('on', b === btn));
+    if (!state.rows.length || !window.echarts) return;
+    const series = computeSeries(state.rows);
+    $('illusion-note').textContent = illusionNote(series, state.illusion);
+    renderIllusion(series);
+  });
+  window.addEventListener('resize', () => Object.values(charts).forEach(c => c.resize()));
+  refresh();
+}
+
+const CreditApp = {
+  buildSample, computeSeries, interpretMatrix, recordsToSeries, mergeRows, guessRole, autoMap,
+  parseDate, parseMoney, parseDelimited, zoneKospi, zoneKosdaq, zoneDeposit, qualityNotes
+};
+if (typeof window !== 'undefined') window.CreditApp = CreditApp;
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+}
+  </script>
+</body>
+</html>

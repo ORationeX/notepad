@@ -20,6 +20,15 @@ def particle_eul(word):
     return "을"
 
 
+def particle_i(word):
+    """이 after a batchim, 가 after a vowel."""
+    last = word[-1] if word else ""
+    code = ord(last) if last else 0
+    if 0xAC00 <= code <= 0xD7A3 and (code - 0xAC00) % 28 == 0:
+        return "가"
+    return "이"
+
+
 def focus_line(text, limit=110):
     """First sentence of a week's own material, so a 10-minute cue names that material."""
     text = " ".join(str(text).split())
@@ -53,7 +62,10 @@ def parse_week(line, resource, kind, prev, week_no=0, practice="code", prev_line
     ideas = [[title, definition], [lab2, example], [lab3, trap]]
     if kind == "ma":
         days = math_days(prev, title, definition, example, trap, drill, why, thicken_math_check(week_no, check), week_no, prev_line)
-        outcome = f"{title}의 정의·증명과 반례를 백지에 정리한 한 장."
+        if week_no <= 26:
+            outcome = f"{title}의 뜻·계산 절차와 검산·주의할 실수를 백지에 정리한 한 장."
+        else:
+            outcome = f"{title}의 정의·증명과 반례를 백지에 정리한 한 장."
     elif kind == "en":
         goal = f"{example} (기준 문장: {definition})"
         days = english_days(prev, title, definition, example, trap, drill, why, check, prev_line)
@@ -103,9 +115,23 @@ def thicken_math_check(week_no, check):
 
 
 def thicken_english_week(week):
-    """Preserved weeks keep their own days. Long slots that only ask for a short take get repeats."""
+    """Preserved weeks keep their own days. Normalize review blocks to 10m and fill short takes."""
     week = json.loads(json.dumps(week))
     for one in week["days"]:
+        blocks = one["blocks"]
+        mins = [b["m"] for b in blocks]
+        if mins == [5, 15, 30, 10]:
+            blocks[0]["m"] = 10
+            blocks[2]["m"] = 25
+        elif mins == [20, 25, 10, 5]:
+            cue = focus_line(week.get("goal") or week.get("check") or "")
+            lead = f"이번 주 '{week['title']}'의 핵심 문장을 노트 없이 말한다."
+            one["blocks"] = [
+                {"m": 10, "t": f"{lead} {cue}".strip()},
+                {"m": 20, "t": blocks[0]["t"]},
+                {"m": 20, "t": blocks[1]["t"]},
+                {"m": 10, "t": blocks[2]["t"] + " " + blocks[3]["t"]},
+            ]
         for block in one["blocks"]:
             if english_block_needs_fill(block["m"], block["t"]):
                 block["t"] = block["t"] + (
@@ -171,11 +197,11 @@ def math_days(prev, title, definition, example, trap, drill, why, check, week_no
         ]),
         day(f"{title}의 예", [
             (10, with_focus(f"어제 노트에 적은 '{title}' 정의를 덮고 말한다.", definition)),
-            (25, example),
+            (25, example + " 풀이의 각 단계가 정의의 어느 규칙을 썼는지 옆에 적고, 나온 결과를 역연산이나 대입으로 직접 검산한다."),
             (15, "같은 유형으로 숫자나 대상만 바꾼 문제를 두 개 더 만들어 푼다."),
             (10, "각 예가 정의의 어느 조건을 쓰는지 번호를 붙인다."),
         ]),
-        day(f"{title}이 깨지는 경우", [
+        day(f"{title}{particle_i(title)} 깨지는 경우", [
             (10, with_focus(f"어제 푼 '{title}'의 다음 예를 검산한다.", example)),
             (20, trap),
             (20, "올바른 풀이를 옆에 적고, 두 풀이의 차이를 한 줄로 말한다."),
@@ -189,7 +215,7 @@ def math_days(prev, title, definition, example, trap, drill, why, check, week_no
         ]),
         day(f"{title}의 이유", [
             (10, with_focus(f"어제 '{title}' 문제에서 틀렸다고 표시한 항목을 다시 푼다. 문제는 다음이다.", drill)),
-            (20, why),
+            (20, why + " 이 이유가 성립하는 원리를 노트에 풀어서 설명하고, 숫자나 조건을 조금 바꾼 두 가지 경우에서도 같은 이유가 통하는지 확인한다."),
             (20, "그 이유를 오늘의 예 숫자에 대입해 맞는지 확인한다."),
             (10, "이유를 두 문장으로 줄여 적는다."),
         ]),
