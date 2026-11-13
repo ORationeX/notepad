@@ -3,22 +3,25 @@ $ProgressPreference = "SilentlyContinue"
 $stamp = Join-Path $env:LOCALAPPDATA "roadmap-year-port.txt"
 $low = 8765
 $high = 8864
+$here = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\').ToLowerInvariant()
 
 function Test-Roadmap([int]$port) {
   try {
-    $c = (Invoke-WebRequest -Uri "http://127.0.0.1:$port/app.js" -UseBasicParsing -TimeoutSec 2).Content
-    return $c -match "roadmap-year-v3"
-  } catch {
-    return $false
-  }
+    $h = Invoke-WebRequest -Uri "http://127.0.0.1:$port/api/health" -UseBasicParsing -TimeoutSec 1
+    $info = $h.Content | ConvertFrom-Json
+    if ($info -and $info.ok -and $info.root) {
+      $srvRoot = [System.IO.Path]::GetFullPath([string]$info.root).TrimEnd('\').ToLowerInvariant()
+      return $srvRoot -eq $here
+    }
+  } catch {}
+  return $false
 }
 
 function Get-Listening {
   $found = @{}
   netstat -ano | Select-String "LISTENING" | ForEach-Object {
-    $hits = [regex]::Matches($_.Line, ":(\d+)\s")
-    foreach ($m in $hits) {
-      $p = [int]$m.Groups[1].Value
+    if ($_.Line -match "^\s*TCP\s+\S+:(\d+)\s") {
+      $p = [int]$Matches[1]
       if ($p -ge $low -and $p -le $high) { $found[$p] = $true }
     }
   }

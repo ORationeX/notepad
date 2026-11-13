@@ -22,6 +22,8 @@
     --al-soft: #f8ebe3;
     --ma: #2a3878;
     --ma-soft: #e7e9f6;
+    --sw: #245c3a;
+    --sw-soft: #e7f0ea;
     --accent: #1c1914;
     --accent-soft: #efe8d8;
     --good: #1c6b3c;
@@ -30,6 +32,7 @@
   body[data-track="en"] { --accent: var(--en); --accent-soft: var(--en-soft); }
   body[data-track="al"] { --accent: var(--al); --accent-soft: var(--al-soft); }
   body[data-track="ma"] { --accent: var(--ma); --accent-soft: var(--ma-soft); }
+  body[data-track="sw"] { --accent: var(--sw); --accent-soft: var(--sw-soft); }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
@@ -394,7 +397,7 @@
   <div class="clock" id="dockClock">60:00</div>
   <div class="row">
     <button class="btn" type="button" data-act="timer-toggle">시작</button>
-    <button class="btn" type="button" data-act="timer-next">다음 블록</button>
+    <button class="btn" type="button" data-act="timer-prev">이전 블록</button><button class="btn" type="button" data-act="timer-next">다음 블록</button>
     <button class="btn" type="button" data-act="timer-close">닫기</button>
   </div>
 </div>

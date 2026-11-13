@@ -1,0 +1,19 @@
+---
+OMT(테스트 미진행)
+	Lens Assy
+		Dispensing Pressure(kpa) 항목 제외
+	IR Filter Attach
+		Dispensing Pressure(kpa) 항목 제외
+OMT(기존과 동일)
+	Laser Marking (Tele)
+		POWER, SPEED, Frequency(Hz)FREQUENCY 항목이 프로세스 정의에만 있음
+HIT TECHNOLOGY(테스트 미진행)
+	Screen Printer (Tele)
+		MASK_COUNT, FRONT_SQG_COUNT, REAR_SQG_COUNT, PRINT_SPEED, PRINT_PRESSURE 항목이 프로세스 정의에만 있음
+고영(테스트 완료)
+	AOI (Tele)
+		POSITIONX, POSITIONY, ROTATION 항목이 프로세스 정의에만 있음
+레이저발(테스트 완료)
+	PCB Cutting (Tele/Wide)
+		예시 itemList는 Laser_출력(kHz/W), 절단속도(mm/s), Laser_파워(W)
+		항목 정의 Frequency, EPRF, Mark_Speed, Repeat_Count 는 프로세스 정의 Frequency(Hz), EPRF(Hz), Mark Speed(mm/s), Repeat Count 와 대응

@@ -17,12 +17,12 @@ if /I "%MODE%"=="open" goto open
 :startserver
 where py >nul 2>&1
 if %errorlevel%==0 (
-  start "roadmap-server" /D "%~dp0" py -m http.server %PORT%
+  start "roadmap-server" /D "%~dp0" py "%~dp0roadmap-server.py" %PORT%
   goto waitopen
 )
 where python >nul 2>&1
 if %errorlevel%==0 (
-  start "roadmap-server" /D "%~dp0" python -m http.server %PORT%
+  start "roadmap-server" /D "%~dp0" python "%~dp0roadmap-server.py" %PORT%
   goto waitopen
 )
 echo Python is required. Install Python, then run this file again.
@@ -30,7 +30,7 @@ pause
 exit /b 1
 
 :waitopen
-timeout /t 1 /nobreak >nul
+powershell -NoProfile -ExecutionPolicy Bypass -Command "for($i=0;$i -lt 25;$i++){try{$r=Invoke-WebRequest -Uri 'http://127.0.0.1:%PORT%/api/health' -UseBasicParsing -TimeoutSec 1;if($r.StatusCode -eq 200){exit 0}}catch{};Start-Sleep -Milliseconds 200}" >nul 2>&1
 
 :open
 rem %% is a literal percent. cmd would otherwise treat %ED as a variable.

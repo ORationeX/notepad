@@ -1,6 +1,11 @@
 .map { grid-template-columns: 72px repeat(var(--n, 3), minmax(0, 1fr)); }
 .map-solo { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 8px 0 16px; }
-.today-grid, .dest-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.today-grid, .dest-grid, .hours-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ideas { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .reviews { grid-column: 1 / -1; }
 .recall {
   background: var(--bg-2);
@@ -10,6 +15,8 @@
   margin-top: 8px;
 }
 .recall .answer { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.recall .answer ul { margin: 6px 0; padding-left: 18px; font-size: 14px; }
+.recall .answer li + li { margin-top: 3px; }
 .done-box { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .day-actions .done-box { flex: 1 0 100%; }
 .done-box label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
@@ -23,5 +30,91 @@
 textarea.field { min-height: 58px; resize: vertical; }
 .err { color: #8d3d16; font-size: 13px; }
 .btn[disabled], .check[disabled] { opacity: 0.45; cursor: not-allowed; }
+.btn-link {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 99px;
+  padding: 2px 9px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn-link:hover { color: var(--ink); border-color: var(--ink); }
 .file-help { max-width: 40em; }
 .track-label { margin: 8px 0; }
+.track-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.track-start { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.track-start input[type="date"] { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 3px 8px; }
+.index-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+.filter-btn {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 99px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.filter-btn.on {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+.index-more { margin-top: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.track-map-section { margin-top: 20px; }
+.track-map-section:first-child { margin-top: 10px; }
+.track-label-meta { font-weight: 400; font-size: 13px; color: var(--muted); margin-left: 6px; }
+.unit-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.unit-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+.unit-card-head::-webkit-details-marker { display: none; }
+.unit-card-head::after { content: "▸"; font-size: 12px; color: var(--muted); }
+.unit-card[open] > .unit-card-head::after { content: "▾"; }
+.unit-badge { font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+.unit-range { font-size: 12px; color: var(--muted); margin-left: auto; }
+.unit-summary { margin: 6px 0 10px; font-size: 13px; }
+.unit-card .map-solo { margin: 8px 0 2px; }
+.side details.unit-group {
+  border-bottom: 1px solid var(--line);
+  padding: 6px 0;
+}
+.unit-group-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  list-style: none;
+}
+.unit-group-summary::-webkit-details-marker { display: none; }
+.unit-group-summary > span::before { content: "▸ "; font-size: 11px; color: var(--muted); }
+.unit-group[open] > .unit-group-summary > span::before { content: "▾ "; }
+.unit-group-summary small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.unit-phases { padding-left: 10px; margin-top: 4px; }
+.side details.phase-group {
+  border-bottom: 0;
+  border-left: 2px solid var(--line);
+  padding: 4px 0 4px 10px;
+}
+.side details.phase-group > summary { font-weight: 600; font-size: 13px; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (max-width: 900px) {
+  .today-grid, .dest-grid, .hours-grid, .ideas { grid-template-columns: 1fr; }
+}
