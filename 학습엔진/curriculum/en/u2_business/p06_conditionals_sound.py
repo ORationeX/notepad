@@ -7,7 +7,7 @@ from curriculum.en.templates import bind_writer
 W = bind_writer("가정과 소리")
 
 PHASE = phase("가정과 소리", 66, 78, "설명", "확장", "가정법, 과거완료, 분사구문, 동명사/부정사, 완료 조동사(B1–B2)를 말하기와 듣기에 통합한다.", SOUND, [
-W("과거 가정", "if", "would", "If I had more time, I would audit the entire report.", "if 절은 과거형, 결과는 would다. 지금 사실과 반대다.", "If I would have time는 if 안에 would를 넣은 형태다."),
+W("과거 가정", "if", "would", "If I had more time, I would audit the entire report.", "if 절은 과거형, 결과는 would다. 지금 사실과 반대다.", "If I would have time은 if 안에 would를 넣은 형태다."),
 W("먼 과거 가정", "had", "would have", "If I had known earlier, I would have stayed until five.", "had p.p.와 would have p.p.는 이미 지난 일과 반대다.", "If I knew earlier, I would have stayed는 두 시제를 섞는다."),
 W("과거완료와 순서", "had p.p.", "before", "By the time the client arrived, we had already fixed the draft.", "과거의 한 시점보다 먼저 끝난 사건은 had + 과거분사로 시간 순서를 고정한다.", "When the client arrived, we already fixed는 먼저 일어난 완료가 드러나지 않는다."),
 W("조동사 과거 추측", "must have", "should have", "She must have missed the email; we should have called her.", "과거 일의 강한 추측은 must have p.p., 후회·미이행 조언은 should have p.p.로 구분한다.", "She must missed it처럼 조동사 뒤에 동사원형 없이 과거형을 바로 붙이지 않는다."),

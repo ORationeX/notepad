@@ -183,7 +183,7 @@ WEEKS = [
     "ideas": [
       [
         "연결",
-        "May I speak to, This is, I'm calling about가 전화의 첫 세 문장이다."
+        "May I speak to, This is, I'm calling about이 전화의 첫 세 문장이다."
       ],
       [
         "대기",
@@ -361,7 +361,7 @@ WEEKS = [
       ],
       [
         "반대",
-        "I'm not sure about that이 기본 강도다. That's wrong는 이번 주에 쓰지 않는다."
+        "I'm not sure about that이 기본 강도다. That's wrong은 이번 주에 쓰지 않는다."
       ]
     ],
     "days": [
@@ -756,7 +756,7 @@ WEEKS = [
           },
           {
             "m": 20,
-            "t": "The first reason, This leads to, Let's look at를 내 발표에 맞게 4개만 고른다."
+            "t": "The first reason, This leads to, Let's look at을 내 발표에 맞게 4개만 고른다."
           },
           {
             "m": 20,
@@ -1210,7 +1210,7 @@ WEEKS = [
         "Must have와 nice to have를 미리 나누지 않으면 첫 양보가 과해진다."
       ],
       [
-        "확인",
+        "조건 확인",
         "If I understand you는 내 제안을 밀기 전에 상대 조건을 확인한다."
       ]
     ],
@@ -1801,7 +1801,7 @@ WEEKS = [
           },
           {
             "m": 30,
-            "t": "질문을 뽑혀 즉답하는 녹음을 5개 한다."
+            "t": "질문을 뽑아 즉답하는 녹음을 5개 한다."
           },
           {
             "m": 10,

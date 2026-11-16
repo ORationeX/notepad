@@ -8,7 +8,7 @@ W = bind_writer("문장 수정과 레드라인")
 
 PHASE = phase("문장 수정과 레드라인", 170, 182, "정밀 독해", "실전 교정", "계약서·정책문·기술약관의 실제 문장을 병렬 구조, 대명사, 모달, 정의 일관성 기준으로 대폭 리팩터링한다.", DRAFT, [
 W("의무와 조건의 분리", "조건", "의무", "Move embedded conditions to the front: 'If Client requests..., Provider shall deliver...'", "문장 중간에 끼어든 조건·시점·예외를 문두나 별도 문장으로 빼서 핵심 의무를 한눈에 보이게 한다.", "한 문장 안에 주어·조건·예외·지급액·예외의 예외를 전부 욱여넣지 않는다."),
-W("지시어·대명사 제거", "명사", "반복", "Replace ambiguous 'it' or 'such party' with the exact defined term 'Provider'.", "법률·기술 문서에서는 세련된 변주(Elegant Variation)나 대명사(it, they, the former)를 피해 동일 명사를 반복한다.", "같은 대상을 'Provider', 'Vendor', 'Consultant', 'it'로 번갈아 불러 다른 당사자처럼 오인시키지 않는다."),
+W("지시어·대명사 제거", "명사", "반복", "Replace ambiguous 'it' or 'such party' with the exact defined term 'Provider'.", "법률·기술 문서에서는 세련된 변주(Elegant Variation)나 대명사(it, they, the former)를 피해 동일 명사를 반복한다.", "같은 대상을 'Provider', 'Vendor', 'Consultant', 'it'으로 번갈아 불러 다른 당사자처럼 오인시키지 않는다."),
 W("병렬 구조(Parallelism) 교정", "나열", "형태", "Align list items grammatically: '(a) pay fees, (b) deliver code, and (c) notify Client.'", "목록이나 A and B 구조에서 품사·시제·조동사 범위가 모든 항목에 동일하게 걸리도록 맞춘다.", "목록 (a)에만 'shall'이 붙고 (b)에는 명사구만 남아 의무인지 아닌지 불분명해지지 않게 한다."),
 W("조동사 남용 제거(Shall Scrub)", "shall", "정리", "Audit every 'shall' and convert non-obligations (e.g., 'This Agreement shall terminate') to 'terminates'.", "무생물 주어('The term shall begin', 'Notice shall be')에 잘못 쓰인 shall을 제거하고 행위자 의무에만 남긴다.", "사실 선언이나 정의, 자동 효과 문장에 관성적으로 shall을 붙여 두지 않는다."),
 W("숨은 복수·단수 수일치 함정", "단복수", "각각", "Clarify whether an obligation applies to 'each Deliverable' individually or 'Deliverables' in aggregate.", "복수 명사 주어/목적어가 각자(individually)를 뜻하는지 전체 합계(in the aggregate)를 뜻하는지 명시한다.", "'The parties shall pay $1,000'가 각자 1,000달러인지 합쳐서 1,000달러인지 모호하게 두지 않는다."),

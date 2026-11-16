@@ -28,6 +28,19 @@ function Get-Listening {
   return $found
 }
 
+function Test-PortFree([int]$port) {
+  $listener = $null
+  try {
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port)
+    $listener.Start()
+    return $true
+  } catch {
+    return $false
+  } finally {
+    if ($listener) { try { $listener.Stop() } catch {} }
+  }
+}
+
 function Emit([int]$port, [string]$mode) {
   Set-Content -Path $stamp -Value $port -Encoding ascii
   Write-Output "$port $mode"
@@ -36,7 +49,8 @@ function Emit([int]$port, [string]$mode) {
 
 $preferred = 0
 if (Test-Path $stamp) {
-  $raw = (Get-Content $stamp -Raw).Trim()
+  $rawContent = Get-Content $stamp -Raw -ErrorAction SilentlyContinue
+  $raw = if ($rawContent) { $rawContent.Trim() } else { "" }
   if ($raw -match "^\d+$") { $preferred = [int]$raw }
 }
 
@@ -50,12 +64,12 @@ foreach ($p in ($busy.Keys | Sort-Object)) {
   if (Test-Roadmap $p) { Emit $p "open" }
 }
 
-if ($preferred -ge $low -and $preferred -le $high -and -not $busy.ContainsKey($preferred)) {
+if ($preferred -ge $low -and $preferred -le $high -and -not $busy.ContainsKey($preferred) -and (Test-PortFree $preferred)) {
   Emit $preferred "start"
 }
 
 for ($p = $low; $p -le $high; $p++) {
-  if (-not $busy.ContainsKey($p)) { Emit $p "start" }
+  if (-not $busy.ContainsKey($p) -and (Test-PortFree $p)) { Emit $p "start" }
 }
 
 Write-Error "no free port between $low and $high"

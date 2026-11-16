@@ -55,12 +55,13 @@ function sendRemote(body, immediate) {
   remoteDirty = true;
   const run = () => {
     remoteTimer = 0;
-    remoteDirty = false;
     fetch("/api/state", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: body || JSON.stringify(snapshot()),
       keepalive: true
+    }).then((res) => {
+      if (res && res.ok) remoteDirty = false;
     }).catch(() => {});
   };
   clearTimeout(remoteTimer);
@@ -72,7 +73,11 @@ function persist(markDataChange) {
   if (markDataChange) remoteSyncEnabled = true;
   state.updatedAt = Date.now();
   const payload = JSON.stringify(snapshot());
-  localStorage.setItem(KEY, payload);
+  try {
+    localStorage.setItem(KEY, payload);
+  } catch (e) {
+    console.warn("localStorage 저장 실패", e);
+  }
   if (remoteSyncEnabled) sendRemote(payload, false);
 }
 
@@ -85,6 +90,15 @@ function normalize(saved) {
   ["starts", "done", "pass", "skip", "why", "stuck", "cards", "activity", "deferred", "reviewed"].forEach((k) => {
     if (isPlainObj(saved[k])) s[k] = saved[k];
   });
+  const cleanCards = {};
+  Object.keys(s.cards).forEach((id) => {
+    const c = s.cards[id];
+    if (!isPlainObj(c) || !c.track || !Number.isInteger(c.week) || c.week < 1) return;
+    const step = Number.isInteger(c.step) && c.step >= 0 ? Math.min(c.step, E.INTERVALS.length - 1) : (c.kind === "week" ? 1 : 0);
+    const due = c.retired ? null : (E.isValidISO(c.due) ? c.due : todayISO());
+    cleanCards[id] = Object.assign({}, c, { id: c.id || id, step: step, due: due });
+  });
+  s.cards = cleanCards;
   if (saved.track) s.track = saved.track;
   if (saved.week) s.week = saved.week;
   if (saved.view) s.view = saved.view;
@@ -117,7 +131,12 @@ function clampState(s) {
   const cleanReviewed = {};
   const today = todayISO();
   Object.keys(s.reviewed || {}).forEach((k) => {
-    if (validTracks.has(k) && s.reviewed[k] === today) cleanReviewed[k] = today;
+    if (!validTracks.has(k)) return;
+    const rev = s.reviewed[k];
+    if (rev === today) cleanReviewed[k] = today;
+    else if (isPlainObj(rev) && rev.date === today) {
+      cleanReviewed[k] = { date: today, session: typeof rev.session === "string" ? rev.session : "" };
+    }
   });
   s.reviewed = cleanReviewed;
   if (!trackById(s.track)) s.track = DATA.tracks[0].id;
@@ -245,7 +264,9 @@ function prepareQueues() {
     }
   });
   Object.keys(state.reviewed || {}).forEach((k) => {
-    if (state.reviewed[k] !== today) {
+    const rev = state.reviewed[k];
+    const revDate = isPlainObj(rev) ? rev.date : rev;
+    if (revDate !== today) {
       delete state.reviewed[k];
       changed = true;
     }
@@ -446,7 +467,7 @@ function renderHome() {
           const p = tr.phases[pi];
           return p ? phaseMapButtonHTML(tr, p) : "";
         }).join("");
-        return "<details class=\"unit-card\" open><summary class=\"unit-card-head\"><span class=\"unit-badge\" style=\"color:" + esc(tr.color) + "\">" + (ui + 1) + "단원</span><strong>" + esc(u.title) + "</strong><span class=\"unit-range\">" + u.start + "–" + u.end + "주 · " + (u.phases ? u.phases.length : 0) + "단계</span></summary><p class=\"unit-summary muted\">" + esc(u.summary || "") + "</p><div class=\"map map-solo\">" + btns + "</div></details>";
+        return "<details class=\"unit-card\" data-unit=\"" + esc(tr.id + ":" + u.id) + "\" open><summary class=\"unit-card-head\"><span class=\"unit-badge\" style=\"color:" + esc(tr.color) + "\">" + (ui + 1) + "단원</span><strong>" + esc(u.title) + "</strong><span class=\"unit-range\">" + u.start + "–" + u.end + "주 · " + (u.phases ? u.phases.length : 0) + "단계</span></summary><p class=\"unit-summary muted\">" + esc(u.summary || "") + "</p><div class=\"map map-solo\">" + btns + "</div></details>";
       }).join("");
       return "<section class=\"track-map-section\"><h3 class=\"track-label\" style=\"color:" + esc(tr.color) + "\">" + esc(tr.name) + " <small class=\"track-label-meta\">" + tr.units.length + "개 대단원 · " + tr.phases.length + "개 중단원 · " + tr.weeks.length + "주</small></h3>" + unitBlocks + "</section>";
     }).join("");
@@ -500,7 +521,7 @@ function phaseAccordionHTML(tr, p, q, unitContextText) {
   }
   if (!buttons.length) return "";
   const open = q || (state.week >= p.start && state.week <= p.end);
-  return "<details class=\"phase-group\"" + (open ? " open" : "") + "><summary>" + esc(p.name) + " · " + p.start + "–" + p.end + "주</summary><div class=\"weekbtns\">" + buttons.join("") + "</div></details>";
+  return "<details class=\"phase-group\" data-phase=\"" + esc(tr.id + ":" + p.start) + "\"" + (open ? " open" : "") + "><summary>" + esc(p.name) + " · " + p.start + "–" + p.end + "주</summary><div class=\"weekbtns\">" + buttons.join("") + "</div></details>";
 }
 
 function weekListHTML(tr) {
@@ -514,7 +535,7 @@ function weekListHTML(tr) {
       }).join("");
       if (!phasesHTML) return "";
       const open = q || (state.week >= u.start && state.week <= u.end);
-      return "<details class=\"unit-group\"" + (open ? " open" : "") + "><summary class=\"unit-group-summary\"><span>" + (ui + 1) + ". " + esc(u.title) + "</span><small>" + u.start + "–" + u.end + "주</small></summary><div class=\"unit-phases\">" + phasesHTML + "</div></details>";
+      return "<details class=\"unit-group\" data-unit=\"" + esc(tr.id + ":" + u.id) + "\"" + (open ? " open" : "") + "><summary class=\"unit-group-summary\"><span>" + (ui + 1) + ". " + esc(u.title) + "</span><small>" + u.start + "–" + u.end + "주</small></summary><div class=\"unit-phases\">" + phasesHTML + "</div></details>";
     }).join("");
     return unitsHTML || "<p class=\"muted\">맞는 주가 없습니다.</p>";
   }
@@ -531,7 +552,8 @@ function renderTrack() {
   const off = offsetToday(tr);
   const today = todayISO();
   const hasCustomStart = !!(state.starts && E.isValidISO(state.starts[tr.id]) && state.starts[tr.id] !== state.start);
-  const reviewDoneToday = !!(state.reviewed && state.reviewed[tr.id] === today);
+  const rev = state.reviewed && state.reviewed[tr.id];
+  const revToday = !!(rev && (rev === today || rev.date === today));
   let warn = false;
   for (let prevW = 1; prevW < state.week; prevW++) {
     if (!state.pass[tr.id + ":" + prevW]) { warn = true; break; }
@@ -540,22 +562,26 @@ function renderTrack() {
   if (tr.id === "al") {
     const maTr = trackById("ma");
     if (maTr) {
-      const maStudy = studyFor(maTr);
       const reqs = [
         { al: 119, ma: 102, title: "점근 표기·마스터 정리" },
-        { al: 250, ma: 176, title: "체르노프 한계" },
-        { al: 265, ma: 255, title: "다항식 일치와 대수" }
+        { al: 248, ma: 173, title: "기댓값의 선형성·분산" },
+        { al: 249, ma: 175, title: "마르코프 부등식" },
+        { al: 250, ma: 176, title: "체비쇼프 부등식·큰 수의 법칙" },
+        { al: 265, ma: 255, title: "다항식 나눗셈·나머지 정리" },
+        { al: 266, ma: 256, title: "체와 유한체" }
       ];
-      const unmet = reqs.find((r) => state.week >= r.al && !state.pass["ma:" + r.ma] && (!maStudy || (!maStudy.completed && maStudy.week <= r.ma)));
-      if (unmet) {
-        prereqWarn = "<div class=\"banner\">선수 수학 안내: " + esc(unmet.title) + "(" + unmet.al + "주~)은 수학 " + unmet.ma + "주 내용을 바탕으로 합니다. 수학 시작일이나 진도를 먼저 확인해 두세요.</div>";
+      const unmet = reqs.filter((r) => state.week >= r.al && !state.pass["ma:" + r.ma]);
+      if (unmet.length) {
+        const list = unmet.map((r) => esc(r.title) + "(" + r.al + "주~ → 수학 " + r.ma + "주)").join(", ");
+        prereqWarn = "<div class=\"banner\">선수 수학 안내: " + list + "는 선행 수학 주간을 바탕으로 합니다. 수학 시작일이나 진도를 먼저 확인해 두세요.</div>";
       }
     }
   }
   const days = week.days.map((day, i) => {
     const when = E.dateOf(tr, startFor(tr), state.week, i);
     const isStudy = study && !study.completed && study.week === state.week && study.day === i && off >= 0;
-    const replaced = isStudy && (shownReviews(tr).length > 0 || reviewDoneToday);
+    const revMatchesDay = revToday && (typeof rev === "string" || rev.session === E.sessionId(tr.id, state.week, i));
+    const replaced = isStudy && (shownReviews(tr).length > 0 || revMatchesDay);
     return "<article class=\"day" + (isStudy ? " today" : "") + "\"><div><p class=\"when\">" + (i + 1) + "일차 · " + esc(when) + (isStudy ? " · 오늘 학습" : "") + (i === week.days.length - 1 ? " · 점검" : "") + "</p><h3>" + esc(day.title) + "</h3><div class=\"day-actions\">" + doneForm(tr, state.week, i) + "<button class=\"btn\" type=\"button\" data-act=\"timer\" data-track=\"" + esc(tr.id) + "\" data-week=\"" + state.week + "\" data-day=\"" + i + "\">타이머</button></div></div>" + blocksHTML(day.blocks, replaced) + "</article>";
   }).join("");
   const ideas = distinctIdeas(week);
@@ -651,9 +677,20 @@ function render(opts) {
     app.textContent = "커리큘럼 데이터가 비어 있습니다.";
     return;
   }
+  const openMap = new Map();
+  app.querySelectorAll("details[data-unit], details[data-phase]").forEach((el) => {
+    const k = el.dataset.unit ? "u:" + el.dataset.unit : "p:" + el.dataset.phase;
+    openMap.set(k, el.open);
+  });
   if (state.view === "home") app.innerHTML = renderHome();
   else if (state.view === "index") app.innerHTML = renderIndex();
   else app.innerHTML = renderTrack();
+  if (openMap.size) {
+    app.querySelectorAll("details[data-unit], details[data-phase]").forEach((el) => {
+      const k = el.dataset.unit ? "u:" + el.dataset.unit : "p:" + el.dataset.phase;
+      if (openMap.has(k)) el.open = openMap.get(k);
+    });
+  }
   window.scrollTo(0, opts.keepScroll ? y : 0);
 }
 
@@ -664,7 +701,10 @@ function finishCard(card, correct) {
   if (result.result === "success" || result.result === "fail") {
     state.activity[today] = "card";
     state.reviewed = state.reviewed || {};
-    state.reviewed[card.track] = today;
+    const tr = trackById(card.track);
+    const study = tr ? studyFor(tr) : null;
+    const sid = study && !study.completed ? E.sessionId(card.track, study.week, study.day) : "";
+    state.reviewed[card.track] = { date: today, session: sid };
   }
   persist(true);
   render({ keepScroll: true });
@@ -714,7 +754,7 @@ function togglePass(trackId, week, skip) {
     delete state.pass[key];
     delete state.skip[key];
     const card = state.cards[E.weekCardId(trackId, week)];
-    if (card && card.step <= 1 && (card.phase || "prompt") === "prompt") delete state.cards[card.id];
+    if (card && card.step <= 1) delete state.cards[card.id];
     persist(true);
     render({ keepScroll: true });
     return;
@@ -799,8 +839,10 @@ function startTimer(tr, week, day) {
   const source = tr.weeks[week - 1].days[day];
   const blocks = source.blocks.map((b) => ({ m: b.m, t: b.t }));
   const study = studyFor(tr);
-  const reviewDoneToday = !!(state.reviewed && state.reviewed[tr.id] === todayISO());
-  if (study && study.week === week && study.day === day && (shownReviews(tr).length || reviewDoneToday)) {
+  const rev = state.reviewed && state.reviewed[tr.id];
+  const revToday = !!(rev && (rev === todayISO() || rev.date === todayISO()));
+  const revMatchesDay = revToday && (typeof rev === "string" || rev.session === E.sessionId(tr.id, week, day));
+  if (study && !study.completed && study.week === week && study.day === day && (shownReviews(tr).length || revMatchesDay)) {
     blocks[0] = { m: blocks[0].m, t: "기한 복습을 노트 없이 말한 뒤 대조한다." };
   }
   timer.blocks = blocks;
@@ -843,6 +885,7 @@ document.body.addEventListener("click", (e) => {
     indexLimit += 200;
     updateIndexResults();
   } else if (act === "track") {
+    if (state.track !== t.dataset.track) state.q = "";
     state.view = "track";
     state.track = t.dataset.track;
     if (t.dataset.week) state.week = Number(t.dataset.week);
@@ -885,8 +928,14 @@ document.body.addEventListener("click", (e) => {
     }
     const dCardId = E.dayCardId(parts[0], Number(parts[1]), Number(parts[2]));
     const dCard = state.cards[dCardId];
-    if (dCard && dCard.step === 0 && (dCard.phase || "prompt") === "prompt") {
+    if (dCard && dCard.step === 0) {
       delete state.cards[dCardId];
+    }
+    const passKey = parts[0] + ":" + parts[1];
+    if (state.pass[passKey] && !state.skip[passKey]) {
+      delete state.pass[passKey];
+      const wCard = state.cards[E.weekCardId(parts[0], Number(parts[1]))];
+      if (wCard && wCard.step <= 1) delete state.cards[wCard.id];
     }
     persist(true);
     render({ keepScroll: true });
@@ -943,11 +992,12 @@ document.body.addEventListener("click", (e) => {
     document.title = BASE_TITLE;
   } else if (act === "export") {
     const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = "roadmap-progress.json";
     a.click();
-    URL.revokeObjectURL(a.href);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     closeMenus();
   } else if (act === "import") {
     closeMenus();
@@ -958,6 +1008,8 @@ document.body.addEventListener("click", (e) => {
       localStorage.removeItem(KEY);
       localStorage.removeItem(PREV);
       localStorage.removeItem(LEGACY);
+      clearTimeout(remoteTimer);
+      remoteTimer = 0;
       remoteSyncEnabled = false;
       remoteDirty = false;
       fetch("/api/state", { method: "DELETE" }).catch(() => {}).finally(() => {
@@ -1026,6 +1078,7 @@ document.getElementById("importFile").addEventListener("change", (e) => {
   e.target.value = "";
 });
 document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
   if (e.key === "Escape") {
     closeMenus();
     return;
@@ -1059,7 +1112,11 @@ async function boot() {
   const errors = E.validate(DATA);
   window.validateRoadmap = function () { return E.validate(DATA); };
   if (errors.length) console.warn("로드맵 검증", errors);
-  localStorage.setItem(KEY, JSON.stringify(snapshot()));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(snapshot()));
+  } catch (e) {
+    console.warn("localStorage 저장 실패", e);
+  }
   if (remoteSyncEnabled && (picked.source === "local" || !remoteState)) {
     sendRemote(JSON.stringify(snapshot()), false);
   }

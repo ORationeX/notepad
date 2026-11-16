@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 set PORT=
@@ -15,22 +16,27 @@ if not defined PORT (
 if /I "%MODE%"=="open" goto open
 
 :startserver
-where py >nul 2>&1
+py -3 --version >nul 2>&1
 if %errorlevel%==0 (
-  start "roadmap-server" /D "%~dp0" py "%~dp0roadmap-server.py" %PORT%
+  start "roadmap-server" /D "%~dp0" py -3 "%~dp0roadmap-server.py" %PORT%
   goto waitopen
 )
-where python >nul 2>&1
+python --version >nul 2>&1
 if %errorlevel%==0 (
   start "roadmap-server" /D "%~dp0" python "%~dp0roadmap-server.py" %PORT%
   goto waitopen
 )
-echo Python is required. Install Python, then run this file again.
+echo Python 3 is required. Install Python, then run this file again.
 pause
 exit /b 1
 
 :waitopen
-powershell -NoProfile -ExecutionPolicy Bypass -Command "for($i=0;$i -lt 25;$i++){try{$r=Invoke-WebRequest -Uri 'http://127.0.0.1:%PORT%/api/health' -UseBasicParsing -TimeoutSec 1;if($r.StatusCode -eq 200){exit 0}}catch{};Start-Sleep -Milliseconds 200}" >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "for($i=0;$i -lt 25;$i++){try{$r=Invoke-WebRequest -Uri 'http://127.0.0.1:%PORT%/api/health' -UseBasicParsing -TimeoutSec 1;if($r.StatusCode -eq 200){exit 0}}catch{};Start-Sleep -Milliseconds 200};exit 1" >nul 2>&1
+if errorlevel 1 (
+  echo 로컬 서버 시작에 실패했습니다. ^(포트 %PORT%^)
+  pause
+  exit /b 1
+)
 
 :open
 rem %% is a literal percent. cmd would otherwise treat %ED as a variable.

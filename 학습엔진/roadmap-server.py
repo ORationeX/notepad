@@ -6,14 +6,31 @@ import json
 import os
 from pathlib import Path
 import sys
-from urllib.parse import urlparse
+import tempfile
+import threading
+from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parent
 STATE_FILE = ROOT / "roadmap-state.json"
+STATE_LOCK = threading.Lock()
 MAX_BODY_BYTES = 20 * 1024 * 1024
+ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
+BLOCKED_EXTENSIONS = {".py", ".ps1", ".bat", ".cmd", ".tmp", ".md"}
+
+
+class LocalHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = os.name != "nt"
 
 
 class RoadmapHandler(SimpleHTTPRequestHandler):
+    extensions_map = {
+        **SimpleHTTPRequestHandler.extensions_map,
+        ".html": "text/html; charset=utf-8",
+        ".js": "application/javascript; charset=utf-8",
+        ".css": "text/css; charset=utf-8",
+        ".json": "application/json; charset=utf-8",
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
@@ -35,12 +52,39 @@ class RoadmapHandler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def _same_origin(self):
+        sec_fetch = self.headers.get("Sec-Fetch-Site")
+        if sec_fetch and sec_fetch not in ("same-origin", "none"):
+            return False
+        host = self.headers.get("Host", "")
+        host_name = host.split(":", 1)[0].lower()
+        if host_name not in ALLOWED_HOSTS:
+            return False
         origin = self.headers.get("Origin")
         if not origin:
             return True
         parsed = urlparse(origin)
-        host = self.headers.get("Host", "")
-        return parsed.scheme == "http" and parsed.netloc == host
+        return (
+            parsed.scheme == "http"
+            and (parsed.hostname or "").lower() in ALLOWED_HOSTS
+            and parsed.netloc == host
+        )
+
+    def list_directory(self, path):
+        self.send_error(HTTPStatus.NOT_FOUND, "Not found")
+        return None
+
+    def _is_blocked_static(self, req_path):
+        rel = unquote(req_path).replace("\\", "/").lstrip("/")
+        if not rel or rel.endswith("/"):
+            return True
+        parts = Path(rel).parts
+        if any(p.startswith(".") for p in parts):
+            return True
+        if rel.lower() == STATE_FILE.name.lower():
+            return True
+        if Path(rel).suffix.lower() in BLOCKED_EXTENSIONS:
+            return True
+        return False
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -48,18 +92,22 @@ class RoadmapHandler(SimpleHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, {"ok": True, "root": str(ROOT)})
             return
         if path == "/api/state":
-            if not STATE_FILE.exists():
-                self._send_json(HTTPStatus.NOT_FOUND, {"exists": False})
-                return
-            try:
-                raw = STATE_FILE.read_text(encoding="utf-8")
-                data = json.loads(raw)
-                if not isinstance(data, dict):
-                    raise ValueError("invalid state")
-            except Exception:
-                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False})
-                return
+            with STATE_LOCK:
+                if not STATE_FILE.exists():
+                    self._send_json(HTTPStatus.NOT_FOUND, {"exists": False})
+                    return
+                try:
+                    raw = STATE_FILE.read_text(encoding="utf-8")
+                    data = json.loads(raw)
+                    if not isinstance(data, dict):
+                        raise ValueError("invalid state")
+                except Exception:
+                    self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False})
+                    return
             self._send_json(HTTPStatus.OK, {"exists": True, "state": data})
+            return
+        if self._is_blocked_static(path):
+            self.send_error(HTTPStatus.NOT_FOUND, "Not found")
             return
         super().do_GET()
 
@@ -88,9 +136,29 @@ class RoadmapHandler(SimpleHTTPRequestHandler):
         if not isinstance(data, dict) or data.get("v") != 3:
             self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False})
             return
-        tmp = STATE_FILE.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        os.replace(tmp, STATE_FILE)
+        payload_text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+        with STATE_LOCK:
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    mode="w",
+                    encoding="utf-8",
+                    dir=str(STATE_FILE.parent),
+                    prefix=".roadmap-state-",
+                    suffix=".tmp",
+                    delete=False,
+                ) as tf:
+                    tf.write(payload_text)
+                    tmp_path = tf.name
+                os.replace(tmp_path, STATE_FILE)
+            except Exception:
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False})
+                return
         self._send_json(HTTPStatus.OK, {"ok": True})
 
     def do_DELETE(self):
@@ -101,14 +169,15 @@ class RoadmapHandler(SimpleHTTPRequestHandler):
         if not self._same_origin():
             self._send_json(HTTPStatus.FORBIDDEN, {"ok": False})
             return
-        if STATE_FILE.exists():
-            STATE_FILE.unlink()
+        with STATE_LOCK:
+            if STATE_FILE.exists():
+                STATE_FILE.unlink()
         self._send_json(HTTPStatus.OK, {"ok": True})
 
 
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
-    server = ThreadingHTTPServer(("127.0.0.1", port), RoadmapHandler)
+    server = LocalHTTPServer(("127.0.0.1", port), RoadmapHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

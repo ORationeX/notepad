@@ -55,11 +55,13 @@ def parse_week(line, resource, kind, prev, week_no=0, practice="code", prev_line
             thicken_math_check(week_no, check, math_mode), week_no, prev_line, math_mode, prev_mode,
         )
         if math_mode == "calc" or week_no <= 26:
-            outcome = f"{title}의 뜻·계산 절차와 검산·주의할 실수를 백지에 정리한 한 장."
+            prefix = title if title.endswith("의 뜻") else f"{title}의 뜻"
+            outcome = f"{prefix}·계산 절차와 검산·주의할 실수를 백지에 정리한 한 장."
         elif math_mode == "sketch":
             outcome = f"{title}의 진술·가정·스케치와 적용 한계를 백지에 정리한 한 장."
         else:
-            outcome = f"{title}의 정의·증명과 반례를 백지에 정리한 한 장."
+            prefix = title if title.endswith("의 정의") else f"{title}의 정의"
+            outcome = f"{prefix}·증명과 반례를 백지에 정리한 한 장."
     elif kind == "en":
         en_mode = mode or "core"
         check = thicken_english_check(week_no, check, english_expand_minutes(week_no), drill)
@@ -167,6 +169,8 @@ def load_syllabus(phase_rows, kind, old_weeks=None):
                 ))
                 prev = weeks[-1]["title"]
                 if kind in ("sw", "en"):
+                    prev_line = focus_line(weeks[-1]["ideas"][0][1])
+                elif kind == "al" and (mode or practice) in ("proof", "write", "analysis", "sketch"):
                     prev_line = focus_line(weeks[-1]["ideas"][0][1])
                 else:
                     prev_line = focus_line(weeks[-1]["ideas"][1][1])

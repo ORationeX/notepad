@@ -294,6 +294,32 @@ assert.strictEqual(E.addDaysISO("invalid", 3), "");
   const rangeErrs = E.validate({ tracks: [badUnitRange] });
   assert.ok(rangeErrs.some((e) => e.indexOf("unit 1 range") !== -1));
   assert.ok(rangeErrs.some((e) => e.indexOf("units coverage 1!=2") !== -1));
+
+  // Regression tests: null/empty studyPos, out-of-range card.step, pre-start streak, dup unit id, non-positive block min
+  assert.strictEqual(E.studyPos(track([7]), null, E.blankState(today)), null);
+  assert.strictEqual(E.studyPos({ id: "x", weeks: [] }, 0, E.blankState(today)), null);
+
+  const badStepCard = { id: "badstep", track: "ma", kind: "day", step: 99, phase: "reveal", due: today };
+  const badStepRes = E.grade(badStepCard, true, today);
+  assert.strictEqual(badStepRes.ok, true);
+  assert.strictEqual(badStepRes.graduated, true);
+
+  const preStartState = E.blankState("2026-10-15");
+  preStartState.activity["2026-10-14"] = true;
+  preStartState.activity["2026-10-15"] = true;
+  assert.strictEqual(E.streak(preStartState, "2026-10-15"), 2);
+
+  const dupUnitTrack = track([7, 7]);
+  dupUnitTrack.phases = [{ name: "p1", start: 1, end: 1 }, { name: "p2", start: 2, end: 2 }];
+  dupUnitTrack.units = [
+    { id: "u1", title: "단원1", start: 1, end: 1, phases: [0] },
+    { id: "u1", title: "단원2", start: 2, end: 2, phases: [1] }
+  ];
+  assert.ok(E.validate({ tracks: [dupUnitTrack] }).some((e) => e.indexOf("dup") !== -1));
+
+  const zeroBlockTrack = track([1]);
+  zeroBlockTrack.weeks[0].days[0].blocks = [{ m: 0, t: "영" }, { m: 60, t: "본" }];
+  assert.ok(E.validate({ tracks: [zeroBlockTrack] }).some((e) => e.indexOf("min") !== -1));
 }
 
 console.log("engine ok");

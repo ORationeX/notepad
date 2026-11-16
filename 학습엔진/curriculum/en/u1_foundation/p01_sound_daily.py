@@ -190,7 +190,7 @@ WEEKS = [
         "전화번호를 한 자리씩 읽지 않고 2~3자리로 묶어 말한다."
       ],
       [
-        "확인",
+        "되묻기",
         "Did you say B as in boy?처럼 철자를 되묻는 문장이 생존 영어의 시작이다."
       ]
     ],
@@ -1669,7 +1669,7 @@ WEEKS = [
           },
           {
             "m": 15,
-            "t": "I'm afraid I can't make it, Could we move it to, Thanks for understanding를 넣어 변경 대본을 만든다."
+            "t": "I'm afraid I can't make it, Could we move it to, Thanks for understanding을 넣어 변경 대본을 만든다."
           },
           {
             "m": 30,

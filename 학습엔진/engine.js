@@ -112,7 +112,8 @@
   }
 
   function studyPos(track, offset, state) {
-    if (offset < 0 || !isFinite(offset)) return null;
+    if (!track || !track.weeks || !track.weeks.length) return null;
+    if (offset === null || offset === undefined || typeof offset !== "number" || !isFinite(offset) || offset < 0) return null;
     const total = trackDayCount(track);
     const unpassed = firstUnpassedWeek(track, state);
     if (offset >= total) {
@@ -196,6 +197,9 @@
   function grade(card, correct, todayISO) {
     const phase = card.phase || "prompt";
     if (phase !== "reveal" && phase !== "retryReveal") return { ok: false };
+    card.step = Number.isInteger(card.step)
+      ? Math.max(0, Math.min(card.step, INTERVALS.length - 1))
+      : (card.kind === "week" ? 1 : 0);
     const second = phase === "retryReveal";
     if (correct) {
       if (!second) {
@@ -293,7 +297,7 @@
     let d = todayISO;
     if (!active(d)) d = addDaysISO(d, -1);
     let n = 0;
-    while (d >= minStart && active(d)) {
+    while (d && active(d)) {
       n += 1;
       d = addDaysISO(d, -1);
       if (n > 4000) break;
@@ -334,12 +338,17 @@
         } else {
           let unitPhaseCursor = 0;
           let unitPrevEnd = 0;
+          const unitIds = new Set();
           const phaseCount = (tr.phases || []).length;
           tr.units.forEach((u, ui) => {
             if (!u || !u.id || !u.title) {
               errors.push(tr.id + " unit " + (ui + 1) + " meta");
               return;
             }
+            if (unitIds.has(u.id)) {
+              errors.push(tr.id + " unit " + u.id + " dup");
+            }
+            unitIds.add(u.id);
             if (!Array.isArray(u.phases) || !u.phases.length) {
               errors.push(tr.id + " unit " + (ui + 1) + " phases");
               return;
@@ -378,6 +387,15 @@
         if (!w.check) errors.push(tr.id + " w" + (i + 1) + " check");
         (w.days || []).forEach((d) => {
           const blocks = d.blocks || [];
+          blocks.forEach((b, bi) => {
+            const bm = Number(b && b.m);
+            if (!Number.isFinite(bm) || bm <= 0) {
+              errors.push(tr.id + " w" + (i + 1) + " " + (d.title || "") + " b" + (bi + 1) + " min");
+            }
+            if (!b || !String(b.t || "").trim()) {
+              errors.push(tr.id + " w" + (i + 1) + " " + (d.title || "") + " b" + (bi + 1) + " text");
+            }
+          });
           const sum = blocks.reduce((a, b) => a + Number(b.m), 0);
           if (sum !== 60) errors.push(tr.id + " w" + (i + 1) + " " + (d.title || "") + " " + sum);
           if (blocks.length > 1 && Number(blocks[0].m) !== 10) {

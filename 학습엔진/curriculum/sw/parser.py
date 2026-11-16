@@ -105,10 +105,7 @@ def _sw_labels(lens, tradeoff):
         second = _trim_parens(parts[1])
         first_short = re.sub(r"\s*관점$", "", first).strip()
         second_short = re.sub(r"\s*관점$", "", second).strip()
-        if len(first_short) + len(second_short) <= 28:
-            lab2 = f"대비: {first_short} vs {second_short}"
-        else:
-            lab2 = f"대비: {first}"
+        lab2 = f"대비: {first_short} vs {second_short}"
     else:
         lab2 = f"대비: {first}"
 
@@ -132,18 +129,20 @@ def S(title, job):
     rule, lens, tradeoff, scenario = parts
     lab2, lab3 = _sw_labels(lens, tradeoff)
     scenario_short = _end_dot(scenario)
-    scenario_raw = scenario.strip().rstrip(".!?")
+    scenario_clean = re.sub(r"\s*사례\.?$", "", scenario.strip()).rstrip(".!?")
     lens_pair = _split_top(lens, " vs ", 1)
-    lens_short = (
-        f"{_trim_parens(lens_pair[0])} 쪽과 {_trim_parens(lens_pair[1])} 쪽"
-        if len(lens_pair) == 2
-        else _trim_parens(lens)
-    )
+    if len(lens_pair) == 2:
+        lens_short = "과 ".join(
+            re.sub(r"\s*관점$", "", _trim_parens(s)).strip() + " 쪽"
+            for s in lens_pair
+        )
+    else:
+        lens_short = re.sub(r"\s*관점$", "", _trim_parens(lens)).strip() + " 쪽"
     case = f"사례: {scenario_short} 이 사례 위에서 두 관점을 대조한다. {_end_dot(lens)}"
     mistake = f"한쪽 원칙만 절대 규칙처럼 적용하고 반대쪽 비용을 계산하지 않으면 설계 판단이 아니다. {_end_dot(tradeoff)}"
-    work = f"사례({scenario})를 두 관점으로 각각 설계·구현해 비교 노트 한 페이지 또는 리팩터링 커밋으로 남긴다. 핵심 기준: {_end_dot(rule)}"
+    work = f"사례({scenario_clean})를 두 관점으로 각각 설계·구현해 비교 노트 한 페이지 또는 리팩터링 커밋으로 남긴다. 핵심 기준: {_end_dot(rule)}"
     why = f"'{title}' 판단에서 {lens_short}의 변경 비용과 인지 부하를 대조해 채택·거절 근거를 남기기 위해서다. {_end_dot(tradeoff)}"
-    check = f"'{title}' 기준을 이번 주 사례({scenario_raw}) 외의 다른 사례 하나에 적용해 {lens_short}의 득실과 채택·거절 근거를 한 줄씩 남긴다. 기준: {_end_dot(rule)}"
+    check = f"'{title}' 기준을 이번 주 사례({scenario_clean}) 외의 다른 사례 하나에 적용해 {lens_short}의 득실과 채택·거절 근거를 한 줄씩 남긴다. 기준: {_end_dot(rule)}"
     return (title, lab2, lab3, rule, case, mistake, work, why, check)
 
 

@@ -39,6 +39,8 @@ def english_block_needs_fill(minutes, text):
         return False
     if "분을 채운다" in text or "세 번과 고치기" in text:
         return False
+    if "1테이크만" in text or "2테이크" in text:
+        return False
     if re.search(r"(?:1[2-9]|[2-9]\d)\s*(?:개|문장|문제|쌍|단어|문항)", text):
         return False
     if not any(w in text for w in ("말한다", "녹음", "섀도잉", "따라 말")):
@@ -65,7 +67,7 @@ def thicken_english_check(week_no, check, expand, speak=""):
     target = expand
     if re.search(r"4분(?:을| 리허설)", speak):
         target = "4분"
-    elif re.search(r"10분\s*(?:영어로|영문|구술\s*녹음|발표를)", speak):
+    elif re.search(r"(?<!오늘\s)10분\s*(?:영어로|영문|구술\s*녹음|발표를?)", speak):
         target = "10분"
     return re.sub(r"대본 없이 60초 이상", f"대본 없이 {target} 이상", check)
 
@@ -74,12 +76,15 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
     expand = english_expand_minutes(week_no)
     check = thicken_english_check(week_no, check, expand, speak)
     speak_without_inputs = re.sub(
-        r"\d+(?:~\d+)?(?:초|분)\s*(?:분량\s*)?(?:원어민\s*)?(?:글쓰기/편집\s*)?(?:안내|일상|업무|강연|기업|토론|대담|내러티브|설명|영상|오디오|질문|자기소개|안에\s*역개요|내\s*완수)"
+        r"\d+(?:~\d+)?(?:초|분)\s*(?:분량(?:의\s*수준\s*높은\s*영어)?\s*)?(?:원어민\s*)?(?:글쓰기/편집\s*)?"
+        r"(?:계약\s*리스크\s*요약\s*오디오|발표/인터뷰\s*오디오|강연·심층\s*다큐\s*오디오|"
+        r"안내|일상|업무|강연|기업|토론|대담|내러티브|설명|영상|오디오|질문|자기소개|안에\s*역개요|내\s*완수)"
         r"|(?:오디오|녹음|코멘트|강의|영상)\s*\(?\d+(?:~\d+)?(?:초|분)\)?|결정적\s*\d+분",
         "",
         speak,
     )
     has_explicit_dur = bool(re.search(r"\d+(?:~\d+)?(?:초|분)", speak_without_inputs))
+    write_cue = write[len(trap):].strip() if trap and write.startswith(trap) else write
     if prev == "시작":
         opening = with_focus(
             f"오늘은 '{title}'{particle_eul(title)} 시작한다. 다음 모델 문장을 한 번 듣고 그대로 따라 말한다.",
@@ -126,7 +131,7 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
                 (10, "고친 문장만 다시 적는다."),
             ]),
             day(day_title(title, "늘리기"), [
-                (10, with_focus(f"어제 '{title}' 글의 첫 문장을 말한다.", write)),
+                (10, with_focus(f"어제 '{title}' 글의 첫 문장을 말한다.", write_cue)),
                 (20, f"어제 글에서 다음 함정이 남은 문장을 고친다. {trap}"),
                 (20, f"고친 글을 {expand} 이상 대본 없이 녹음한다."),
                 (10, "녹음과 글을 비교해 다른 단어 세 개만 표시한다."),
@@ -173,7 +178,7 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
                 (10, "고친 문장만 다시 적는다."),
             ]),
             day(day_title(title, "늘리기"), [
-                (10, with_focus(f"어제 '{title}' 글의 첫 문장을 말한다.", write)),
+                (10, with_focus(f"어제 '{title}' 글의 첫 문장을 말한다.", write_cue)),
                 (20, f"어제 글에서 다음 함정이 남은 문장을 고친다. {trap}"),
                 (20, f"고친 글을 {expand} 이상 대본 없이 녹음한다."),
                 (10, "녹음과 글을 비교해 다른 강세 세 곳만 표시한다."),
@@ -220,7 +225,7 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
                 (10, "고친 문장만 다시 적는다."),
             ]),
             day(day_title(title, "늘리기"), [
-                (10, with_focus(f"어제 '{title}' 글의 첫 문장을 말한다.", write)),
+                (10, with_focus(f"어제 '{title}' 글의 첫 문장을 말한다.", write_cue)),
                 (20, f"어제 글에서 다음 함정이 남은 문장을 고친다. {trap}"),
                 (20, f"고친 글을 {expand} 이상 대본 없이 녹음한다."),
                 (10, "녹음과 글을 비교해 다른 단어 세 개만 표시한다."),
@@ -267,7 +272,7 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
                 (10, "가장 크게 명확해진 문장 두 개만 따로 남긴다."),
             ]),
             day(day_title(title, "레드라인"), [
-                (10, with_focus(f"어제 '{title}' 초안의 첫 문장을 노트를 덮고 말한다. 작성 과제는 다음과 같다.", write)),
+                (10, with_focus(f"어제 '{title}' 초안의 첫 문장을 노트를 덮고 말한다. 작성 과제는 다음과 같다.", write_cue)),
                 (20, f"어제 초안에서 다음 위험이 남아 있는지 점검해 레드라인(수정 추적)으로 고친다. {trap}"),
                 (20, f"고친 조항과 수정 이유를 {expand} 이상 대본 없이 브리핑하듯 녹음한다."),
                 (10, "초안과 레드라인 수정본에서 책임 범위가 달라진 표현 세 곳을 적는다."),
@@ -314,7 +319,7 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
                 (10, "퇴고 전보다 선명해진 핵심 문장 두 개만 남긴다."),
             ]),
             day(day_title(title, "퇴고"), [
-                (10, with_focus(f"어제 '{title}' 초고의 도입 문장을 노트를 덮고 말한다. 쓰기 과제는 다음과 같다.", write)),
+                (10, with_focus(f"어제 '{title}' 초고의 도입 문장을 노트를 덮고 말한다. 쓰기 과제는 다음과 같다.", write_cue)),
                 (20, f"어제 쓴 초고에서 군더더기와 다음 함정이 남은 문장을 골라 과감히 줄이고 고친다. {trap}"),
                 (20, f"퇴고한 글을 바탕으로 핵심 논지와 근거를 {expand} 이상 대본 없이 발표하듯 녹음한다."),
                 (10, "삭제하거나 압축한 군더더기 표현 세 곳과 이유를 적는다."),
@@ -357,7 +362,7 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
             (10, "고친 문장만 다시 적는다."),
         ]),
         day(day_title(title, "늘리기"), [
-            (10, with_focus(f"어제 '{title}'에서 쓴 글의 첫 문장을 말한다. 쓰기 과제는 다음이다.", write)),
+            (10, with_focus(f"어제 '{title}'에서 쓴 글의 첫 문장을 말한다. 쓰기 과제는 다음이다.", write_cue)),
             (20, f"어제 '{title}' 글에서 다음 함정이 남은 문장을 고친다. " + trap),
             (20, f"고친 글을 {expand} 이상 대본 없이 녹음한다. 막히면 그 문장만 적고 이어서 말한다."),
             (10, "녹음과 글을 비교해 다른 단어 세 개만 표시한다."),

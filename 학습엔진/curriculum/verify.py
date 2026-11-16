@@ -118,13 +118,17 @@ def _audit_week(track_id, unit_id, phase_idx, week_no, week):
         errors.append(f"{loc} double negative")
 
     # Advisory content checks (surfaced clearly in per-unit/per-phase audits)
-    if week["title"].count("(") != week["title"].count(")"):
+    stripped_title = re.sub(r"'[^']*'", "", week["title"])
+    stripped_title = re.sub(r"\([^()\s]+,[^()\s]+\]|\[[^()\s]+,[^()\s]+\)", "", stripped_title)
+    if stripped_title.count("(") != stripped_title.count(")"):
         warnings.append(f"{loc} unbalanced parens in title")
     for field_name in ("goal", "outcome", "check"):
         val = week.get(field_name, "")
         if "  " in val:
             warnings.append(f"{loc} double space in {field_name}")
-        if val.count("(") != val.count(")"):
+        stripped = re.sub(r"'[^']*'", "", val)
+        stripped = re.sub(r"\([^()\s]+,[^()\s]+\]|\[[^()\s]+,[^()\s]+\)", "", stripped)
+        if stripped.count("(") != stripped.count(")"):
             warnings.append(f"{loc} unbalanced parens in {field_name}")
     if re.search(r"(?:^|\s)(\S+)\s+\1(?=\s|$|[.,!?])", week.get("outcome", "")):
         warnings.append(f"{loc} repeated consecutive word in outcome")

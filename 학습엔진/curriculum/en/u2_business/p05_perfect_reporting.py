@@ -1096,7 +1096,7 @@ WEEKS = [
           },
           {
             "m": 15,
-            "t": "follow up, point out, carry out, set up, call off, put off, turn down, bring up를 이메일 문장으로 만든다."
+            "t": "follow up, point out, carry out, set up, call off, put off, turn down, bring up을 이메일 문장으로 만든다."
           },
           {
             "m": 30,
@@ -1461,7 +1461,7 @@ WEEKS = [
           },
           {
             "m": 30,
-            "t": "20분 안에 답장을 쓰고 소리 내어 읽는다. 이 20분은 쓰기 블록에 넣는다."
+            "t": "시간 안에 답장을 쓰고 소리 내어 읽는다. 이 시간은 쓰기 블록에 넣는다."
           },
           {
             "m": 10,

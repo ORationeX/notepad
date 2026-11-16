@@ -8,7 +8,7 @@ WEEKS = [
     "title": "계약서의 지도",
     "goal": "영문 계약의 큰 칸을 찾고, 각 칸이 왜 있는지 말한다.",
     "outcome": "짧은 계약 하나를 칸으로 나눈 메모.",
-    "resource": "공개된 짧은 NDA 또는 용역 계약. SEC EDGAR의 exhibit는 실제 문장 예시다. Ken Adams의 계약 문장론은 개념만 참고하고 문장을 베끼지 않는다.",
+    "resource": "공개된 짧은 NDA 또는 용역 계약. SEC EDGAR의 exhibit은 실제 문장 예시다. Ken Adams의 계약 문장론은 개념만 참고하고 문장을 베끼지 않는다.",
     "check": "표제, 당사자, 전문, 정의, 본문, 서명 칸을 가리키며 영어로 설명한다.",
     "ideas": [
       [
@@ -361,7 +361,7 @@ WEEKS = [
       ],
       [
         "조건",
-        "provided that은 그 일이 있어야 의무가 생기고, notwithstanding는 그 일이 있어도 의무가 남는다."
+        "provided that은 그 일이 있어야 의무가 생기고, notwithstanding은 그 일이 있어도 의무가 남는다."
       ]
     ],
     "days": [
@@ -416,11 +416,11 @@ WEEKS = [
           },
           {
             "m": 15,
-            "t": "provided that, subject to, notwithstanding가 어디를 제한하는지 예 6개를 만든다. 그중 2개는 the amount payable under this Agreement처럼 긴 명사구를 주어로 둔다."
+            "t": "provided that, subject to, notwithstanding이 어디를 제한하는지 예 6개를 만든다. 그중 2개는 the amount payable under this Agreement처럼 긴 명사구를 주어로 둔다."
           },
           {
             "m": 30,
-            "t": "긴 명사구에서 핵이 되는 명사를 가리키며, 조건이 없으면 의무가 없는 경우와 notwithstanding로 의무가 남는 경우를 60초로 구분한다."
+            "t": "긴 명사구에서 핵이 되는 명사를 가리키며, 조건이 없으면 의무가 없는 경우와 notwithstanding으로 의무가 남는 경우를 60초로 구분한다."
           },
           {
             "m": 10,
@@ -1542,7 +1542,7 @@ WEEKS = [
     "check": "포함, 제외, 산출물, 검수, 측정이 말로 구분된다.",
     "ideas": [
       [
-        "범위",
+        "포함·제외",
         "포함된 일과 제외된 일이 둘 다 있어야 범위다."
       ],
       [

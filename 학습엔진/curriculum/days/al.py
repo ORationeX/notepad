@@ -123,7 +123,7 @@ def algo_days(prev, title, claim, trace, code, trap, cost, check, practice="code
             ]),
             day(day_title(title, "판정"), [
                 (10, with_focus(f"어제 '{title}'에서 펼친 표를 말한다.", trace)),
-                (40, "오늘 판정 노트를 쓴다. " + code + " 첫 25분은 경우 구분과 결론만 적는다. 이 문장을 코드로 실행하지 않는다. 남은 15분은 숫자 검산이다."),
+                (40, "오늘 판정 노트를 쓴다. " + draft_cue + " 첫 25분은 경우 구분과 결론만 적는다. 이 문장을 코드로 실행하지 않는다. 남은 15분은 숫자 검산이다."),
                 (10, "판정 결론을 한 줄로 말한다."),
             ]),
             day(day_title(title, "반례"), [
@@ -166,7 +166,7 @@ def algo_days(prev, title, claim, trace, code, trap, cost, check, practice="code
             ]),
             day(day_title(title, "증명"), [
                 (10, with_focus(f"어제 '{title}'에서 전개한 예를 말한다.", trace)),
-                (40, "오늘 주장을 증명으로 적는다. " + code + " 첫 25분은 가정, 핵심, 결론의 세 단락을 쓴다. 이 문장을 코드로 실행하지 않는다. 남은 15분은 예 숫자를 단락 옆에 넣어 어긋나는 줄을 고친다. 해설은 25분이 지나기 전에는 열지 않는다."),
+                (40, "오늘 주장을 증명으로 적는다. " + draft_cue + " 첫 25분은 가정, 핵심, 결론의 세 단락을 쓴다. 이 문장을 코드로 실행하지 않는다. 남은 15분은 예 숫자를 단락 옆에 넣어 어긋나는 줄을 고친다. 해설은 25분이 지나기 전에는 열지 않는다."),
                 (10, "세 단락이 예 숫자와 맞는지 한 줄로 말한다."),
             ]),
             day(day_title(title, "반례"), [

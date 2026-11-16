@@ -28,7 +28,7 @@ def thicken_math_blank(week_no, example, mode="calc"):
         return base
     if any(word in example for word in ("증명", "귀납", "대우", "반례", "진술", "스케치")):
         return base
-    counts = [int(n) for n in re.findall(r"(\d+)\s*(?:개|문제|식|문항)", example)]
+    counts = [int(n) for n in re.findall(r"(\d+)\s*(?:문제|식|문항)", example)]
     if counts and max(counts) >= 3:
         return base
     return (
