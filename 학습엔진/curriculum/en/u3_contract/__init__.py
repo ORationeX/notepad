@@ -10,8 +10,8 @@ from curriculum.en.u3_contract.p15_full_contract_review import PHASE as _P15_FUL
 
 UNIT_META = {
     "id": "u3",
-    "title": "계약 영어 독해와 협상",
-    "summary": "계약 조항 읽기부터 초안 구조, 의무·책임 분석, 레드라인 수정, 실제 MSA·NDA 협상 검토까지 훈련한다.",
+    "title": "계약 영어 독해와 협상 (전문 선택 ESP B2+→C1)",
+    "summary": "특수 목적 영어(ESP) 선택 트랙으로 계약 조항 읽기, 초안 구조, 의무·책임 분석, 레드라인 수정, 실제 MSA·NDA 협상 검토까지 훈련한다.",
 }
 
 PHASES = [_P09_READING_CONTRACTS, _P10_CONTRACT_STRUCTURE, _P11_LIABILITY_ANALYSIS, _P12_NEGOTIATION_REDLINES, _P13_COMPLEX_CLAUSES, _P14_CLAUSE_REFACTORING, _P15_FULL_CONTRACT_REVIEW]

@@ -5,33 +5,41 @@ import re
 from curriculum.common import phase
 
 RES_BY_STAGE = (
-    (52, (
+    (26, (
         "Pro Git(스코트 샤콘·벤 스트라우브), Conventional Commits / Semantic Versioning 명세. "
-        "기초 문법이 아니라 변경 단위·브랜치·이력 호환성·릴리스 경계를 상반된 전략으로 대조한다."
+        "기초 문법이 아니라 변경 응집도·브랜치 통합·이력 호환성 전략을 대조한다."
+    )),
+    (52, (
+        "IEEE SWEBOK v4(KA 1·5·8), MIT 6.031(사전·사후조건·RI·AF), ISO/IEC 25010 품질 모델, "
+        "Accelerate / DORA(니콜 포스그렌·제즈 험블·진 킴), Pro Git. 명세·불변식·테스트 공학과 CI/CD 배포 경계를 대조한다."
     )),
     (104, (
-        "A Philosophy of Software Design(존 아우스터하우트), Clean Code(로버트 마틴). "
+        "A Philosophy of Software Design(존 아우스터하우트), Clean Code(로버트 마틴), Sandi Metz Rule of Three. "
         "복잡도, 깊은 모듈, 작은 함수 분할이라는 정면으로 충돌하는 두 설계 철학을 같은 코드 사례 위에서 비교한다."
     )),
-    (156, (
+    (143, (
         "A Philosophy of Software Design(주석·오류 정의), Clean Code(이름·테스트), Refactoring(마틴 파울러). "
-        "규칙을 교리처럼 암기하지 않고 오류 경계·테스트 취약성·원칙의 거절 조건을 사례로 비교한다."
+        "규칙을 교리처럼 암기하지 않고 오류 경계·고전파 vs 목파 테스트·근거 있는 설계 리뷰 기준을 비교한다."
     )),
-    (208, (
-        "Refactoring(마틴 파울러), Clean Architecture(로버트 마틴), 디자인 패턴 핵심 장. "
-        "패턴을 외워서 많이 쓰는 대신 변경 축과 결합 비용에 따라 채택하거나 제거하는 기준을 비교한다."
+    (195, (
+        "Refactoring(마틴 파울러), Clean Architecture(로버트 마틴), GoF 디자인 패턴, Sandi Metz(Wrong Abstraction 해체). "
+        "패턴을 외워서 많이 쓰는 대신 변경 축과 결합 비용, Rule of Three에 따라 채택하거나 제거하는 기준을 비교한다."
+    )),
+    (234, (
+        "Clean Architecture(로버트 마틴), 파르나스(Parnas) 모듈 분할 기준, Fundamentals of Software Architecture(마크 리처즈·닐 포드). "
+        "정보 은닉과 단방향 의존(DAG)·상태 일관성 트랜잭션 경계를 대조한다."
     )),
     (260, (
-        "Clean Architecture(로버트 마틴), 파르나스(Parnas) 모듈 분할 기준, Fundamentals of Software Architecture(마크 리처즈·닐 포드). "
-        "정보 은닉과 단방향 의존·상태 일관성 경계를 설계 노트로 묶는다."
+        "IEEE SWEBOK v4(KA 2·13), OWASP ASVS, Adam Shostack <Threat Modeling>(STRIDE), Saltzer & Schroeder 보안 원칙, "
+        "CMU SEI ATAM·ISO/IEC 25010 품질 속성. 보안 신뢰 경계와 다관점 설계 노트로 5년 매듭을 묶는다."
     )),
     (312, (
         "Designing Data-Intensive Applications(마틴 클레프만), Domain-Driven Design 핵심 장(에릭 에반스·블라드 코노노프). "
         "도메인/데이터 모델, 비동기 흐름, 동시성 격리의 트레이드오프를 대조한다."
     )),
     (364, (
-        "Designing Data-Intensive Applications(마틴 클레프만), Building Evolutionary Architectures(닐 포드 외), Michael Nygard ADR·Release It! 복원력 패턴. "
-        "장애 격리와 진화적 설계를 아키텍처 의사결정 기록(ADR) 핸드북으로 종합한다."
+        "Designing Data-Intensive Applications(마틴 클레프만), Google SRE(SLI/SLO·에러 버짓·포스트모템), Brendan Gregg <Systems Performance>, "
+        "Building Evolutionary Architectures(닐 포드 외), Michael Nygard ADR·Release It!. 장애 격리와 진화적 설계를 ADR 핸드북으로 종합한다."
     )),
 )
 

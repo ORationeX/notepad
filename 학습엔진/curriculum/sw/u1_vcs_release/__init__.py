@@ -7,8 +7,8 @@ from curriculum.sw.u1_vcs_release.p04_regression_release import PHASE as _P04_RE
 
 UNIT_META = {
     "id": "u1",
-    "title": "변경 응집도·이력과 릴리스 경계",
-    "summary": "커밋 응집도, 브랜치 통합 전략, 호환성·변경 이력 관리, 회귀 이분 탐색과 릴리스 경계를 대조한다.",
+    "title": "형상·명세·검증과 배포 공학",
+    "summary": "변경 응집도, 브랜치·호환성, MIT 6.031 명세·불변식(SWEBOK KA 1), 테스트 공학·CI/CD·DORA 배포 경계(KA 5·8)를 대조한다.",
 }
 
 PHASES = [_P01_CHANGE_COHESION, _P02_BRANCH_INTEGRATION, _P03_HISTORY_COMPATIBILITY, _P04_REGRESSION_RELEASE]

@@ -38,7 +38,7 @@ def thicken_math_blank(week_no, example, mode="calc"):
     )
 
 
-def math_days(prev, title, definition, example, trap, drill, why, check, week_no=0, prev_line="", mode="calc", prev_mode=None):
+def math_days(prev, title, definition, example, trap, drill, why, check, week_no=0, prev_line="", mode="calc", prev_mode=None, interleave_title="", interleave_line=""):
     past_mode = prev_mode or mode
     if prev == "시작":
         opening = with_focus(
@@ -55,6 +55,11 @@ def math_days(prev, title, definition, example, trap, drill, why, check, week_no
             f"지난주 '{prev}'에서 적은 다음 문장을 노트를 덮고 다시 말하고, 그 문장의 첫 근거를 한 줄로 적는다.",
             prev_line,
         )
+    interleave_note = (
+        f" 교차 판별 연습(Interleaving): 제목을 가린 채 오늘 주제와 3주 전 '{interleave_title}' 문제를 섞어 놓고, 어느 정의·정리가 적용되는지 먼저 판별한 뒤 푼다."
+        if interleave_title
+        else ""
+    )
     if mode == "sketch":
         return [
             day(day_title(title, "진술"), [
@@ -65,7 +70,7 @@ def math_days(prev, title, definition, example, trap, drill, why, check, week_no
             ]),
             day(day_title(title, "의미"), [
                 (10, with_focus(f"어제 적은 '{title}' 진술을 덮고 말한다.", definition)),
-                (25, example + " 진술이 보장하는 것과 보장하지 않는 것을 표로 나눈다."),
+                (25, example + " 진술이 보장하는 것과 보장하지 않는 것을 표로 나눈다(예제→점진적 소거)."),
                 (15, "같은 진술을 다른 맥락 하나에 적용해 무엇이 바뀌는지 적는다."),
                 (10, "의미가 깨지는 조건을 한 줄로 적는다."),
             ]),
@@ -84,7 +89,7 @@ def math_days(prev, title, definition, example, trap, drill, why, check, week_no
             day(day_title(title, "적용"), [
                 (10, with_focus(f"어제 '{title}' 스케치의 빈칸을 말한다.", drill)),
                 (20, why + " 이 진술을 호출할 수 있는 상황과 호출하면 안 되는 상황을 나란히 적는다."),
-                (20, "어제 예의 숫자에 진술을 적용해 결론만 확인한다."),
+                (20, "어제 예의 숫자에 진술을 적용해 결론만 확인한다." + interleave_note),
                 (10, "호출 조건을 두 문장으로 줄인다."),
             ]),
             day(day_title(title, "백지"), [
@@ -108,7 +113,7 @@ def math_days(prev, title, definition, example, trap, drill, why, check, week_no
             ]),
             day(day_title(title, "전개"), [
                 (10, with_focus(f"어제 노트에 적은 '{title}' 정의를 덮고 말한다.", definition)),
-                (25, example + " 각 문장이 앞 문장에서 나오는지 번호를 붙인다. 숫자 검산이 아니라 논리 연결을 확인한다."),
+                (25, example + " 각 문장이 앞 문장에서 나오는지 번호를 붙이고(예제), 이어서 중간 힌트를 가린 채 기호만 바꾼 변형 전개를 스스로 완성한다(점진적 소거). 숫자 검산이 아니라 논리 연결을 확인한다."),
                 (15, "같은 전개를 기호만 바꿔 한 번 더 쓴다."),
                 (10, "전개가 정의의 어느 조건을 쓰는지 표시한다."),
             ]),
@@ -127,7 +132,7 @@ def math_days(prev, title, definition, example, trap, drill, why, check, week_no
             day(day_title(title, "이유"), [
                 (10, with_focus(f"어제 '{title}' 증명에서 막힌 줄을 말한다.", drill)),
                 (20, why + " 이 이유가 성립하는 원리를 노트에 풀어서 설명하고, 조건을 조금 바꾼 두 경우에서도 같은 이유가 통하는지 확인한다."),
-                (20, "이유를 증명 단락의 번호와 연결해 적는다."),
+                (20, "이유를 증명 단락의 번호와 연결해 적는다." + interleave_note),
                 (10, "이유를 두 문장으로 줄여 적는다."),
             ]),
             day(day_title(title, "백지"), [
@@ -150,7 +155,7 @@ def math_days(prev, title, definition, example, trap, drill, why, check, week_no
         ]),
         day(day_title(title, "예"), [
             (10, with_focus(f"어제 노트에 적은 '{title}' 정의를 덮고 말한다.", definition)),
-            (25, example + " 풀이의 각 단계가 정의의 어느 규칙을 썼는지 옆에 적고, 나온 결과를 역연산이나 대입으로 직접 검산한다."),
+            (25, example + " 풀이의 각 단계가 정의의 어느 규칙을 썼는지 옆에 적고(예제), 다음에는 첫 단계 힌트만 남긴 채 스스로 이어 풀어(점진적 소거) 역연산이나 대입으로 검산한다."),
             (15, "같은 유형으로 숫자나 대상만 바꾼 문제를 두 개 더 만들어 푼다."),
             (10, "각 예가 정의의 어느 조건을 쓰는지 번호를 붙인다."),
         ]),
@@ -169,7 +174,7 @@ def math_days(prev, title, definition, example, trap, drill, why, check, week_no
         day(day_title(title, "이유"), [
             (10, with_focus(f"어제 '{title}' 문제에서 틀렸다고 표시한 항목을 다시 푼다. 문제는 다음이다.", drill)),
             (20, why + " 이 이유가 성립하는 원리를 노트에 풀어서 설명하고, 숫자나 조건을 조금 바꾼 두 가지 경우에서도 같은 이유가 통하는지 확인한다."),
-            (20, "그 이유를 오늘의 예 숫자에 대입해 맞는지 확인한다."),
+            (20, "그 이유를 오늘의 예 숫자에 대입해 맞는지 확인한다." + interleave_note),
             (10, "이유를 두 문장으로 줄여 적는다."),
         ]),
         day(day_title(title, "백지"), [

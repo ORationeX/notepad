@@ -96,7 +96,21 @@ function normalize(saved) {
     if (!isPlainObj(c) || !c.track || !Number.isInteger(c.week) || c.week < 1) return;
     const step = Number.isInteger(c.step) && c.step >= 0 ? Math.min(c.step, E.INTERVALS.length - 1) : (c.kind === "week" ? 1 : 0);
     const due = c.retired ? null : (E.isValidISO(c.due) ? c.due : todayISO());
-    cleanCards[id] = Object.assign({}, c, { id: c.id || id, step: step, due: due });
+    const ease = (typeof c.ease === "number" && isFinite(c.ease)) ? Math.max(1.3, Math.min(2.6, +c.ease.toFixed(2))) : 2.0;
+    const lapses = Number.isInteger(c.lapses) && c.lapses >= 0 ? c.lapses : 0;
+    const reviews = Number.isInteger(c.reviews) && c.reviews >= 0 ? c.reviews : 0;
+    const leech = !!c.leech;
+    const lastQuality = typeof c.lastQuality === "string" ? c.lastQuality : "";
+    cleanCards[id] = Object.assign({}, c, {
+      id: c.id || id,
+      step: step,
+      due: due,
+      ease: ease,
+      lapses: lapses,
+      reviews: reviews,
+      leech: leech,
+      lastQuality: lastQuality
+    });
   });
   s.cards = cleanCards;
   if (saved.track) s.track = saved.track;
@@ -324,6 +338,12 @@ function reviewCardHTML(card, tr) {
     ? card.week + "주 · " + week.title
     : card.week + "주 " + (card.day + 1) + "일차 · " + ((dayObj && dayObj.title) || "");
   const cue = card.kind === "week" ? week.check : (card.line || "");
+  const reviews = Number.isInteger(card.reviews) ? card.reviews : 0;
+  const ease = typeof card.ease === "number" && isFinite(card.ease) ? card.ease : 2.0;
+  const meta = "복습 " + reviews + "회 · 간격 배율 " + (ease / 2).toFixed(2) + "x";
+  const leechHTML = card.leech
+    ? "<p class=\"leech-warn\">반복 막힘(Leech): 4회 이상 막힌 항목입니다. 개념을 더 작은 단위나 반례 1개로 쪼개 정리해 보세요.</p>"
+    : "";
   let answer = "";
   if (revealed && card.kind === "week") {
     const ideaItems = distinctIdeas(week).slice(0, 3).map((it) => "<li><b>" + esc(it[0]) + ":</b> " + esc(it[1]) + "</li>").join("");
@@ -332,10 +352,14 @@ function reviewCardHTML(card, tr) {
     const core = dayObj && dayObj.blocks && dayObj.blocks[1] ? dayObj.blocks[1].t : week.goal;
     answer = "<div class=\"answer\"><b>핵심 내용과 대조</b><p>" + esc(core) + "</p><p class=\"muted\">주간 기준: " + esc(week.goal) + "</p></div>";
   }
+  const hintHTML = revealed ? "" : "<p class=\"muted recall-hint\">먼저 노트를 덮고 머릿속이나 종이에 답을 인출한 뒤 열어 대조하세요.</p>";
   const buttons = revealed
-    ? "<button class=\"btn primary\" type=\"button\" data-act=\"recall-yes\" data-card=\"" + esc(card.id) + "\">맞음</button><button class=\"btn\" type=\"button\" data-act=\"recall-no\" data-card=\"" + esc(card.id) + "\">틀림</button>"
+    ? "<button class=\"btn\" type=\"button\" data-act=\"recall-rate\" data-rating=\"again\" data-card=\"" + esc(card.id) + "\">다시 (틀림)</button>" +
+      "<button class=\"btn\" type=\"button\" data-act=\"recall-rate\" data-rating=\"hard\" data-card=\"" + esc(card.id) + "\">힘겹게 맞음</button>" +
+      "<button class=\"btn primary\" type=\"button\" data-act=\"recall-rate\" data-rating=\"good\" data-card=\"" + esc(card.id) + "\">맞음</button>" +
+      "<button class=\"btn\" type=\"button\" data-act=\"recall-rate\" data-rating=\"easy\" data-card=\"" + esc(card.id) + "\">완전히 익힘</button>"
     : "<button class=\"btn primary\" type=\"button\" data-act=\"recall-commit\" data-card=\"" + esc(card.id) + "\">답을 냈다</button>";
-  return "<article class=\"recall\"><p class=\"kicker\">" + (retry ? "한 번 더 · " : "복습 · ") + esc(head) + "</p><p>" + esc(cue) + "</p>" + answer + "<div class=\"row\">" + buttons + "</div></article>";
+  return "<article class=\"recall\"><div class=\"recall-head\"><p class=\"kicker\">" + (retry ? "한 번 더 · " : "복습 · ") + esc(head) + "</p><span class=\"recall-meta\">" + esc(meta) + "</span></div>" + leechHTML + "<p>" + esc(cue) + "</p>" + hintHTML + answer + "<div class=\"row\">" + buttons + "</div></article>";
 }
 function reviewSection(tr) {
   const shown = shownReviews(tr);
@@ -424,7 +448,8 @@ function renderNav() {
     return "<button class=\"tab\" type=\"button\" data-act=\"track\" data-track=\"" + esc(tr.id) + "\"" + (on ? " aria-current=\"page\"" : "") + ">" + esc(tr.name) + (n ? " " + n : "") + "</button>";
   }).join("") + "<button class=\"tab\" type=\"button\" data-act=\"index\"" + (state.view === "index" ? " aria-current=\"page\"" : "") + ">개념</button>";
   document.getElementById("startDate").value = state.start;
-  document.getElementById("statLine").textContent = "세션 " + Object.keys(state.done).length + "/" + info.sessions + " · 복습 " + reviewCount() + " · 연속 " + E.streak(state, todayISO()) + "일";
+  const wc = E.weeklyConsistency(state, todayISO(), 5);
+  document.getElementById("statLine").textContent = "세션 " + Object.keys(state.done).length + "/" + info.sessions + " · 복습 " + reviewCount() + " · 최근 7일 " + wc.activeLast7 + "/7 · 주 " + wc.targetDays + "일 " + wc.consecutiveWeeks + "주 연속";
   applyAccent();
 }
 
@@ -467,7 +492,11 @@ function renderHome() {
           const p = tr.phases[pi];
           return p ? phaseMapButtonHTML(tr, p) : "";
         }).join("");
-        return "<details class=\"unit-card\" data-unit=\"" + esc(tr.id + ":" + u.id) + "\" open><summary class=\"unit-card-head\"><span class=\"unit-badge\" style=\"color:" + esc(tr.color) + "\">" + (ui + 1) + "단원</span><strong>" + esc(u.title) + "</strong><span class=\"unit-range\">" + u.start + "–" + u.end + "주 · " + (u.phases ? u.phases.length : 0) + "단계</span></summary><p class=\"unit-summary muted\">" + esc(u.summary || "") + "</p><div class=\"map map-solo\">" + btns + "</div></details>";
+        const bm = u.benchmark;
+        const bmHTML = bm
+          ? "<div class=\"unit-badges\"><span class=\"badge\">" + esc(bm.level) + "</span><span class=\"badge\">" + esc(bm.standard) + "</span><span class=\"badge\">" + esc(bm.bloom) + "</span></div>"
+          : "";
+        return "<details class=\"unit-card\" data-unit=\"" + esc(tr.id + ":" + u.id) + "\" open><summary class=\"unit-card-head\"><span class=\"unit-badge\" style=\"color:" + esc(tr.color) + "\">" + (ui + 1) + "단원</span><strong>" + esc(u.title) + "</strong><span class=\"unit-range\">" + u.start + "–" + u.end + "주 · " + (u.phases ? u.phases.length : 0) + "단계</span></summary>" + bmHTML + "<p class=\"unit-summary muted\">" + esc(u.summary || "") + "</p><div class=\"map map-solo\">" + btns + "</div></details>";
       }).join("");
       return "<section class=\"track-map-section\"><h3 class=\"track-label\" style=\"color:" + esc(tr.color) + "\">" + esc(tr.name) + " <small class=\"track-label-meta\">" + tr.units.length + "개 대단원 · " + tr.phases.length + "개 중단원 · " + tr.weeks.length + "주</small></h3>" + unitBlocks + "</section>";
     }).join("");
@@ -492,20 +521,30 @@ function renderHome() {
     if (!p || p.completed) return tr.name + " 완주";
     return tr.name + " " + p.week + "주 " + (p.day + 1) + "일차";
   }).join(" · ");
+  const mapDesc = DATA.tracks.map((tr) => {
+    const years = Math.round(tr.weeks.length / 52);
+    return tr.name + " " + years + "년(" + (tr.units ? tr.units.length : 0) + "대단원·" + tr.phases.length + "중단원)";
+  }).join(", ");
+  const standardsHTML = DATA.tracks.map((tr) => {
+    const badges = (tr.standards || []).map((s) => "<span class=\"badge\">" + esc(s) + "</span>").join("");
+    const methods = (tr.methodology || []).map((m) => "<li>" + esc(m) + "</li>").join("");
+    return "<article class=\"std-card\"><p class=\"kicker\" style=\"color:" + esc(tr.color) + "\">" + esc(tr.name) + "</p><div class=\"unit-badges\">" + badges + "</div>" + (methods ? "<ul class=\"std-list\">" + methods + "</ul>" : "") + "</article>";
+  }).join("");
   return [
     "<section class=\"hero\">",
     "<p class=\"kicker\">오늘 위치 · " + esc(whereDetail) + "</p>",
-    "<h1>하루 60분, 원리와 대조로 깊어지는 학습.</h1>",
-    "<p class=\"lead\">" + esc(info.durationText) + " 과정입니다. 한 주는 7세션(하루 60분 × 7일차)으로 구성되며, 첫 10분은 복습 주기가 돌아온 카드나 전날 핵심 문장을 노트를 덮고 인출하는 시간입니다. 네 도메인을 같은 날 모두 병행하면 하루 " + info.parallel + "시간이며, 직장·학업과 병행할 때는 하루 1~2개 도메인에 집중하거나 이미 아는 기초 주간을 '알고 넘어가기'로 건너뛰고 도메인별 시작일을 조정해 진행할 수 있습니다.</p>",
-    "<div class=\"hero-stats\"><div><b>" + esc(info.hours) + "</b><span>" + esc(info.hoursSub) + "</span></div><div><b>" + esc(info.parallel) + "</b><span>병행 시 하루 시간</span></div><div><b>" + esc(info.weeks) + "</b><span>" + esc(info.weeksSub) + "</span></div><div><b>" + info.sessions.toLocaleString("ko-KR") + "</b><span>전체 세션</span></div></div>",
+    "<h1>하루 60분, 인출·교차·대조로 깊어지는 학습.</h1>",
+    "<p class=\"lead\">" + esc(info.durationText) + " 과정입니다. 한 주는 7세션(하루 60분 × 7일차)으로 구성되며, 첫 10분은 복습 주기가 돌아온 카드나 직전 핵심 개념을 노트를 덮고 인출하는 시간입니다. 학습과학 권장 페이스는 <b>한 번에 1~2개 도메인 집중, 주 5~6세션 + 1~2일 휴식(수면 공고화)</b>이며(4트랙 동시 진행 시 하루 " + info.parallel + "시간), 각 트랙 상단 진단 배치로 이미 숙달한 대단원을 건너뛰고 시작할 수 있습니다.</p>",
+    "<div class=\"hero-stats\"><div><b>" + esc(info.hours) + "</b><span>" + esc(info.hoursSub) + "</span></div><div><b>" + esc(info.parallel) + "</b><span>전 트랙 병행 시 시간</span></div><div><b>" + esc(info.weeks) + "</b><span>" + esc(info.weeksSub) + "</span></div><div><b>" + info.sessions.toLocaleString("ko-KR") + "</b><span>전체 세션</span></div></div>",
     "</section>",
-    "<section class=\"section\"><h2>오늘</h2><p class=\"muted\">" + esc(where) + " · 복습 카드는 스스로 답을 말하거나 적은 뒤에만 핵심 기준·대조 카드가 열립니다. 도메인마다 하루 최대 두 장까지 표시되고, 1·3·7·16·35·70·180일 간격을 모두 통과하면 졸업합니다.</p><div class=\"today-grid\">" + DATA.tracks.map(todayCard).join("") + "</div></section>",
-    "<section class=\"section\"><h2>전체 지도</h2><p class=\"muted\">도메인별 대단원 아래 중단원(13주)을 누르면 해당 첫 주로 이동합니다. 수학은 5년(5대단원·20중단원), 영어(5대단원)·알고리즘(6대단원)·소프트웨어(5대단원)는 7년(28중단원) 과정입니다.</p>" + map + "</section>",
+    "<section class=\"section\"><h2>오늘</h2><p class=\"muted\">" + esc(where) + " · 복습 카드는 스스로 답을 말하거나 적은 뒤에만 핵심 기준·대조 카드가 열리며, 4단계 인출 난이도(다시·힘겹게·맞음·완전히 익힘)에 따라 복습 배율과 간격이 적응형으로 조절됩니다. 도메인마다 하루 최대 두 장까지 교차 출제됩니다.</p><div class=\"today-grid\">" + DATA.tracks.map(todayCard).join("") + "</div></section>",
+    "<section class=\"section\"><h2>전체 지도</h2><p class=\"muted\">도메인별 대단원 아래 중단원(13주)을 누르면 해당 첫 주로 이동합니다. " + esc(mapDesc) + " 구성입니다.</p>" + map + "</section>",
     "<section class=\"section\"><h2>60분을 쓰는 방법</h2><div class=\"hours-grid\">" + DATA.tracks.map((tr) => "<article class=\"hour\"><p class=\"kicker\" style=\"color:" + esc(tr.color) + "\">" + esc(tr.name) + "</p><h3>" + esc(tr.hourTitle) + "</h3>" + hourList(tr.hour) + "</article>").join("") + "</div></section>",
-    "<section class=\"section prep\"><h2>시작 전 준비</h2><p>도메인별 노트(영어·알고리즘·수학·소프트웨어)와 녹음 앱을 준비합니다. 계산기와 프로그래밍 언어 환경은 1주차 과제를 수행할 때 준비해도 충분합니다. 달력은 주 7세션 기준으로 계산되지만, 전일 집중이 어렵다면 한 번에 1~2개 도메인만 시작하고 주 5~6일 리듬으로 진행하더라도 가장 앞선 미통과 주의 남은 일차를 이어가며 '이 주 통과' 기준으로 꾸준히 밟아 나가면 됩니다. 소리 내어 말하기 좋은 시간대에 영어를 배치하세요.</p></section>",
+    "<section class=\"section\"><h2>검증 기관 커리큘럼 및 학습과학 근거</h2><p class=\"muted\">각 도메인은 공인 학회·대학·표준 기구 커리큘럼을 기반으로 설계되었으며, 인출 연습·분산 간격(Cepeda)·교차 판별(Rohrer)·점진적 소거·Nation Four Strands를 일일 블록에 통합했습니다.</p><div class=\"standards-grid\">" + standardsHTML + "</div></section>",
+    "<section class=\"section prep\"><h2>시작 전 준비</h2><p>도메인별 노트(영어·알고리즘·수학·소프트웨어)와 녹음 앱을 준비합니다. 계산기와 프로그래밍 언어 환경은 1주차 과제를 수행할 때 준비해도 충분합니다. 주 7세션 단위로 설계되어 있으나 인지 과부하를 막기 위해 한 번에 1~2개 도메인만 시작하고 주 5~6일 리듬 + 1~2일 휴식을 취하는 것을 권장합니다. 이미 아는 대단원은 트랙 화면 상단 '진단 배치'에서 한 번에 건너뛸 수 있으며, 상단 지표는 휴식일을 벌주지 않는 주 5일 연속 일관성을 함께 추적합니다.</p></section>",
     "<section class=\"section\"><h2>과정의 끝</h2><div class=\"dest-grid\">" + DATA.tracks.map((tr) => "<article class=\"dest\"><p class=\"kicker\" style=\"color:" + esc(tr.color) + "\">" + esc(tr.name) + "</p><h3>" + esc(tr.destination) + "</h3><p>" + esc(tr.limit) + "</p><p style=\"margin-top:8px\"><b>이후.</b> " + esc(tr.after) + "</p></article>").join("") + "</div></section>",
-    "<section class=\"section\"><h2>공통 규칙</h2><div class=\"principles\"><article><h3>통과해야 다음 주로 넘어간다</h3><p>이전 주 통과 기준을 충족하기 전에는 달력상 다음 주로 넘어가지 않고, 가장 앞선 미통과 주의 남은 일차를 먼저 마칩니다. 이미 아는 주제를 '알고 넘어가기'로 처리하면 오늘 위치도 즉시 다음 미통과 주로 넘어가며 3·7·16·35·70·180일 간격 복습으로 검증합니다.</p></article><article><h3>직접 만든 산출물이 있어야 진도다</h3><p>강의나 교재를 수동적으로 읽는 것만으로는 60분을 채우지 않습니다. 영어는 녹음·받아쓰기·퇴고 글, 수학·알고리즘은 백지 증명과 반례·코드, 소프트웨어는 상반된 설계 대안을 비교한 노트나 커밋이 남아야 완료입니다.</p></article><article><h3>기록은 로컬에 안전하게 보관된다</h3><p>학습 완료, 주차 통과, 복습 일정은 브라우저와 로컬 런처 폴더의 <code>roadmap-state.json</code>에 함께 저장됩니다. 기기를 옮기기 전에는 상단 기록 메뉴에서 JSON 백업을 내보내 두세요.</p></article></div></section>",
-    "<p class=\"foot\">이 로드맵은 검증된 고전 교재와 표준 학부·실무 커리큘럼을 바탕으로 재구성한 자기주도 학습 계획입니다. 계약 영어는 문장의 조건과 모호성을 다루는 언어 훈련이며 법률 자문이 아닙니다. 제시된 교재는 해당 주제의 표준 참고 문헌입니다.</p>"
+    "<section class=\"section\"><h2>공통 규칙</h2><div class=\"principles\"><article><h3>통과해야 다음 주로 넘어간다</h3><p>이전 주 통과 기준을 충족하기 전에는 달력상 다음 주로 넘어가지 않고, 가장 앞선 미통과 주의 남은 일차를 먼저 마칩니다. 이미 아는 주제는 주간 '알고 넘어가기' 또는 대단원 '진단 배치'로 건너뛰고, 4단계 적응형 분산 복습과 1회 실수 재학습 절감(Savings)으로 장기 기억을 검증합니다.</p></article><article><h3>직접 만든 산출물이 있어야 진도다</h3><p>강의나 교재를 수동적으로 읽는 것만으로는 60분을 채우지 않습니다. 영어는 녹음·받아쓰기·퇴고 글, 수학·알고리즘은 백지 증명과 반례·코드, 소프트웨어는 상반된 설계 대안을 비교한 노트나 커밋이 남아야 완료입니다.</p></article><article><h3>기록은 로컬에 안전하게 보관된다</h3><p>학습 완료, 주차 통과, 복습 일정은 브라우저와 로컬 런처 폴더의 <code>roadmap-state.json</code>에 함께 저장됩니다. 기기를 옮기기 전에는 상단 기록 메뉴에서 JSON 백업을 내보내 두세요.</p></article></div></section>",
+    "<p class=\"foot\">이 로드맵은 검증된 공인 표준(MAA CUPM · ACM/IEEE CS2023 · IEEE SWEBOK v4 · Council of Europe CEFR 2020)과 고전 교재를 바탕으로 재구성한 자기주도 학습 계획입니다. 계약 영어는 문장의 조건과 모호성을 다루는 언어 훈련이며 법률 자문이 아닙니다.</p>"
   ].join("");
 }
 
@@ -559,23 +598,35 @@ function renderTrack() {
     if (!state.pass[tr.id + ":" + prevW]) { warn = true; break; }
   }
   let prereqWarn = "";
-  if (tr.id === "al") {
-    const maTr = trackById("ma");
-    if (maTr) {
-      const reqs = [
-        { al: 119, ma: 102, title: "점근 표기·마스터 정리" },
-        { al: 248, ma: 173, title: "기댓값의 선형성·분산" },
-        { al: 249, ma: 175, title: "마르코프 부등식" },
-        { al: 250, ma: 176, title: "체비쇼프 부등식·큰 수의 법칙" },
-        { al: 265, ma: 255, title: "다항식 나눗셈·나머지 정리" },
-        { al: 266, ma: 256, title: "체와 유한체" }
-      ];
-      const unmet = reqs.filter((r) => state.week >= r.al && !state.pass["ma:" + r.ma]);
-      if (unmet.length) {
-        const list = unmet.map((r) => esc(r.title) + "(" + r.al + "주~ → 수학 " + r.ma + "주)").join(", ");
-        prereqWarn = "<div class=\"banner\">선수 수학 안내: " + list + "는 선행 수학 주간을 바탕으로 합니다. 수학 시작일이나 진도를 먼저 확인해 두세요.</div>";
-      }
+  const reqs = Array.isArray(tr.prerequisites) ? tr.prerequisites : [];
+  if (reqs.length) {
+    const unmet = reqs.filter((r) => state.week >= r.week && !state.pass[r.reqTrack + ":" + r.reqWeek]);
+    if (unmet.length) {
+      const items = unmet.map((r) => {
+        const reqTr = trackById(r.reqTrack);
+        const reqName = reqTr ? reqTr.name : r.reqTrack;
+        return "<button class=\"prereq-btn\" type=\"button\" data-act=\"track\" data-track=\"" + esc(r.reqTrack) + "\" data-week=\"" + r.reqWeek + "\">" + esc(r.topic) + " (" + r.week + "주~ → " + esc(reqName) + " " + r.reqWeek + "주)</button>";
+      }).join(" ");
+      prereqWarn = "<div class=\"banner\"><b>선수 학습 안내:</b> 현재 주차는 다음 선행 주제를 바탕으로 합니다. 눌러서 먼저 확인하거나 진단 통과할 수 있습니다.<div class=\"prereq-links\">" + items + "</div></div>";
     }
+  }
+  let diagPanel = "";
+  if (Array.isArray(tr.units) && tr.units.length) {
+    const hasDiagMsg = !!(state.diagNote && state.diagNote.track === tr.id);
+    const unitChecks = tr.units.map((u, ui) => {
+      let allPassed = true;
+      for (let w = u.start; w <= u.end; w++) {
+        if (!state.pass[tr.id + ":" + w]) { allPassed = false; break; }
+      }
+      const bm = u.benchmark;
+      const bmText = bm ? "<span class=\"badge\">" + esc(bm.level) + "</span> <span class=\"badge\">" + esc(bm.standard) + "</span>" : "";
+      const diagList = bm && Array.isArray(bm.diagnostic)
+        ? "<ul class=\"diag-list\">" + bm.diagnostic.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>"
+        : "";
+      return "<label class=\"diag-unit\"><div class=\"diag-unit-head\"><input type=\"checkbox\" data-diag-unit=\"" + esc(u.id) + "\"" + (allPassed ? " disabled" : "") + "><strong>" + (ui + 1) + "단원 · " + esc(u.title) + "</strong> <span class=\"muted\">(" + u.start + "–" + u.end + "주)</span> " + (allPassed ? "<span class=\"badge good\">통과됨</span>" : "") + bmText + "</div>" + diagList + "</label>";
+    }).join("");
+    const msgHTML = hasDiagMsg ? "<p class=\"diag-result\">" + esc(state.diagNote.text) + "</p>" : "";
+    diagPanel = "<details class=\"diag-panel noprint\" data-diag=\"" + esc(tr.id) + "\"" + (hasDiagMsg ? " open" : "") + "><summary>진단 배치 · 이미 숙달한 대단원 건너뛰기</summary><p class=\"muted\">아래 성취 기준(Can-Do)을 이미 충족하는 대단원을 선택해 일괄 통과하면, 중단원별 대표 캡스톤 카드만 3·7·16일 간격으로 분산 시드해 검증합니다.</p><div class=\"diag-units\">" + unitChecks + "</div><div class=\"row\"><button class=\"btn primary\" type=\"button\" data-act=\"diag-apply\" data-track=\"" + esc(tr.id) + "\">선택 단원 진단 통과</button></div>" + msgHTML + "</details>";
   }
   const days = week.days.map((day, i) => {
     const when = E.dateOf(tr, startFor(tr), state.week, i);
@@ -595,6 +646,7 @@ function renderTrack() {
     "<div class=\"week-head\"><h2><span class=\"min\">" + String(state.week).padStart(2, "0") + "</span> " + esc(week.title) + "</h2><p class=\"goal\">" + esc(week.goal) + "</p></div>",
     warn ? "<div class=\"banner\">이전 주 중 미통과 주간이 있습니다. 오늘 본학습은 가장 앞선 미통과 주의 아직 안 끝난 날로 돌아갑니다.</div>" : "",
     prereqWarn,
+    diagPanel,
     reviewSection(tr),
     ideas.length ? "<div class=\"ideas\">" + ideas.map((idea) => "<article class=\"idea\"><b>" + esc(idea[0]) + "</b>" + esc(idea[1]) + "</article>").join("") + "</div>" : "",
     "<div class=\"meta\"><div><b>이번 주 산출물</b><small>" + esc(week.outcome) + "</small></div><div><b>펼칠 자료</b><small>" + esc(week.resource) + "</small></div><div><b>통과 기준</b><small>" + esc(week.check) + "</small></div></div>",
@@ -678,25 +730,25 @@ function render(opts) {
     return;
   }
   const openMap = new Map();
-  app.querySelectorAll("details[data-unit], details[data-phase]").forEach((el) => {
-    const k = el.dataset.unit ? "u:" + el.dataset.unit : "p:" + el.dataset.phase;
+  app.querySelectorAll("details[data-unit], details[data-phase], details[data-diag]").forEach((el) => {
+    const k = el.dataset.unit ? "u:" + el.dataset.unit : el.dataset.phase ? "p:" + el.dataset.phase : "d:" + el.dataset.diag;
     openMap.set(k, el.open);
   });
   if (state.view === "home") app.innerHTML = renderHome();
   else if (state.view === "index") app.innerHTML = renderIndex();
   else app.innerHTML = renderTrack();
   if (openMap.size) {
-    app.querySelectorAll("details[data-unit], details[data-phase]").forEach((el) => {
-      const k = el.dataset.unit ? "u:" + el.dataset.unit : "p:" + el.dataset.phase;
+    app.querySelectorAll("details[data-unit], details[data-phase], details[data-diag]").forEach((el) => {
+      const k = el.dataset.unit ? "u:" + el.dataset.unit : el.dataset.phase ? "p:" + el.dataset.phase : "d:" + el.dataset.diag;
       if (openMap.has(k)) el.open = openMap.get(k);
     });
   }
   window.scrollTo(0, opts.keepScroll ? y : 0);
 }
 
-function finishCard(card, correct) {
+function finishCard(card, rating) {
   const today = todayISO();
-  const result = E.grade(card, correct, today);
+  const result = E.grade(card, rating, today);
   if (!result.ok) return;
   if (result.result === "success" || result.result === "fail") {
     state.activity[today] = "card";
@@ -951,9 +1003,29 @@ document.body.addEventListener("click", (e) => {
       persist(true);
       render({ keepScroll: true });
     }
+  } else if (act === "recall-rate") {
+    const card = state.cards[t.dataset.card];
+    if (card) finishCard(card, t.dataset.rating);
   } else if (act === "recall-yes" || act === "recall-no") {
     const card = state.cards[t.dataset.card];
     if (card) finishCard(card, act === "recall-yes");
+  } else if (act === "diag-apply") {
+    const tr = trackById(t.dataset.track);
+    const panel = t.closest(".diag-panel");
+    if (!tr || !panel) return;
+    const selectedIds = Array.from(panel.querySelectorAll("input[data-diag-unit]:checked:not(:disabled)")).map((el) => el.dataset.diagUnit);
+    if (!selectedIds.length) {
+      state.diagNote = { track: tr.id, text: "진단 통과할 대단원을 하나 이상 선택해 주세요." };
+      render({ keepScroll: true });
+      return;
+    }
+    const res = E.applyDiagnosticPlacement(tr, state, selectedIds, todayISO());
+    state.diagNote = {
+      track: tr.id,
+      text: selectedIds.length + "개 단원(" + res.skippedWeeks + "주)을 진단 통과 처리하고, 중단원 대표 검증 카드 " + res.seededCards + "장을 3·7·16일 간격으로 분산 등록했습니다."
+    };
+    persist(true);
+    render({ keepScroll: true });
   } else if (act === "timer") {
     startTimer(trackById(t.dataset.track), Number(t.dataset.week), Number(t.dataset.day));
   } else if (act === "timer-toggle") {
@@ -1066,6 +1138,7 @@ document.getElementById("importFile").addEventListener("change", (e) => {
       state = stateFromSaved(data);
       state.drafts = {};
       state.error = null;
+      state.diagNote = null;
       clampState(state);
       writeHash();
       persist(true);
@@ -1105,6 +1178,7 @@ async function boot() {
   state = clampState(picked.chosen);
   state.drafts = {};
   state.error = null;
+  state.diagNote = null;
   remoteSyncEnabled = !!(localInfo.existed || remoteState);
   if (location.hash) readHash();
   clampState(state);

@@ -3,7 +3,7 @@
 from curriculum.common import day, day_title, particle_eul, with_focus
 
 
-def algo_days(prev, title, claim, trace, code, trap, cost, check, practice="code", prev_line="", prev_practice=None):
+def algo_days(prev, title, claim, trace, code, trap, cost, check, practice="code", prev_line="", prev_practice=None, interleave_title="", interleave_line=""):
     past_mode = prev_practice or practice
     if prev == "시작":
         opening = with_focus(
@@ -21,6 +21,16 @@ def algo_days(prev, title, claim, trace, code, trap, cost, check, practice="code
             prev_line,
         )
     draft_cue = trace if code.endswith("같은 절차로 처리한다.") else code
+    interleave_algo = (
+        f" 교차 선택 연습(Interleaving): 문제 이름 없이 오늘 주제와 3주 전 '{interleave_title}'에 해당하는 입력을 섞어 두고, 입력 조건(정렬·음수 가중치·사이클·복잡도 제약 등)만 보고 어느 알고리즘·정리를 쓸지 판별한다."
+        if interleave_title
+        else ""
+    )
+    interleave_write = (
+        f" 교차 대조 연습(Interleaving): 3주 전 '{interleave_title}'의 질문·한계와 오늘 노트의 질문·한계를 섞어 놓고 어떤 가정에서 결론이 갈리는지 판별한다."
+        if interleave_title
+        else ""
+    )
     if practice == "sketch":
         return [
             day(day_title(title, "진술"), [
@@ -55,7 +65,7 @@ def algo_days(prev, title, claim, trace, code, trap, cost, check, practice="code
             day(day_title(title, "설명"), [
                 (10, with_focus(f"어제 적은 '{title}'의 적용 한계를 말한다.", cost)),
                 (20, "노트를 가리고 가정, 진술, 생략한 경계를 다시 쓴다."),
-                (20, "왜 이 조건에서만 호출할 수 있는지 세 문장으로 적는다."),
+                (20, "왜 이 조건에서만 호출할 수 있는지 세 문장으로 적는다." + interleave_algo),
                 (10, "세 문장을 소리 내어 말한다."),
             ]),
             day(day_title(title, "점검"), [
@@ -98,7 +108,7 @@ def algo_days(prev, title, claim, trace, code, trap, cost, check, practice="code
             day(day_title(title, "설명"), [
                 (10, with_focus(f"어제 적은 '{title}' 퇴고 기준을 말한다.", cost)),
                 (20, "노트를 덮고 질문·결론·예·한계를 백지에 다시 쓴다."),
-                (20, "10분 설명 스크립트를 세 문장으로 줄여 소리 내어 말한다."),
+                (20, "10분 설명 스크립트를 세 문장으로 줄여 소리 내어 말한다." + interleave_write),
                 (10, "막힌 문장만 표시한다."),
             ]),
             day(day_title(title, "점검"), [
@@ -141,7 +151,7 @@ def algo_days(prev, title, claim, trace, code, trap, cost, check, practice="code
             day(day_title(title, "설명"), [
                 (10, with_focus(f"어제 적은 '{title}'의 비용 결론을 말한다.", cost)),
                 (20, "판정을 가리고 경우 구분과 결론을 다시 쓴다."),
-                (20, "왜 맞는지 세 문장으로 적는다."),
+                (20, "왜 맞는지 세 문장으로 적는다." + interleave_algo),
                 (10, "세 문장을 소리 내어 말한다."),
             ]),
             day(day_title(title, "점검"), [
@@ -184,7 +194,7 @@ def algo_days(prev, title, claim, trace, code, trap, cost, check, practice="code
             day(day_title(title, "설명"), [
                 (10, with_focus(f"어제 적은 '{title}'의 이유 한 문장을 말한다.", cost)),
                 (20, "증명을 가리고 가정, 핵심, 결론을 다시 쓴다."),
-                (20, "왜 맞는지 세 문장으로 적는다. 가정, 핵심, 결론 순이다."),
+                (20, "왜 맞는지 세 문장으로 적는다. 가정, 핵심, 결론 순이다." + interleave_algo),
                 (10, "세 문장을 소리 내어 말한다."),
             ]),
             day(day_title(title, "점검"), [
@@ -230,7 +240,7 @@ def algo_days(prev, title, claim, trace, code, trap, cost, check, practice="code
         day(day_title(title, "설명"), [
             (10, with_focus(f"어제 적은 '{title}'의 시간 결론을 말한다.", cost)),
             (20, "코드를 가리고 추적 과정을 다시 쓴다."),
-            (20, "왜 맞는지 세 문장으로 적는다. 불변, 종료, 결과 순이다."),
+            (20, "왜 맞는지 세 문장으로 적는다. 불변, 종료, 결과 순이다." + interleave_algo),
             (10, "세 문장을 소리 내어 말한다."),
         ]),
         day(day_title(title, "점검"), [

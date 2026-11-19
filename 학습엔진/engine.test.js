@@ -322,4 +322,120 @@ assert.strictEqual(E.addDaysISO("invalid", 3), "");
   assert.ok(E.validate({ tracks: [zeroBlockTrack] }).some((e) => e.indexOf("min") !== -1));
 }
 
+// 4-level adaptive grading (again/hard/good/easy), ease bounds, savings, and leech detection
+{
+  // hard: lowers ease by 0.1, scales interval by 0.75 * ease/2.0, holds step (or bumps 0->1)
+  const hardCard = { id: "h1", kind: "week", step: 3, ease: 2.0, lapses: 0, reviews: 0, phase: "reveal", due: today };
+  const hardRes = E.grade(hardCard, "hard", today);
+  assert.strictEqual(hardRes.ok, true);
+  assert.strictEqual(hardRes.graduated, false);
+  assert.strictEqual(hardCard.step, 3);
+  assert.strictEqual(hardCard.ease, 1.9);
+  assert.strictEqual(hardCard.reviews, 1);
+  assert.strictEqual(hardCard.lastQuality, "hard");
+  assert.strictEqual(E.offsetOf(today, hardCard.due), Math.round(E.INTERVALS[3] * (1.9 / 2.0) * 0.75));
+
+  // easy: increases ease by 0.15 (capped 2.6), jumps 2 steps for step<=2, graduates from penultimate step
+  const easyCard = { id: "e1", kind: "week", step: 1, ease: 2.55, lapses: 0, reviews: 0, phase: "reveal", due: today };
+  const easyRes = E.grade(easyCard, "easy", today);
+  assert.strictEqual(easyRes.graduated, false);
+  assert.strictEqual(easyCard.ease, 2.6);
+  assert.strictEqual(easyCard.step, 3);
+  assert.strictEqual(easyCard.lastQuality, "easy");
+  assert.strictEqual(E.offsetOf(today, easyCard.due), Math.round(E.INTERVALS[3] * (2.6 / 2.0)));
+
+  const easyGrad = { id: "e2", kind: "week", step: E.INTERVALS.length - 2, ease: 2.0, phase: "reveal", due: today };
+  assert.strictEqual(E.grade(easyGrad, "easy", today).graduated, true);
+  assert.strictEqual(easyGrad.retired, true);
+
+  // savings on 1st lapse at high step (>= 3), then leech at 4th lapse
+  const savCard = { id: "s1", kind: "week", step: 4, ease: 2.0, lapses: 0, reviews: 0, phase: "reveal", due: today };
+  assert.strictEqual(E.grade(savCard, "again", today).result, "retry");
+  E.commitAnswer(savCard);
+  assert.strictEqual(E.grade(savCard, "again", today).result, "fail");
+  assert.strictEqual(savCard.lapses, 1);
+  assert.strictEqual(savCard.step, 2); // 4 - 2 = 2 (savings preserved)
+  assert.strictEqual(savCard.leech, false);
+  assert.strictEqual(savCard.ease, 1.8);
+
+  // 3 more lapses -> leech becomes true, ease floored at 1.3
+  for (let k = 0; k < 3; k++) {
+    savCard.phase = "reveal";
+    E.grade(savCard, "again", today);
+    E.commitAnswer(savCard);
+    E.grade(savCard, "again", today);
+  }
+  assert.strictEqual(savCard.lapses, 4);
+  assert.strictEqual(savCard.leech, true);
+  assert.strictEqual(savCard.ease, 1.3);
+  assert.strictEqual(savCard.step, 1); // week baseStep
+
+  // good on eased-down card gently restores ease (+0.05 up to 2.0)
+  savCard.phase = "reveal";
+  E.grade(savCard, "good", today);
+  assert.strictEqual(savCard.ease, 1.35);
+}
+
+// Interleaving diversity in takeQueue: skips adjacent week 2 in favor of week 5 when both prompt
+{
+  const w1 = { id: "ma:w:1", track: "ma", week: 1, kind: "week", due: "2026-10-10", phase: "prompt" };
+  const w2 = { id: "ma:w:2", track: "ma", week: 2, kind: "week", due: "2026-10-10", phase: "prompt" };
+  const w5 = { id: "ma:w:5", track: "ma", week: 5, kind: "week", due: "2026-10-10", phase: "prompt" };
+  const q = E.takeQueue([w1, w2, w5]);
+  assert.deepStrictEqual(q.shown.map((c) => c.id), ["ma:w:1", "ma:w:5"]);
+  assert.deepStrictEqual(q.defer.map((c) => c.id), ["ma:w:2"]);
+}
+
+// weeklyConsistency respects 2 rest days/week
+{
+  const ws = E.blankState("2026-10-05");
+  // Week 1: Oct 5..9 (5 days), rest Oct 10..11
+  ["2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09"].forEach((d) => { ws.activity[d] = true; });
+  // Week 2: Oct 12..16 (5 days), rest Oct 17..18
+  ["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15"].forEach((d) => { ws.activity[d] = true; });
+  ws.done["ma:1:0"] = "2026-10-16";
+  const wc = E.weeklyConsistency(ws, "2026-10-18", 5);
+  assert.strictEqual(wc.activeLast7, 5);
+  assert.strictEqual(wc.targetDays, 5);
+  assert.strictEqual(wc.consecutiveWeeks, 2);
+}
+
+// applyDiagnosticPlacement passes selected units and seeds staggered phase-end cards
+{
+  const diagTrack = track([7, 7, 7, 7, 7, 7]);
+  diagTrack.phases = [
+    { name: "p1", start: 1, end: 2 },
+    { name: "p2", start: 3, end: 4 },
+    { name: "p3", start: 5, end: 6 }
+  ];
+  diagTrack.units = [
+    { id: "u1", title: "기초", start: 1, end: 4, phases: [0, 1] },
+    { id: "u2", title: "심화", start: 5, end: 6, phases: [2] }
+  ];
+  const ds = E.blankState(today);
+  const res = E.applyDiagnosticPlacement(diagTrack, ds, ["u1"], today);
+  assert.strictEqual(res.skippedWeeks, 4);
+  assert.strictEqual(res.seededCards, 2);
+  assert.ok(ds.pass["ma:1"] && ds.pass["ma:4"] && !ds.pass["ma:5"]);
+  assert.ok(ds.cards["ma:w:2"] && ds.cards["ma:w:4"] && !ds.cards["ma:w:1"] && !ds.cards["ma:w:3"]);
+  assert.strictEqual(ds.cards["ma:w:2"].due, E.addDaysISO(today, 3));
+  assert.strictEqual(ds.cards["ma:w:4"].due, E.addDaysISO(today, 9));
+}
+
+// validate catches malformed prerequisites and passes valid cross-track prerequisites
+{
+  const maTr = track([7, 7]);
+  maTr.id = "ma";
+  const alTr = track([7, 7]);
+  alTr.id = "al";
+  alTr.prerequisites = [{ week: 2, reqTrack: "ma", reqWeek: 1, topic: "기초" }];
+  assert.deepStrictEqual(E.validate({ tracks: [maTr, alTr] }), []);
+
+  alTr.prerequisites = [{ week: 99, reqTrack: "unknown", reqWeek: 0, topic: "" }];
+  const prErrs = E.validate({ tracks: [maTr, alTr] });
+  assert.ok(prErrs.some((e) => e.indexOf("prereq 1 week") !== -1));
+  assert.ok(prErrs.some((e) => e.indexOf("prereq 1 target") !== -1));
+  assert.ok(prErrs.some((e) => e.indexOf("prereq 1 topic") !== -1));
+}
+
 console.log("engine ok");

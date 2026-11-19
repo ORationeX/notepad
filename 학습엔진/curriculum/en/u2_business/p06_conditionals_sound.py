@@ -18,6 +18,6 @@ W("wish와 가정", "아쉬움", "과거", "I wish I had checked the attachment 
 W("대조와 양보 접속", "despite", "although", "Despite the delay, the team delivered on Friday.", "although/even though 뒤에는 절(주어+동사), despite/in spite of 뒤에는 명사구만 온다.", "Despite it rained처럼 despite 뒤에 주어+동사 절을 바로 붙이지 않는다."),
 W("듣기: 뉴스·팟캐스트 요약", "받아쓰기", "요지", "Although costs rose sharply, the group maintained its target margin.", "3분 원어민 오디오(BBC 6 Minute English)에서 핵심 주장 1개와 근거 2개를 듣고 받아쓴다.", "모르는 단어 1개에서 멈춰 전체 논지 흐름을 놓치지 않는다.", mode="listen"),
 W("정보 강세와 억양", "대조", "강세", "I sent the REVISED contract, not the original draft.", "대조되는 수식어나 핵심 동사에 강세를 얹고 문장 끝 억양으로 완료·미완료를 구분한다.", "모든 단어에 평평한 강세를 주면 상대가 정정 포인트를 듣지 못한다.", mode="pron"),
-W("3분 상황극", "과거·가정", "연결", "If we had tested earlier, we would have caught the issue before launch.", "지난 사건(과거완료)과 대안(가정법·should have)을 2~3분 녹음 한 편으로 엮는다.", "단순과거만 나열해 시간 앞뒤와 후회·가정의 층위가 사라지지 않게 한다."),
+W("3분 상황극", "과거·가정", "연결", "If we had tested earlier, we would have caught the issue before launch.", "지난 사건(과거완료)과 대안(가정법·should have)을 3분 녹음 한 편으로 엮는다.", "단순과거만 나열해 시간 앞뒤와 후회·가정의 층위가 사라지지 않게 한다."),
 W("중급 문법 점검", "변환", "일관", "Had I known the risk, I would have paused the release despite the pressure.", "가정법, 과거완료, 분사·전치사구를 섞어 2~3분 말하기와 10줄 글을 오류 없이 남긴다.", "조건절과 결과절의 시제가 어긋나거나 despite 뒤에 절이 남으면 통과하지 못한다."),
 ])

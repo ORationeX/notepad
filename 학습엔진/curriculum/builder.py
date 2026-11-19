@@ -17,7 +17,7 @@ from curriculum.days import (
     thicken_math_check,
 )
 from curriculum.en.templates import SPEAK as EN_SPEAK, WRITE as EN_WRITE
-from curriculum.meta import HOUR, TRACK_BASE
+from curriculum.meta import HOUR, PREREQUISITES, TRACK_BASE, UNIT_BENCHMARKS
 
 ROOT = Path(__file__).resolve().parent.parent
 ROADMAP_DIR = ROOT / "roadmap"
@@ -32,7 +32,7 @@ def load_domain(track_id):
     return json.loads(json.dumps(pkg.UNITS, ensure_ascii=False)), pkg.PHASES
 
 
-def parse_week(line, resource, kind, prev, week_no=0, practice="code", prev_line="", mode=None, prev_mode=None):
+def parse_week(line, resource, kind, prev, week_no=0, practice="code", prev_line="", mode=None, prev_mode=None, interleave_title="", interleave_line=""):
     """Expand one `§`-delimited curriculum specification tuple into a 7-day week object."""
     parts = [p.strip() for p in line.split("§")]
     if len(parts) == 10:
@@ -53,6 +53,7 @@ def parse_week(line, resource, kind, prev, week_no=0, practice="code", prev_line
         days = math_days(
             prev, title, definition, example, trap, drill, why,
             thicken_math_check(week_no, check, math_mode), week_no, prev_line, math_mode, prev_mode,
+            interleave_title=interleave_title, interleave_line=interleave_line,
         )
         if math_mode == "calc" or week_no <= 26:
             prefix = title if title.endswith("의 뜻") else f"{title}의 뜻"
@@ -64,13 +65,19 @@ def parse_week(line, resource, kind, prev, week_no=0, practice="code", prev_line
             outcome = f"{prefix}·증명과 반례를 백지에 정리한 한 장."
     elif kind == "en":
         en_mode = mode or "core"
-        check = thicken_english_check(week_no, check, english_expand_minutes(week_no), drill)
+        check = thicken_english_check(week_no, check, english_expand_minutes(week_no), drill, title)
         goal = f"{example} (기준 문장: {definition})"
-        days = english_days(prev, title, definition, example, trap, drill, why, check, prev_line, en_mode, week_no)
+        days = english_days(
+            prev, title, definition, example, trap, drill, why, check, prev_line, en_mode, week_no,
+            interleave_title=interleave_title, interleave_line=interleave_line,
+        )
         outcome = f"{title} 파일 하나와 퇴고한 문장." if title.endswith("녹음") else f"{title} 녹음 하나와 퇴고한 문장."
     elif kind == "al":
         al_mode = mode or practice
-        days = algo_days(prev, title, definition, example, drill, trap, why, check, al_mode, prev_line, prev_mode)
+        days = algo_days(
+            prev, title, definition, example, drill, trap, why, check, al_mode, prev_line, prev_mode,
+            interleave_title=interleave_title, interleave_line=interleave_line,
+        )
         if al_mode == "proof":
             outcome = f"{title} 증명과 반례 노트 한 장."
         elif al_mode == "sketch":
@@ -82,7 +89,10 @@ def parse_week(line, resource, kind, prev, week_no=0, practice="code", prev_line
         else:
             outcome = f"{title} 손 추적 표 한 장과 구현 코드."
     elif kind == "sw":
-        days = sw_days(prev, title, definition, example, trap, drill, why, check, prev_line)
+        days = sw_days(
+            prev, title, definition, example, trap, drill, why, check, prev_line,
+            interleave_title=interleave_title, interleave_line=interleave_line,
+        )
         contrast = lab2.replace("대비: ", "", 1)
         if week_no <= 104:
             outcome = f"{title}({contrast}) 비교 설계 노트 또는 커밋."
@@ -164,8 +174,20 @@ def load_syllabus(phase_rows, kind, old_weeks=None):
                 mode = week_mode or phase_mode
                 line = "§".join(fields)
                 week_no = len(weeks) + 1
+                interleave_title = ""
+                interleave_line = ""
+                if len(weeks) >= 3:
+                    anchor = weeks[len(weeks) - 3]
+                    interleave_title = anchor.get("title", "")
+                    anchor_ideas = anchor.get("ideas") or []
+                    interleave_line = focus_line(
+                        (anchor_ideas[0][1] if anchor_ideas and len(anchor_ideas[0]) > 1 else "")
+                        or anchor.get("goal")
+                        or ""
+                    )
                 weeks.append(parse_week(
                     line, row["resource"], kind, prev, week_no, practice, prev_line, mode, prev_mode,
+                    interleave_title=interleave_title, interleave_line=interleave_line,
                 ))
                 prev = weeks[-1]["title"]
                 if kind in ("sw", "en"):
@@ -197,13 +219,18 @@ def load_syllabus(phase_rows, kind, old_weeks=None):
 
 
 def build_track(track_id):
-    """Build one complete track JSON payload (including hierarchical `units`)."""
+    """Build one complete track JSON payload (including hierarchical `units`, `benchmarks`, and `prerequisites`)."""
     units, phase_rows = load_domain(track_id)
     phases, weeks = load_syllabus(phase_rows, track_id)
-    data = dict(TRACK_BASE[track_id])
+    benchmarks = UNIT_BENCHMARKS.get(track_id, {})
+    for u in units:
+        if u["id"] in benchmarks:
+            u["benchmark"] = json.loads(json.dumps(benchmarks[u["id"]], ensure_ascii=False))
+    data = json.loads(json.dumps(TRACK_BASE[track_id], ensure_ascii=False))
     data["units"] = units
     data["phases"] = phases
     data["weeks"] = weeks
+    data["prerequisites"] = json.loads(json.dumps(PREREQUISITES.get(track_id, []), ensure_ascii=False))
     return data
 
 
@@ -261,8 +288,38 @@ def check_order(built):
     al_master = find(al, "마스터 정리")
     if not (ma_master < al_master):
         raise SystemExit(f"master {ma_master} vs {al_master}")
-    if find(ma, "고유값") < 140:
+    if find(ma, "고유값") < 105:
         raise SystemExit("eigen early")
+    if find(ma, "행렬 표현") >= find(al, "행렬 곱 나누기"):
+        raise SystemExit("matrix before strassen")
+    if find(ma, "선형대수 점검") >= find(al, "선형계획"):
+        raise SystemExit("linalg before LP")
+    if find(al, "점근 표기") > 26:
+        raise SystemExit("algo asymptotic missing in Y1")
+    if find(al, "퀵 정렬") > 26 or find(al, "계수 정렬") > 26:
+        raise SystemExit("algo sorting missing in Y1")
+    if find(al, "플로이드-워셜") > 91:
+        raise SystemExit("floyd-warshall missing in Y2")
+    if find(sw, "표현 불변식") > 39:
+        raise SystemExit("sw RI missing in Y1")
+    if find(sw, "위협 모델링") > 247:
+        raise SystemExit("sw security missing")
+    if find(sw, "에러 버짓") > 325:
+        raise SystemExit("sw SRE error budget missing")
+    for tid, req_list in PREREQUISITES.items():
+        t_weeks = unwrapped[tid][1]
+        for req in req_list:
+            rw = req["week"]
+            rt = req["reqTrack"]
+            rt_w = req["reqWeek"]
+            if not (1 <= rw <= len(t_weeks)):
+                raise SystemExit(f"prereq {tid} week out of range: {rw}")
+            if rt not in unwrapped or not (1 <= rt_w <= len(unwrapped[rt][1])):
+                raise SystemExit(f"prereq {tid} target out of range: {rt} w{rt_w}")
+            if not str(req.get("topic", "")).strip():
+                raise SystemExit(f"prereq {tid} w{rw} empty topic")
+            if tid == "al" and rt == "ma" and rt_w >= rw:
+                raise SystemExit(f"prereq ma w{rt_w} >= al w{rw}")
     if find(ma, "체비쇼프") > find(al, "체르노프"):
         raise SystemExit("chebyshev after chernoff")
     if find(ma, "다항식의 나눗셈") > find(al, "다항식 일치"):
@@ -435,7 +492,7 @@ def check_order(built):
             raise SystemExit(f"al w{wi} coding week is not in code mode")
     if "접미사 배열" in json.dumps(al[217], ensure_ascii=False) or "실패 함수 배열" not in json.dumps(al[217], ensure_ascii=False):
         raise SystemExit("al w218 KMP failure array terminology regression")
-    for ma_wi in (112, 165, 166, 186, 201, 203, 214, 219, 230, 233, 240, 242, 243, 244, 247, 258, 259, 260):
+    for ma_wi in (125, 165, 166, 186, 201, 203, 207, 214, 219, 230, 233, 240, 242, 243, 244, 247, 258, 259, 260):
         ma_d3 = ma[ma_wi - 1]["days"][2]["blocks"][2]["t"]
         if "스케치" not in ma_d3:
             raise SystemExit(f"ma w{ma_wi} expected sketch mode on Day 3")
@@ -453,18 +510,26 @@ def check_order(built):
     for k, v in EN_SPEAK.items():
         if re.search(r"\d+(?:초|분)", v):
             raise SystemExit(f"en SPEAK[{k}] hardcodes duration: {v}")
+    if "3분 말하기" in json.dumps(en[12], ensure_ascii=False):
+        raise SystemExit("en w13 still has 3분 말하기")
+    if "1분 말하기" in json.dumps(en[62], ensure_ascii=False):
+        raise SystemExit("en w63 still has 1분 말하기")
+    if "90초 이상" not in en[24]["check"]:
+        raise SystemExit(f"en w25 expected 90초 이상: {en[24]['check']}")
+    if "8분 이상" not in en[154]["check"]:
+        raise SystemExit(f"en w155 expected 8분 이상: {en[154]['check']}")
     for wi, w in enumerate(en, 1):
         for target_str in (w["check"], *(b["t"] for d in w["days"] for b in d["blocks"])):
-            mins = set(re.findall(r"(?:2~3분|[1-6]분|90초)\s*이상", target_str))
+            mins = set(re.findall(r"(?:2~3분|[1-8]분|10분|90초)\s*이상", target_str))
             if len(mins) > 1:
                 raise SystemExit(f"en w{wi} conflicting speak mins in same unit: {mins}")
             cleaned = re.sub(r"\d[\d,]*단어[^.?!]*(?:→|에서)[^.?!]*?\d+단어", "", target_str)
             words = set(re.findall(r"(?<![\d,])(?:100|150|200|250|300|350|400|500)단어", cleaned))
             if len(words) > 1:
                 raise SystemExit(f"en w{wi} conflicting word counts in same unit: {words}")
-        chk_mins = set(re.findall(r"(?:2~3분|[1-6]분|90초)\s*이상", w["check"]))
+        chk_mins = set(re.findall(r"(?:2~3분|[1-8]분|10분|90초)\s*이상", w["check"]))
         if chk_mins and wi >= 53:
-            d4_mins = set(re.findall(r"(?:2~3분|[1-6]분|90초)\s*이상", w["days"][3]["blocks"][1]["t"]))
+            d4_mins = set(re.findall(r"(?:2~3분|[1-8]분|10분|90초)\s*이상", w["days"][3]["blocks"][1]["t"]))
             if d4_mins and d4_mins != chk_mins:
                 raise SystemExit(f"en w{wi} Day 4 vs check speak mins mismatch: {d4_mins} vs {chk_mins}")
         if re.search(r"(?:^|\s)(\S+)\s+\1(?=\s|$|[.,!?])", w["outcome"]):

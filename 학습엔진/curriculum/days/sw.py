@@ -3,7 +3,7 @@
 from curriculum.common import day, day_title, particle_eul, with_focus
 
 
-def sw_days(prev, title, rule, case, mistake, work, why, check, prev_line=""):
+def sw_days(prev, title, rule, case, mistake, work, why, check, prev_line="", interleave_title="", interleave_line=""):
     if prev == "시작":
         opening = with_focus(
             f"오늘은 '{title}'{particle_eul(title)} 시작한다. 실제 코드나 설계 사례에서 최근 변경 하나를 고르고, 첫 줄 요약과 대상 파일 이름을 적는다. 이번 주 핵심 원칙은 다음과 같다.",
@@ -14,6 +14,11 @@ def sw_days(prev, title, rule, case, mistake, work, why, check, prev_line=""):
             f"지난주 '{prev}'의 설계 원칙과 트레이드오프를 노트를 덮고 말한다. 그 기준은 다음과 같다.",
             prev_line,
         )
+    interleave_note = (
+        f" 교차 트레이드오프 판별(Interleaving): 3주 전 '{interleave_title}' 원칙과 오늘 원칙이 충돌할 때 지배적 제약 기준으로 어느 쪽을 우선할지 한 문장으로 판별한다."
+        if interleave_title
+        else ""
+    )
     return [
         day(day_title(title, "기준과 대조"), [
             (10, opening),
@@ -41,13 +46,13 @@ def sw_days(prev, title, rule, case, mistake, work, why, check, prev_line=""):
         day(day_title(title, "트레이드오프 근거"), [
             (10, with_focus(f"어제 '{title}'에서 이름 붙인 실패 패턴을 말한다. 이번 주 기준은 다음과 같다.", rule)),
             (20, why),
-            (20, f"어제 만든 '{title}' 산출물의 두 지점에 이 근거를 대입해, 어떤 변경 비용이 줄고 어떤 비용을 감수했는지 적는다."),
+            (20, f"어제 만든 '{title}' 산출물의 두 지점에 이 근거를 대입해, 어떤 변경 비용이 줄고 어떤 비용을 감수했는지 적는다. ISO/IEC 25010 품질 속성(유지보수성·신뢰성·보안성·성능 효율성) 중 개선된 축과 양보한 축을 함께 명시한다."),
             (10, "선택과 거절의 근거를 두 문장으로 줄인다."),
         ]),
         day(day_title(title, "구술 설명"), [
             (10, with_focus(f"어제 정리한 '{title}'의 트레이드오프 근거 두 문장을 말한다. 기준은 다음과 같다.", rule)),
             (20, "노트를 가리고 문제 상황과 두 가지 설계 대안을 백지에 다시 스케치한다."),
-            (20, "이번 맥락에서 채택한 원칙과 의도적으로 거절한 원칙을 세 문장으로 적는다."),
+            (20, "이번 맥락에서 채택한 원칙과 의도적으로 거절한 원칙을 세 문장으로 적는다." + interleave_note),
             (10, "세 문장을 소리 내어 막힘없이 설명한다."),
         ]),
         day(day_title(title, "점검"), [

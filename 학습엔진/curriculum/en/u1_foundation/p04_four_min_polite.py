@@ -4,7 +4,7 @@ from curriculum.common import E, phase
 from curriculum.en.resources import R_Y1 as R
 
 PHASE = phase("4분과 정중함", 40, 52, "단락", "4분", "4분 말하기와 정중한 메일 한 통을 남긴다. 계약 문장은 다루지 않는다.", R, [
-E("4분의 뼈대", "열기", "닫기", "Today I will explain one change, give two examples, and ask for a decision.", "4분은 열기, 점 하나, 예시 둘, 닫기다.", "열기에서 점을 세 개 약속하면 4분이 모자란다.", "뼈대만 45초로 말한다.", "뼈대 4문장을 쓴다.", "core"),
+E("발표 4단 뼈대 설계", "열기", "닫기", "Today I will explain one change, give two examples, and ask for a decision.", "4분 본 발표(50·52주)에 쓸 열기, 핵심 1점, 예시 둘, 닫기의 4단 뼈대 골격을 익힌다.", "열기에서 점을 세 개 약속하면 4분이 모자란다.", "4분 발표용 4단 뼈대만 먼저 45초로 말한 뒤, 각 문장 역할을 붙여 말하기를 이어 간다.", "뼈대 4문장을 쓴다.", "core"),
 E("오프닝 두 문장", "오늘", "청자", "Today I am speaking to the design team about one delay.", "오프닝은 청자와 주제를 말한다.", "자신을 3문장 소개하면 주제가 늦어진다.", "오프닝 두 문장을 5번 녹음한다.", "가장 짧은 버전을 쓴다.", "core"),
 E("예시 둘", "first example", "second", "The first example is Monday's call. The second is Tuesday's mail.", "두 예시는 같은 점을 다른 사례로 보여 준다.", "두 예시가 서로 다른 점이면 4분의 점이 둘이다.", "예시 둘을 2분으로 말한다.", "예시마다 두 문장씩 쓴다.", "core"),
 E("마무리와 질문", "so", "question", "So I ask for a new date. What date works?", "마무리는 요청 하나와 질문 하나다.", "질문을 세 개 던지면 청자가 무엇을 답할지 모른다.", "마무리 45초를 녹음한다.", "요청과 질문을 쓴다.", "core"),

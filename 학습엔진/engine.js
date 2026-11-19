@@ -165,15 +165,27 @@
         String(a.id).localeCompare(String(b.id));
     });
     const shown = [];
-    const weeks = new Set();
     const defer = [];
-    sorted.forEach((card) => {
-      if (shown.length >= 2 || weeks.has(card.week)) defer.push(card);
-      else {
-        shown.push(card);
-        weeks.add(card.week);
+    if (sorted.length) {
+      shown.push(sorted[0]);
+      const diffCandidates = [];
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i].week !== sorted[0].week) diffCandidates.push(sorted[i]);
       }
-    });
+      let second = null;
+      if (diffCandidates.length) {
+        if (phaseRank(diffCandidates[0]) < 2 || diffCandidates.length === 1) {
+          second = diffCandidates[0];
+        } else {
+          const topDue = diffCandidates[0].origDue || diffCandidates[0].due || "";
+          second = diffCandidates.find((c) => (c.origDue || c.due || "") === topDue && Math.abs(c.week - sorted[0].week) >= 2) || diffCandidates[0];
+        }
+      }
+      if (second) shown.push(second);
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i] !== second) defer.push(sorted[i]);
+      }
+    }
     return { shown: shown, defer: defer };
   }
 
@@ -194,42 +206,113 @@
     return true;
   }
 
-  function grade(card, correct, todayISO) {
+  function clampEase(val) {
+    return Math.max(1.3, Math.min(2.6, +Number(val).toFixed(2)));
+  }
+
+  function scaledInterval(step, ease, mult) {
+    const m = typeof mult === "number" && isFinite(mult) ? mult : 1.0;
+    return Math.max(1, Math.round(INTERVALS[step] * (ease / 2.0) * m));
+  }
+
+  function normalizeRating(rating) {
+    if (rating === true) return "good";
+    if (rating === false) return "again";
+    if (rating === "again" || rating === "hard" || rating === "good" || rating === "easy") return rating;
+    return null;
+  }
+
+  function grade(card, rating, todayISO) {
+    const q = normalizeRating(rating);
+    if (!q) return { ok: false };
     const phase = card.phase || "prompt";
     if (phase !== "reveal" && phase !== "retryReveal") return { ok: false };
     card.step = Number.isInteger(card.step)
       ? Math.max(0, Math.min(card.step, INTERVALS.length - 1))
       : (card.kind === "week" ? 1 : 0);
+    card.ease = (typeof card.ease === "number" && isFinite(card.ease)) ? clampEase(card.ease) : 2.0;
+    card.lapses = Number.isInteger(card.lapses) && card.lapses >= 0 ? card.lapses : 0;
+    card.reviews = Number.isInteger(card.reviews) && card.reviews >= 0 ? card.reviews : 0;
     const second = phase === "retryReveal";
-    if (correct) {
+
+    if (q === "again") {
       if (!second) {
-        if (card.step >= INTERVALS.length - 1) {
-          card.retired = true;
-          card.due = null;
-          delete card.origDue;
-          card.phase = "prompt";
-          return { ok: true, result: "success", graduated: true };
-        }
-        card.step += 1;
-      } else if (card.step === 0) {
-        card.step = 1;
+        card.phase = "retry";
+        return { ok: true, result: "retry" };
       }
+      card.lapses += 1;
+      card.reviews += 1;
+      card.ease = clampEase(card.ease - 0.2);
+      card.leech = card.lapses >= 4;
+      card.lastQuality = "again";
+      const baseStep = card.kind === "week" ? 1 : 0;
+      if (card.step >= 3 && card.lapses === 1) {
+        card.step = Math.max(baseStep, card.step - 2);
+      } else {
+        card.step = baseStep;
+      }
+      let days = scaledInterval(card.step, card.ease, 1.0);
+      if (card.step === baseStep) days = Math.min(INTERVALS[baseStep], days);
       card.retired = false;
-      card.due = addDaysISO(todayISO, INTERVALS[card.step]);
+      card.due = addDaysISO(todayISO, days);
+      delete card.origDue;
+      card.phase = "prompt";
+      return { ok: true, result: "fail" };
+    }
+
+    card.reviews += 1;
+    card.lastQuality = q;
+
+    if (q === "hard") {
+      card.ease = clampEase(card.ease - 0.1);
+      if (card.step === 0) card.step = 1;
+      card.retired = false;
+      card.due = addDaysISO(todayISO, scaledInterval(card.step, card.ease, 0.75));
       delete card.origDue;
       card.phase = "prompt";
       return { ok: true, result: "success", graduated: false };
     }
+
+    if (q === "easy") {
+      card.ease = clampEase(card.ease + 0.15);
+      if (!second && card.step >= INTERVALS.length - 2) {
+        card.retired = true;
+        card.due = null;
+        delete card.origDue;
+        card.phase = "prompt";
+        return { ok: true, result: "success", graduated: true };
+      }
+      if (!second) {
+        card.step = Math.min(INTERVALS.length - 1, card.step + (card.step <= 2 ? 2 : 1));
+      } else {
+        card.step = Math.min(INTERVALS.length - 1, card.step + 1);
+      }
+      card.retired = false;
+      card.due = addDaysISO(todayISO, scaledInterval(card.step, card.ease, 1.0));
+      delete card.origDue;
+      card.phase = "prompt";
+      return { ok: true, result: "success", graduated: false };
+    }
+
+    // q === "good"
+    if (card.ease < 2.0) card.ease = Math.min(2.0, +(card.ease + 0.05).toFixed(2));
     if (!second) {
-      card.phase = "retry";
-      return { ok: true, result: "retry" };
+      if (card.step >= INTERVALS.length - 1) {
+        card.retired = true;
+        card.due = null;
+        delete card.origDue;
+        card.phase = "prompt";
+        return { ok: true, result: "success", graduated: true };
+      }
+      card.step += 1;
+    } else if (card.step === 0) {
+      card.step = 1;
     }
     card.retired = false;
-    card.step = card.kind === "week" ? 1 : 0;
-    card.due = addDaysISO(todayISO, INTERVALS[card.step]);
+    card.due = addDaysISO(todayISO, scaledInterval(card.step, card.ease, 1.0));
     delete card.origDue;
     card.phase = "prompt";
-    return { ok: true, result: "fail" };
+    return { ok: true, result: "success", graduated: false };
   }
 
   function scheduleWeek(state, trackId, week, todayISO, reset) {
@@ -243,7 +326,11 @@
       step: 1,
       due: addDaysISO(todayISO, INTERVALS[1]),
       phase: "prompt",
-      retired: false
+      retired: false,
+      ease: 2.0,
+      lapses: 0,
+      reviews: 0,
+      leech: false
     };
     return state.cards[id];
   }
@@ -264,10 +351,97 @@
       step: 0,
       due: due,
       phase: "prompt",
-      retired: false
+      retired: false,
+      ease: 2.0,
+      lapses: 0,
+      reviews: 0,
+      leech: false
     };
     state.stuck[sessionId(trackId, week, day)] = line;
     return state.cards[id];
+  }
+
+  function weeklyConsistency(state, todayISO, targetDays) {
+    const target = Number.isInteger(targetDays) && targetDays >= 1 && targetDays <= 7 ? targetDays : 5;
+    if (!isValidISO(todayISO)) return { activeLast7: 0, targetDays: target, consecutiveWeeks: 0 };
+    const activeDates = new Set();
+    Object.keys((state && state.done) || {}).forEach((k) => {
+      const d = state.done[k];
+      if (isValidISO(d)) activeDates.add(d);
+    });
+    Object.keys((state && state.activity) || {}).forEach((d) => {
+      if (state.activity[d] && isValidISO(d)) activeDates.add(d);
+    });
+    const countWindow = (endISO) => {
+      let c = 0;
+      for (let i = 0; i < 7; i++) {
+        if (activeDates.has(addDaysISO(endISO, -i))) c += 1;
+      }
+      return c;
+    };
+    const activeLast7 = countWindow(todayISO);
+    let cursor = activeLast7 >= target ? todayISO : addDaysISO(todayISO, -7);
+    let consecutiveWeeks = 0;
+    for (let w = 0; w < 400; w++) {
+      if (countWindow(cursor) >= target) {
+        consecutiveWeeks += 1;
+        cursor = addDaysISO(cursor, -7);
+      } else {
+        break;
+      }
+    }
+    return { activeLast7: activeLast7, targetDays: target, consecutiveWeeks: consecutiveWeeks };
+  }
+
+  function applyDiagnosticPlacement(track, state, unitIds, todayISO) {
+    if (!track || !state || !Array.isArray(track.units) || !Array.isArray(unitIds) || !isValidISO(todayISO)) {
+      return { skippedWeeks: 0, seededCards: 0 };
+    }
+    const wanted = new Set(unitIds);
+    let skippedWeeks = 0;
+    let seededCards = 0;
+    let phaseOffset = 0;
+    state.pass = state.pass || {};
+    state.skip = state.skip || {};
+    state.cards = state.cards || {};
+    track.units.forEach((u) => {
+      if (!u || !wanted.has(u.id)) return;
+      const startW = Math.max(1, Number(u.start) || 1);
+      const endW = Math.min(track.weeks.length, Number(u.end) || 0);
+      for (let w = startW; w <= endW; w++) {
+        const key = track.id + ":" + w;
+        if (!state.pass[key]) {
+          state.pass[key] = todayISO;
+          state.skip[key] = todayISO;
+          skippedWeeks += 1;
+        }
+      }
+      (u.phases || []).forEach((pi) => {
+        const p = track.phases && track.phases[pi];
+        if (!p || !Number.isInteger(p.end) || p.end < 1 || p.end > track.weeks.length) return;
+        const id = weekCardId(track.id, p.end);
+        if (!state.cards[id]) {
+          const baseInt = INTERVALS[1 + (phaseOffset % 3)];
+          state.cards[id] = {
+            id: id,
+            kind: "week",
+            track: track.id,
+            week: Number(p.end),
+            step: 1,
+            due: addDaysISO(todayISO, baseInt + phaseOffset * 2),
+            phase: "prompt",
+            retired: false,
+            ease: 2.0,
+            lapses: 0,
+            reviews: 0,
+            leech: false
+          };
+          seededCards += 1;
+          phaseOffset += 1;
+        }
+      });
+    });
+    return { skippedWeeks: skippedWeeks, seededCards: seededCards };
   }
 
   function minStartISO(state) {
@@ -377,10 +551,24 @@
           if (unitPhaseCursor !== phaseCount) {
             errors.push(tr.id + " units coverage " + unitPhaseCursor + "!=" + phaseCount);
           }
-          if (hasPhaseBounds && tr.weeks && unitPrevEnd !== tr.weeks.length) {
+            if (hasPhaseBounds && tr.weeks && unitPrevEnd !== tr.weeks.length) {
             errors.push(tr.id + " units end " + unitPrevEnd + "!=" + tr.weeks.length);
           }
         }
+      }
+      if (Array.isArray(tr.prerequisites)) {
+        tr.prerequisites.forEach((pr, pri) => {
+          if (!pr || !Number.isInteger(pr.week) || pr.week < 1 || (tr.weeks && pr.week > tr.weeks.length)) {
+            errors.push(tr.id + " prereq " + (pri + 1) + " week");
+          }
+          const reqTr = pr && data.tracks.find((x) => x.id === pr.reqTrack);
+          if (!reqTr || !Number.isInteger(pr.reqWeek) || pr.reqWeek < 1 || (reqTr.weeks && pr.reqWeek > reqTr.weeks.length)) {
+            errors.push(tr.id + " prereq " + (pri + 1) + " target");
+          }
+          if (!pr || !String(pr.topic || "").trim()) {
+            errors.push(tr.id + " prereq " + (pri + 1) + " topic");
+          }
+        });
       }
       (tr.weeks || []).forEach((w, i) => {
         if (!w.days || !w.days.length) errors.push(tr.id + " w" + (i + 1) + " days");
@@ -431,6 +619,8 @@
     grade: grade,
     scheduleWeek: scheduleWeek,
     scheduleStuck: scheduleStuck,
+    weeklyConsistency: weeklyConsistency,
+    applyDiagnosticPlacement: applyDiagnosticPlacement,
     isActive: isActive,
     streak: streak,
     validate: validate

@@ -85,3 +85,7 @@ pnpm-debug.log*
 build_log.txt
 tmp/
 temp/
+
+# 크래시 덤프. GitHub는 100MB를 넘는 파일을 거부한다.
+*.dmp
+*.DMP

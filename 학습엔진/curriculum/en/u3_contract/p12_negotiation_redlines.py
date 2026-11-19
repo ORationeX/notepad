@@ -18,6 +18,6 @@ W("불가항력·하도급·양도 조율", "subcontract", "consent", "Provider 
 W("협상 이슈 리스트(Issues List)", "이슈 표", "우선순위", "Our Issues List prioritizes three deal-breakers and offers fallback wording for each.", "조항 전체를 빨갛게 고치기 전에 핵심 쟁점 3~5개를 표(조항·원문·우려·수정안·대안)로 요약하는 이슈 리스트를 만든다.", "사소한 문구 20개와 치명적 책임 한도 1개를 똑같은 중요도로 섞어 보내지 않는다."),
 W("듣기: 협상 통화 시뮬레이션", "청취", "응답", "I hear your concern on timing; what if we set a 15-day cure period with daily updates?", "상대의 반론 녹음(2분)을 듣고 상대의 진짜 핵심 이해관계(지연 방지 vs 비용 통제)를 파악해 60초 대응을 녹음한다.", "상대 말을 끝까지 요약 확인하지 않고 내 수정안만 반복하지 않는다.", mode="listen"),
 W("레드라인 묶음과 이메일", "bundle", "메일", "Attached is our redline v2; we accepted Section 4 and proposed a 2x cap in Section 9.", "수정 문서(v2)와 함께 수용 항목·수정 묶음·사유·남은 미결 쟁점을 깔끔한 협상 커버 메일로 작성한다.", "첨부만 달랑 보내거나 수정 이유 없이 'Please review' 한 줄만 쓰지 않는다."),
-W("8분 협상 콜 리허설", "역할극", "합의", "Let's confirm: we agree on the 2x super-cap, and Section 11 remains open for tomorrow.", "이슈 3개를 놓고 수용·절충·거절·미결 정리를 8분 양방향 협상 롤플레이로 녹음하고 회의록을 쓴다.", "합의되지 않은 쟁점을 구두로 어물쩍 넘기지 않고 합의/미결 표로 남긴다."),
+W("8분 협상 콜 리허설", "역할극", "합의", "Let's confirm: we agree on the 2x super-cap, and Section 11 remains open for tomorrow.", "이슈 3개를 놓고 수용·절충·거절·미결 정리를 8분 이상 양방향 협상 롤플레이로 녹음하고 회의록을 쓴다.", "합의되지 않은 쟁점을 구두로 어물쩍 넘기지 않고 합의/미결 표로 남긴다."),
 W("협상과 레드라인 점검", "묶음", "이유", "All five redlines state the hidden risk, the replacement text, and one fallback option.", "실제 계약 1건에서 5개 레드라인 + 이슈 리스트 + 커버 메일 + 8분 협상 녹음을 묶어 일관성을 최종 점검한다.", "대체 문장 자체가 새로운 모호함을 낳고 있으면 통과하지 못한다."),
 ])

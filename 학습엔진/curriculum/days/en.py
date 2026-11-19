@@ -45,7 +45,7 @@ def english_block_needs_fill(minutes, text):
         return False
     if not any(w in text for w in ("말한다", "녹음", "섀도잉", "따라 말")):
         return False
-    if re.search(r"60초|90초|1분|3분", text):
+    if re.search(r"60초|90초|1분|2분|3분", text):
         return True
     counts = [int(n) for n in re.findall(r"(\d+)\s*(?:개|문장|질문)", text)]
     return bool(counts) and max(counts) <= 8 and minutes >= 30
@@ -61,20 +61,44 @@ def english_expand_minutes(week_no):
     return "3분"
 
 
-def thicken_english_check(week_no, check, expand, speak=""):
-    if week_no <= 26:
-        return check
-    target = expand
+def effective_english_target(week_no, speak="", title=""):
     if re.search(r"4분(?:을| 리허설)", speak):
-        target = "4분"
-    elif re.search(r"(?<!오늘\s)10분\s*(?:영어로|영문|구술\s*녹음|발표를?)", speak):
-        target = "10분"
+        return "4분"
+    if re.search(r"(?<!오늘\s)10분\s*(?:영어로|영문|구술\s*녹음|발표를?)", speak):
+        return "10분"
+    if re.search(r"8분\s*이상", speak) or "8분 협상" in title:
+        return "8분"
+    if re.search(r"90초\s*이상", speak) or "90초" in title:
+        return "90초"
+    if re.search(r"3분\s*녹음", speak) or "3분 상황극" in title:
+        return "3분"
+    if re.search(r"2분\s*안에", speak) or "2분 경영진" in title:
+        return "2분"
+    return english_expand_minutes(week_no)
+
+
+def thicken_english_check(week_no, check, expand, speak="", title=""):
+    target = effective_english_target(week_no, speak, title)
+    if week_no <= 26 and target == expand:
+        return check
     return re.sub(r"대본 없이 60초 이상", f"대본 없이 {target} 이상", check)
 
 
-def english_days(prev, title, model, pattern, trap, speak, write, check, prev_line="", mode="core", week_no=0):
+def english_days(prev, title, model, pattern, trap, speak, write, check, prev_line="", mode="core", week_no=0, interleave_title="", interleave_line=""):
     expand = english_expand_minutes(week_no)
-    check = thicken_english_check(week_no, check, expand, speak)
+    target = effective_english_target(week_no, speak, title)
+    check = thicken_english_check(week_no, check, expand, speak, title)
+    fluency_cue = (
+        " Nation 4/3/2 변형(2분→90초→60초 압축 말하기)으로 유창성을 올린다."
+        if week_no <= 52
+        else " Nation 4/3/2 유창성 반복(4분→3분→2분 압축 말하기)으로 머뭇거림을 줄인다."
+    )
+    mediation_cue = " (CEFR 중재: 대상 독자가 바로 이해·실행할 수 있게 핵심을 요약·재구성한다.)"
+    input_cue = " 의미 중심 다독·다청(98% 이해율 자료를 사전 멈춤 없이 연속 입력)." + (
+        f" 교차 상호작용(Interleaving): 3주 전 '{interleave_title}' 표현과 오늘 표현을 섞어 즉석 문답한다."
+        if interleave_title
+        else ""
+    )
     speak_without_inputs = re.sub(
         r"\d+(?:~\d+)?(?:초|분)\s*(?:분량(?:의\s*수준\s*높은\s*영어)?\s*)?(?:원어민\s*)?(?:글쓰기/편집\s*)?"
         r"(?:계약\s*리스크\s*요약\s*오디오|발표/인터뷰\s*오디오|강연·심층\s*다큐\s*오디오|"
@@ -120,20 +144,20 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
                 (40, speak + (
                     " 핵심 내용과 답변을 대본 없이 재진술하고, 막힌 문장만 고쳐 두 번 더 녹음한다."
                     if has_explicit_dur
-                    else f" 오디오 요지를 {expand} 동안 대본 없이 재진술하고, 막힌 문장만 고쳐 두 번 더 녹음한다."
-                )),
+                    else f" 오디오 요지를 {target} 동안 대본 없이 재진술하고, 막힌 문장만 고쳐 두 번 더 녹음한다."
+                ) + fluency_cue),
                 (10, "더듬은 곳만 한 줄로 적는다."),
             ]),
             day(day_title(title, "쓰기"), [
                 (10, with_focus(f"어제 '{title}' 말하기에서 더듬은 문장을 다시 말한다.", speak)),
-                (25, write + " 받아쓴 요지를 완전한 문단으로 다시 쓴다."),
+                (25, write + " 받아쓴 요지를 완전한 문단으로 다시 쓴다." + mediation_cue),
                 (15, "소리 내어 읽고 들은 내용과 어긋난 문장을 고친다."),
                 (10, "고친 문장만 다시 적는다."),
             ]),
             day(day_title(title, "늘리기"), [
                 (10, with_focus(f"어제 '{title}' 글의 첫 문장을 말한다.", write_cue)),
-                (20, f"어제 글에서 다음 함정이 남은 문장을 고친다. {trap}"),
-                (20, f"고친 글을 {expand} 이상 대본 없이 녹음한다."),
+                (20, f"어제 글에서 다음 함정이 남은 문장을 고친다. {trap}" + input_cue),
+                (20, f"고친 글을 {target} 이상 대본 없이 녹음한다."),
                 (10, "녹음과 글을 비교해 다른 단어 세 개만 표시한다."),
             ]),
             day(day_title(title, "점검"), [
@@ -167,20 +191,20 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
                 (40, speak + (
                     " 같은 구간을 세 번 녹음하고, 매번 강세·연음만 고친다."
                     if has_explicit_dur
-                    else f" {expand} 구간을 세 번 녹음하고, 매번 강세·연음만 고친다."
-                )),
+                    else f" {target} 구간을 세 번 녹음하고, 매번 강세·연음만 고친다."
+                ) + fluency_cue),
                 (10, "더듬은 음절만 한 줄로 적는다."),
             ]),
             day(day_title(title, "쓰기"), [
                 (10, with_focus(f"어제 '{title}'에서 더듬은 음절이 들어간 문장을 말한다.", speak)),
-                (25, write + " 강세 둘 자리를 대문자로 표시한 문장 여덟 줄을 쓴다."),
+                (25, write + " 강세 둘 자리를 대문자로 표시한 문장 여덟 줄을 쓴다." + mediation_cue),
                 (15, "소리 내어 읽고 표시와 실제 강세가 다른 줄을 고친다."),
                 (10, "고친 문장만 다시 적는다."),
             ]),
             day(day_title(title, "늘리기"), [
                 (10, with_focus(f"어제 '{title}' 글의 첫 문장을 말한다.", write_cue)),
-                (20, f"어제 글에서 다음 함정이 남은 문장을 고친다. {trap}"),
-                (20, f"고친 글을 {expand} 이상 대본 없이 녹음한다."),
+                (20, f"어제 글에서 다음 함정이 남은 문장을 고친다. {trap}" + input_cue),
+                (20, f"고친 글을 {target} 이상 대본 없이 녹음한다."),
                 (10, "녹음과 글을 비교해 다른 강세 세 곳만 표시한다."),
             ]),
             day(day_title(title, "점검"), [
@@ -214,20 +238,20 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
                 (40, speak + (
                     " 원문 요지와 내 재진술을 대조해 녹음한다."
                     if has_explicit_dur
-                    else f" 원문 요지와 내 재진술을 {expand} 동안 대조해 녹음한다."
-                )),
+                    else f" 원문 요지와 내 재진술을 {target} 동안 대조해 녹음한다."
+                ) + fluency_cue),
                 (10, "더듬은 곳만 한 줄로 적는다."),
             ]),
             day(day_title(title, "쓰기"), [
                 (10, with_focus(f"어제 '{title}' 말하기에서 더듬은 문장을 다시 말한다.", speak)),
-                (25, write + " 원문 구조를 모방한 문단을 두 개 쓴다."),
+                (25, write + " 원문 구조를 모방한 문단을 두 개 쓴다." + mediation_cue),
                 (15, "소리 내어 읽고 모호한 문장을 고친다."),
                 (10, "고친 문장만 다시 적는다."),
             ]),
             day(day_title(title, "늘리기"), [
                 (10, with_focus(f"어제 '{title}' 글의 첫 문장을 말한다.", write_cue)),
-                (20, f"어제 글에서 다음 함정이 남은 문장을 고친다. {trap}"),
-                (20, f"고친 글을 {expand} 이상 대본 없이 녹음한다."),
+                (20, f"어제 글에서 다음 함정이 남은 문장을 고친다. {trap}" + input_cue),
+                (20, f"고친 글을 {target} 이상 대본 없이 녹음한다."),
                 (10, "녹음과 글을 비교해 다른 단어 세 개만 표시한다."),
             ]),
             day(day_title(title, "점검"), [
@@ -261,20 +285,20 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
                 (40, speak + (
                     " 협상 상대방에게 이 조항이 왜 필요한지 대본 없이 설명·녹음하고, 상대 반론에 맞춘 대안 조항을 넣어 두 번 더 말하며 고친다."
                     if has_explicit_dur
-                    else f" 협상 상대방에게 이 조항이 왜 필요한지 {expand} 동안 대본 없이 설명·녹음하고, 상대 반론에 맞춘 대안 조항을 넣어 두 번 더 말하며 고친다."
-                )),
+                    else f" 협상 상대방에게 이 조항이 왜 필요한지 {target} 동안 대본 없이 설명·녹음하고, 상대 반론에 맞춘 대안 조항을 넣어 두 번 더 말하며 고친다."
+                ) + fluency_cue),
                 (10, "설득이 약했던 근거와 막힌 표현 한 줄을 적는다."),
             ]),
             day(day_title(title, "작성"), [
                 (10, with_focus(f"어제 '{title}' 협상 설명에서 막힌 표현을 다시 말한다. 과제는 다음과 같다.", speak)),
-                (25, write + " 당사자 의무, 예외 단서, 통지 기한이 빠지지 않게 두 단락 분량의 조항 초안을 직접 작성한다."),
+                (25, write + " 당사자 의무, 예외 단서, 통지 기한이 빠지지 않게 두 단락 분량의 조항 초안을 직접 작성한다." + mediation_cue),
                 (15, "작성한 조항을 소리 내어 읽으며 중의적 수식이나 정의 없는 용어를 표시해 고친다."),
                 (10, "가장 크게 명확해진 문장 두 개만 따로 남긴다."),
             ]),
             day(day_title(title, "레드라인"), [
                 (10, with_focus(f"어제 '{title}' 초안의 첫 문장을 노트를 덮고 말한다. 작성 과제는 다음과 같다.", write_cue)),
-                (20, f"어제 초안에서 다음 위험이 남아 있는지 점검해 레드라인(수정 추적)으로 고친다. {trap}"),
-                (20, f"고친 조항과 수정 이유를 {expand} 이상 대본 없이 브리핑하듯 녹음한다."),
+                (20, f"어제 초안에서 다음 위험이 남아 있는지 점검해 레드라인(수정 추적)으로 고친다. {trap}" + input_cue),
+                (20, f"고친 조항과 수정 이유를 {target} 이상 대본 없이 브리핑하듯 녹음한다."),
                 (10, "초안과 레드라인 수정본에서 책임 범위가 달라진 표현 세 곳을 적는다."),
             ]),
             day(day_title(title, "점검"), [
@@ -308,20 +332,20 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
                 (40, speak + (
                     " 주장·근거·반론 고려를 갖춰 대본 없이 구술 녹음하고, 모호하거나 동어반복인 곳만 고쳐 두 번 더 녹음한다."
                     if has_explicit_dur
-                    else f" 주장·근거·반론 고려를 갖춰 {expand} 동안 대본 없이 구술 녹음하고, 모호하거나 동어반복인 곳만 고쳐 두 번 더 녹음한다."
-                )),
+                    else f" 주장·근거·반론 고려를 갖춰 {target} 동안 대본 없이 구술 녹음하고, 모호하거나 동어반복인 곳만 고쳐 두 번 더 녹음한다."
+                ) + fluency_cue),
                 (10, "구술 중 논리가 흐려졌거나 더듬은 문장 한 줄을 적는다."),
             ]),
             day(day_title(title, "집필"), [
                 (10, with_focus(f"어제 '{title}' 구술에서 더듬은 논점을 다시 말한다. 말하기 과제는 다음과 같다.", speak)),
-                (25, write + " 각 문단이 하나의 약속만 지키는지 확인하며 목표 분량 초고를 완성한다."),
+                (25, write + " 각 문단이 하나의 약속만 지키는지 확인하며 목표 분량 초고를 완성한다." + mediation_cue),
                 (15, "초고를 소리 내어 낭독하며 주어-서술어 호응과 문장 끝자리 강조가 무너진 문장을 표시해 고친다."),
                 (10, "퇴고 전보다 선명해진 핵심 문장 두 개만 남긴다."),
             ]),
             day(day_title(title, "퇴고"), [
                 (10, with_focus(f"어제 '{title}' 초고의 도입 문장을 노트를 덮고 말한다. 쓰기 과제는 다음과 같다.", write_cue)),
-                (20, f"어제 쓴 초고에서 군더더기와 다음 함정이 남은 문장을 골라 과감히 줄이고 고친다. {trap}"),
-                (20, f"퇴고한 글을 바탕으로 핵심 논지와 근거를 {expand} 이상 대본 없이 발표하듯 녹음한다."),
+                (20, f"어제 쓴 초고에서 군더더기와 다음 함정이 남은 문장을 골라 과감히 줄이고 고친다. {trap}" + input_cue),
+                (20, f"퇴고한 글을 바탕으로 핵심 논지와 근거를 {target} 이상 대본 없이 발표하듯 녹음한다."),
                 (10, "삭제하거나 압축한 군더더기 표현 세 곳과 이유를 적는다."),
             ]),
             day(day_title(title, "점검"), [
@@ -352,19 +376,19 @@ def english_days(prev, title, model, pattern, trap, speak, write, check, prev_li
         ]),
         day(day_title(title, "말하기"), [
             (10, with_focus(f"어제 '{title}'에서 고친 문장 셋을 노트 없이 말한다. 고친 함정은 다음이다.", trap)),
-            (40, speak + " 준비 뒤에 녹음하고, 막힌 문장만 고쳐 다시 녹음한 다음, 소재를 바꿔 같은 과제를 한 번 더 한다. 한 번이 짧아도 세 번과 고치기로 40분을 채운다." + ("" if has_explicit_dur else f" 목표 길이는 {expand}이다.") + " 대본은 마지막 녹음 뒤에만 본다."),
+            (40, speak + " 준비 뒤에 녹음하고, 막힌 문장만 고쳐 다시 녹음한 다음, 소재를 바꿔 같은 과제를 한 번 더 한다. 한 번이 짧아도 세 번과 고치기로 40분을 채운다." + ("" if has_explicit_dur else f" 목표 길이는 {target}이다.") + fluency_cue + " 대본은 마지막 녹음 뒤에만 본다."),
             (10, "더듬은 곳만 한 줄로 적는다."),
         ]),
         day(day_title(title, "쓰기"), [
             (10, with_focus(f"어제 '{title}' 말하기에서 더듬은 문장을 다시 말한다. 말할 과제는 다음이다.", speak)),
-            (25, write + " 같은 과제의 문단을 두 개 더 쓴다. 각 문단은 여섯 줄 이상이다. 시간이 남으면 소리 내어 읽고 문장마다 한 군데를 고친다."),
+            (25, write + " 같은 과제의 문단을 두 개 더 쓴다. 각 문단은 여섯 줄 이상이다. 시간이 남으면 소리 내어 읽고 문장마다 한 군데를 고친다." + mediation_cue),
             (15, "쓴 글을 소리 내어 읽고, 말하지 못한 문장을 고친다."),
             (10, "고친 문장만 다시 적는다."),
         ]),
         day(day_title(title, "늘리기"), [
             (10, with_focus(f"어제 '{title}'에서 쓴 글의 첫 문장을 말한다. 쓰기 과제는 다음이다.", write_cue)),
-            (20, f"어제 '{title}' 글에서 다음 함정이 남은 문장을 고친다. " + trap),
-            (20, f"고친 글을 {expand} 이상 대본 없이 녹음한다. 막히면 그 문장만 적고 이어서 말한다."),
+            (20, f"어제 '{title}' 글에서 다음 함정이 남은 문장을 고친다. " + trap + input_cue),
+            (20, f"고친 글을 {target} 이상 대본 없이 녹음한다. 막히면 그 문장만 적고 이어서 말한다."),
             (10, "녹음과 글을 비교해 다른 단어 세 개만 표시한다."),
         ]),
         day(day_title(title, "점검"), [

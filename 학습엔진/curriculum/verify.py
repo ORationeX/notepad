@@ -32,11 +32,16 @@ def _unit_for_phase(track, phase_idx):
 
 
 def validate_units_structure(track):
-    """Verify Major Unit (`units`) partition covers all phases contiguously without gaps or overlaps."""
+    """Verify Major Unit (`units`) partition, institutional benchmarks, standards, and prerequisites."""
     tid = track["id"]
     errors = []
     units = track.get("units") or []
     phases = track.get("phases") or []
+    weeks = track.get("weeks") or []
+    if not (track.get("standards") or []):
+        errors.append(f"[{tid}] missing standards metadata")
+    if not (track.get("methodology") or []):
+        errors.append(f"[{tid}] missing methodology metadata")
     if not units:
         errors.append(f"[{tid}] missing units metadata")
         return errors
@@ -45,6 +50,12 @@ def validate_units_structure(track):
     for ui, u in enumerate(units):
         if not u.get("id") or not u.get("title"):
             errors.append(f"[{tid} unit#{ui+1}] missing id or title")
+        bm = u.get("benchmark") or {}
+        if not bm.get("level") or not bm.get("standard") or not bm.get("bloom"):
+            errors.append(f"[{tid} {u.get('id')}] missing benchmark metadata")
+        diag = bm.get("diagnostic") or []
+        if len(diag) < 3 or any(not str(item).strip() for item in diag):
+            errors.append(f"[{tid} {u.get('id')}] invalid benchmark diagnostic items")
         p_indices = u.get("phases") or []
         if not p_indices:
             errors.append(f"[{tid} {u.get('id')}] empty phase list")
@@ -65,6 +76,16 @@ def validate_units_structure(track):
             errors.append(f"[{tid} {u.get('id')}] phaseNames mismatch")
     if seen != list(range(len(phases))):
         errors.append(f"[{tid}] units cover phases {seen} != 0..{len(phases)-1}")
+    for pri, pr in enumerate(track.get("prerequisites") or [], 1):
+        w = pr.get("week")
+        rt = pr.get("reqTrack")
+        rw = pr.get("reqWeek")
+        if not isinstance(w, int) or not (1 <= w <= len(weeks)):
+            errors.append(f"[{tid} prereq#{pri}] invalid week {w}")
+        if rt not in TRACK_IDS or not isinstance(rw, int) or rw < 1:
+            errors.append(f"[{tid} prereq#{pri}] invalid target {rt}:{rw}")
+        if not str(pr.get("topic", "")).strip():
+            errors.append(f"[{tid} prereq#{pri}] empty topic")
     return errors
 
 

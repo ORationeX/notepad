@@ -1,0 +1,13 @@
+{
+  "factoryID": "VTMC01",
+  "lineID": "SMT",
+  "equipmentID": "PCBREO101001",
+  "recipeID": "",
+  "lotID": "ISM26000000001",
+  "productID": "GH96-21943A",
+  "quantity": 2,
+  "subLotIDList": [
+    { "subLotID": "PVRIR00000C0001", "defectResult": "OK" },
+    { "subLotID": "PVRIR00000C0002", "defectResult": "OK" }
+  ]
+}

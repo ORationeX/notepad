@@ -1,0 +1,12 @@
+{
+  "name": "file-ingest",
+  "private": true,
+  "type": "module",
+  "description": "브라우저에서 여러 파일을 서버 디스크에 바로 저장합니다.",
+  "scripts": {
+    "start": "node server.js --open"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

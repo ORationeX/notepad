@@ -1,0 +1,12 @@
+{
+  "factoryID": "VTMC01",
+  "lineID": "SMT",
+  "equipmentID": "LASMAO531001",
+  "recipeID": "",
+  "lotID": "17822B61G0001",
+  "quantity": 2,
+  "subLotIDList": [
+    { "subLotID": "PVRIR00000C0001", "defectResult": "OK" },
+    { "subLotID": "PVRIR00000C0002", "defectResult": "OK" }
+  ]
+}

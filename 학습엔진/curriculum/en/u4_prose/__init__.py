@@ -11,8 +11,8 @@ from curriculum.en.u4_prose.p23_lexical_precision import PHASE as _P23_LEXICAL_P
 
 UNIT_META = {
     "id": "u4",
-    "title": "C1 명료 산문과 논증 문체",
-    "summary": "논설 독해와 스타일 전환을 거쳐 명료한 설명문, 문장 호흡, 단락 전개, 화자·레지스터, 5요소 논증과 어휘 정밀도를 체화한다.",
+    "title": "C1 명료 산문과 논증 문체 (CEFR C1)",
+    "summary": "논설 독해와 스타일 전환을 거쳐 명료한 설명문, 문장 호흡, 단락 전개, 화자·레지스터, 5요소 논증과 어휘 정밀도(Cambridge C1 Advanced)를 체화한다.",
 }
 
 PHASES = [_P16_PROSE_TRANSITION, _P17_CLEAR_EXPLANATION, _P18_SENTENCE_COHESION, _P19_PARAGRAPH_DESIGN, _P20_SCENES_DETAILS, _P21_VOICE_REGISTER, _P22_ARGUMENT_CONCESSION, _P23_LEXICAL_PRECISION]

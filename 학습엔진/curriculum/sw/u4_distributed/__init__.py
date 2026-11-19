@@ -9,8 +9,8 @@ from curriculum.sw.u4_distributed.p26_evolutionary_arch import PHASE as _P26_EVO
 
 UNIT_META = {
     "id": "u4",
-    "title": "분산 아키텍처·동시성과 복원력 설계",
-    "summary": "계층 vs 수직 슬라이스, 도메인·데이터 모델 간극, 동기·비동기, 동시성, 복원력과 진화적 아키텍처를 대조한다.",
+    "title": "분산 아키텍처·동시성과 복원력·SRE 설계",
+    "summary": "계층 vs 수직 슬라이스, 도메인·데이터 모델 간극, 동기·비동기, 동시성, 복원력·성능·SRE(SLI/SLO)와 진화적 아키텍처를 대조한다.",
 }
 
 PHASES = [_P21_LAYERED_VS_VERTICAL, _P22_DOMAIN_VS_DATA_MODEL, _P23_SYNC_VS_ASYNC, _P24_MUTABLE_CONCURRENCY, _P25_RESILIENCE_ISOLATION, _P26_EVOLUTIONARY_ARCH]

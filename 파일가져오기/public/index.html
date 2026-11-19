@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>파일 가져오기</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eef1f4;
+      --card: #ffffff;
+      --ink: #1c2430;
+      --muted: #5c6b7c;
+      --line: #d5dde6;
+      --accent: #0b6e4f;
+      --accent-ink: #ffffff;
+      --danger: #a33b32;
+      --track: #e4ebf1;
+      --ok: #0b6e4f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font: 15px/1.45 "Segoe UI", "Malgun Gothic", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    main {
+      width: min(920px, calc(100% - 32px));
+      margin: 28px auto 48px;
+    }
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      letter-spacing: -0.03em;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .path {
+      margin-top: 10px;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 13px;
+      color: var(--ink);
+      word-break: break-all;
+    }
+    .drop {
+      margin-top: 22px;
+      background: var(--card);
+      border: 1.5px dashed #9aafc0;
+      border-radius: 16px;
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 28px 16px;
+      cursor: pointer;
+    }
+    .drop.hot { border-color: var(--accent); background: #f3faf6; }
+    .drop strong { font-size: 18px; }
+    .drop span { color: var(--muted); margin-top: 6px; }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+    }
+    button, .ghost {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font: inherit;
+      cursor: pointer;
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+    button.secondary, .ghost {
+      background: var(--card);
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    button:disabled { opacity: 0.45; cursor: default; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .stat {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .stat b {
+      display: block;
+      font-size: 20px;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat span { color: var(--muted); font-size: 12px; }
+    .list {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .item {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .item .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+    }
+    .item .name {
+      font-weight: 650;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .bar {
+      margin-top: 8px;
+      height: 6px;
+      background: var(--track);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .bar > i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+    }
+    .item.err .bar > i { background: var(--danger); }
+    .saved {
+      margin-top: 6px;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 12px;
+      color: var(--ok);
+      word-break: break-all;
+    }
+    .errtext { margin-top: 6px; color: var(--danger); font-size: 12px; }
+    .more { color: var(--muted); text-align: center; padding: 8px; }
+    @media (max-width: 720px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>파일 가져오기</h1>
+      <p>여러 파일을 동시에 디스크에 그대로 저장합니다. 확장자 제한은 없고, 이름이 같아도 각각 따로 저장됩니다.</p>
+      <div class="path" id="savePath">저장 위치 확인 중…</div>
+      <div class="path" id="fastPath"></div>
+    </header>
+
+    <label class="drop" id="drop">
+      <input id="files" type="file" multiple hidden />
+      <strong>파일을 여기에 놓거나 클릭해서 선택</strong>
+      <span>.dmp를 포함한 모든 형식 · 놓으면 바로 전송</span>
+    </label>
+
+    <div class="row">
+      <button type="button" class="secondary" id="pickFolder">폴더 선택</button>
+      <button type="button" class="secondary" id="openFolder">저장 폴더 열기</button>
+      <button type="button" class="secondary" id="cancelAll" disabled>전송 취소</button>
+      <input id="dirs" type="file" webkitdirectory directory multiple hidden />
+    </div>
+
+    <section class="stats" aria-live="polite">
+      <div class="stat"><b id="speed">0 MB/s</b><span>현재 속도</span></div>
+      <div class="stat"><b id="done">0</b><span>완료</span></div>
+      <div class="stat"><b id="left">0</b><span>남은 파일</span></div>
+      <div class="stat"><b id="total">0 B</b><span>받은 용량</span></div>
+    </section>
+
+    <div class="list" id="list"></div>
+  </main>
+  <script>
+    const SMALL_PARALLEL = 6;
+    const LARGE_PARALLEL = 1;
+    const LARGE = 32 * 1024 * 1024;
+    const RENDER_MS = 120;
+
+    const drop = document.getElementById('drop');
+    const filesInput = document.getElementById('files');
+    const dirsInput = document.getElementById('dirs');
+    const listEl = document.getElementById('list');
+    const cancelAllBtn = document.getElementById('cancelAll');
+    const items = [];
+    let cursor = 0;
+    let active = 0;
+    let renderTimer = 0;
+    let bytesAtMark = 0;
+    let timeAtMark = performance.now();
+    let recentSpeed = 0;
+
+    const info = fetch('/api/info').then((r) => r.json());
+    info.then((data) => {
+      document.getElementById('savePath').textContent = data.uploadRoot;
+      const host = location.hostname;
+      const local = host === 'localhost' || host === '127.0.0.1'
+        || /^10\./.test(host) || /^192\.168\./.test(host)
+        || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
+      if (!local && data.lan && data.lan.length) {
+        document.getElementById('fastPath').textContent = `같은 망에서는 ${data.lan[0]} 로 열면 더 빠릅니다.`;
+      }
+    }).catch(() => {
+      document.getElementById('savePath').textContent = '서버 정보를 읽지 못했습니다.';
+    });
+
+    document.getElementById('openFolder').onclick = () => {
+      fetch('/api/open-folder', { method: 'POST' });
+    };
+    document.getElementById('pickFolder').onclick = () => dirsInput.click();
+    cancelAllBtn.onclick = () => {
+      for (const item of items) {
+        if (item.status === 'wait') item.status = 'cancelled';
+        else if (item.status === 'up') item.xhr.abort();
+      }
+      scheduleRender();
+    };
+
+    filesInput.addEventListener('change', () => {
+      enqueue(filesInput.files);
+      filesInput.value = '';
+    });
+    dirsInput.addEventListener('change', () => {
+      enqueue(dirsInput.files);
+      dirsInput.value = '';
+    });
+
+    let dragDepth = 0;
+    document.addEventListener('dragenter', (event) => {
+      event.preventDefault();
+      dragDepth += 1;
+      drop.classList.add('hot');
+    });
+    document.addEventListener('dragover', (event) => event.preventDefault());
+    document.addEventListener('dragleave', () => {
+      dragDepth -= 1;
+      if (dragDepth <= 0) {
+        dragDepth = 0;
+        drop.classList.remove('hot');
+      }
+    });
+    document.addEventListener('drop', async (event) => {
+      event.preventDefault();
+      dragDepth = 0;
+      drop.classList.remove('hot');
+      const dropped = await filesFromDataTransfer(event.dataTransfer);
+      enqueue(dropped);
+    });
+
+    function enqueue(fileList) {
+      const batch = [];
+      for (const file of fileList) {
+        if (!file) continue;
+        batch.push({
+          file,
+          name: file.name || 'file',
+          size: file.size,
+          loaded: 0,
+          status: 'wait',
+          xhr: null,
+          saved: '',
+          error: '',
+          started: 0,
+          speed: 0,
+          markBytes: 0,
+          markAt: 0,
+        });
+      }
+      if (!batch.length) return;
+      items.push(...batch);
+      pump();
+      scheduleRender();
+    }
+
+    function limit() {
+      for (const item of items) {
+        if (item.status === 'up' && item.size >= LARGE) return LARGE_PARALLEL;
+      }
+      return SMALL_PARALLEL;
+    }
+
+    function pump() {
+      while (active < limit()) {
+        while (cursor < items.length && items[cursor].status !== 'wait') cursor++;
+        if (cursor >= items.length) break;
+        const item = items[cursor++];
+        startOne(item);
+      }
+      const pending = items.some((item) => item.status === 'wait' || item.status === 'up');
+      cancelAllBtn.disabled = !pending;
+    }
+
+    function startOne(item) {
+      active++;
+      item.status = 'up';
+      item.started = performance.now();
+      const xhr = new XMLHttpRequest();
+      item.xhr = xhr;
+      xhr.open('POST', '/api/upload');
+      xhr.setRequestHeader('X-File-Name', encodeURIComponent(item.name));
+      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) item.loaded = event.loaded;
+        else item.loaded = event.loaded;
+        scheduleRender();
+      };
+      xhr.onload = () => {
+        active--;
+        item.xhr = null;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          item.status = 'done';
+          item.loaded = item.size;
+          try {
+            item.saved = JSON.parse(xhr.responseText).relativePath || '';
+          } catch {
+            item.saved = '';
+          }
+        } else {
+          item.status = 'err';
+          item.error = '저장 실패';
+        }
+        pump();
+        scheduleRender();
+      };
+      xhr.onerror = () => {
+        active--;
+        item.xhr = null;
+        item.status = 'err';
+        item.error = '전송 실패';
+        pump();
+        scheduleRender();
+      };
+      xhr.onabort = () => {
+        active--;
+        item.xhr = null;
+        item.status = 'cancelled';
+        pump();
+        scheduleRender();
+      };
+      try {
+        xhr.send(item.file);
+      } catch {
+        active--;
+        item.xhr = null;
+        item.status = 'err';
+        item.error = '전송 실패';
+        pump();
+        scheduleRender();
+      }
+    }
+
+    function scheduleRender() {
+      if (renderTimer) return;
+      renderTimer = setTimeout(() => {
+        renderTimer = 0;
+        render();
+      }, RENDER_MS);
+    }
+
+    function render() {
+      const now = performance.now();
+      let done = 0;
+      let left = 0;
+      let received = 0;
+      let loadedNow = 0;
+      for (const item of items) {
+        if (item.status === 'done') {
+          done++;
+          received += item.size;
+          loadedNow += item.size;
+        } else if (item.status === 'up') {
+          left++;
+          received += item.loaded;
+          loadedNow += item.loaded;
+          const step = (now - (item.markAt || item.started)) / 1000;
+          if (item.started && step >= 0.4) {
+            item.speed = Math.max(0, (item.loaded - item.markBytes) / step);
+            item.markBytes = item.loaded;
+            item.markAt = now;
+          }
+        } else if (item.status === 'wait') {
+          left++;
+        }
+      }
+      const dt = (now - timeAtMark) / 1000;
+      if (dt >= 0.4) {
+        recentSpeed = Math.max(0, (loadedNow - bytesAtMark) / dt);
+        bytesAtMark = loadedNow;
+        timeAtMark = now;
+      }
+      document.getElementById('speed').textContent = `${formatRate(recentSpeed)}`;
+      document.getElementById('done').textContent = String(done);
+      document.getElementById('left').textContent = String(left);
+      document.getElementById('total').textContent = formatBytes(received);
+
+      const visible = [];
+      const hiddenDone = [];
+      for (const item of items) {
+        if (item.status === 'done') hiddenDone.push(item);
+        else visible.push(item);
+      }
+      const recent = hiddenDone.slice(-40);
+      const show = visible.concat(recent);
+      const omitted = items.length - show.length;
+
+      listEl.replaceChildren();
+      if (omitted > 0) {
+        const note = document.createElement('div');
+        note.className = 'more';
+        note.textContent = `완료 ${omitted}개는 목록에서 생략했습니다.`;
+        listEl.append(note);
+      }
+      for (const item of show) listEl.append(renderItem(item));
+    }
+
+    function renderItem(item) {
+      const row = document.createElement('article');
+      row.className = 'item' + (item.status === 'err' ? ' err' : '');
+      const top = document.createElement('div');
+      top.className = 'top';
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = item.name;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const rate = item.status === 'up' ? ` · ${formatRate(item.speed)}` : '';
+      meta.textContent = `${label(item)} · ${formatBytes(item.status === 'done' ? item.size : item.loaded)} / ${formatBytes(item.size)}${rate}`;
+      top.append(name, meta);
+      row.append(top);
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      const fill = document.createElement('i');
+      const ratio = item.size > 0 ? Math.min(1, item.loaded / item.size) : (item.status === 'done' ? 1 : 0);
+      fill.style.width = `${Math.round(ratio * 100)}%`;
+      bar.append(fill);
+      row.append(bar);
+      if (item.saved) {
+        const saved = document.createElement('div');
+        saved.className = 'saved';
+        saved.textContent = item.saved;
+        row.append(saved);
+      }
+      if (item.error) {
+        const err = document.createElement('div');
+        err.className = 'errtext';
+        err.textContent = item.error;
+        row.append(err);
+      }
+      return row;
+    }
+
+    function label(item) {
+      if (item.status === 'wait') return '대기';
+      if (item.status === 'up') return '전송';
+      if (item.status === 'done') return '완료';
+      if (item.status === 'cancelled') return '취소';
+      return '실패';
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let n = bytes;
+      let i = 0;
+      while (n >= 1024 && i < units.length - 1) {
+        n /= 1024;
+        i++;
+      }
+      return `${n >= 10 || i === 0 ? n.toFixed(0) : n.toFixed(1)} ${units[i]}`;
+    }
+
+    function formatRate(bytesPerSec) {
+      const mb = bytesPerSec / (1024 * 1024);
+      if (mb >= 10) return `${mb.toFixed(0)} MB/s`;
+      if (mb >= 0.05) return `${mb.toFixed(1)} MB/s`;
+      return '0 MB/s';
+    }
+
+    async function filesFromDataTransfer(dataTransfer) {
+      const collected = [];
+      const walks = [];
+      const items = dataTransfer.items ? [...dataTransfer.items] : [];
+      if (!items.length) return [...dataTransfer.files];
+      for (const item of items) {
+        const entry = item.webkitGetAsEntry?.();
+        if (entry) walks.push(walkEntry(entry, collected));
+        else if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file) collected.push(file);
+        }
+      }
+      await Promise.all(walks);
+      return collected;
+    }
+
+    async function walkEntry(entry, out) {
+      if (entry.isFile) {
+        const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+        out.push(file);
+        return;
+      }
+      if (!entry.isDirectory) return;
+      const reader = entry.createReader();
+      const children = [];
+      while (true) {
+        const batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+        if (!batch.length) break;
+        children.push(...batch);
+      }
+      await Promise.all(children.map((child) => walkEntry(child, out)));
+    }
+  </script>
+</body>
+</html>
